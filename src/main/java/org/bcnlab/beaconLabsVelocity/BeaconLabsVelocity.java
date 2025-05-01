@@ -12,6 +12,7 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.command.LabsVelocityCommand;
 import org.bcnlab.beaconLabsVelocity.command.chat.BroadcastCommand;
 import org.bcnlab.beaconLabsVelocity.command.chat.ChatReportCommand;
+import org.bcnlab.beaconLabsVelocity.command.server.LobbyCommand;
 import org.bcnlab.beaconLabsVelocity.listener.ChatFilterListener;
 import org.bcnlab.beaconLabsVelocity.listener.FileChatLogger;
 import org.slf4j.Logger;
@@ -54,6 +55,11 @@ public class BeaconLabsVelocity {
         // Broadcast
         commandManager.register("broadcast", new BroadcastCommand(this));
         commandManager.register("bc", new BroadcastCommand(this));
+
+        // Lobby
+        commandManager.register("lobby", new LobbyCommand(this, server));
+        commandManager.register("l", new LobbyCommand(this, server));
+        commandManager.register("hub", new LobbyCommand(this, server));
     }
 
     @Subscribe
