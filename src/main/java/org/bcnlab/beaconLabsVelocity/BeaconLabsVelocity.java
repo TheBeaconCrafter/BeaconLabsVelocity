@@ -11,7 +11,9 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.command.LabsVelocityCommand;
 import org.bcnlab.beaconLabsVelocity.command.chat.BroadcastCommand;
+import org.bcnlab.beaconLabsVelocity.command.chat.ChatReportCommand;
 import org.bcnlab.beaconLabsVelocity.listener.ChatFilterListener;
+import org.bcnlab.beaconLabsVelocity.listener.FileChatLogger;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.loader.ConfigurationLoader;
@@ -40,6 +42,9 @@ public class BeaconLabsVelocity {
 
     @Inject
     private ProxyServer server;
+
+    @Inject
+    private CommandManager commandManager;
 
     @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
@@ -75,6 +80,10 @@ public class BeaconLabsVelocity {
 
         // Listeners
         server.getEventManager().register(this, new ChatFilterListener(this, server));
+        server.getEventManager().register(this, new FileChatLogger(getDataDirectory().toString()));
+
+        // Chatreport
+        commandManager.register("chatreport", new ChatReportCommand(new FileChatLogger(getDataDirectory().toString()), this, server));
 
         logger.info("BeaconLabsVelocity is initialized!");
     }
