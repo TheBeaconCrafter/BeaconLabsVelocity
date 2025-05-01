@@ -78,6 +78,27 @@ public class DatabaseManager {
             this.dataSource = null;
             this.enabled = false; // Mark as disabled if connection failed
         }
+        // Initialize punishments table
+        if (isConnected()) {
+            String createTable = "CREATE TABLE IF NOT EXISTS punishments (" +
+                    "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                    "player_uuid VARCHAR(36) NOT NULL, " +
+                    "player_name VARCHAR(16) NOT NULL, " +
+                    "issuer_uuid VARCHAR(36), " +
+                    "issuer_name VARCHAR(16), " +
+                    "type VARCHAR(10) NOT NULL, " +
+                    "reason VARCHAR(255), " +
+                    "duration BIGINT, " +
+                    "start_time BIGINT NOT NULL, " +
+                    "end_time BIGINT, " +
+                    "active BOOLEAN NOT NULL" +
+                ")";
+            try (var conn = getConnection(); var stmt = conn.createStatement()) {
+                stmt.execute(createTable);
+            } catch (Exception ex) {
+                logger.error("Failed to initialize punishments table", ex);
+            }
+        }
     }
 
     public void disconnect() {

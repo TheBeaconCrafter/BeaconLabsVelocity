@@ -14,10 +14,15 @@ import org.bcnlab.beaconLabsVelocity.command.LabsVelocityCommand;
 import org.bcnlab.beaconLabsVelocity.command.chat.BroadcastCommand;
 import org.bcnlab.beaconLabsVelocity.command.chat.ChatReportCommand;
 import org.bcnlab.beaconLabsVelocity.command.server.LobbyCommand;
+import org.bcnlab.beaconLabsVelocity.command.punishment.PunishmentCommandRegistrar;
+import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
+import org.bcnlab.beaconLabsVelocity.listener.BanLoginListener;
 import org.bcnlab.beaconLabsVelocity.listener.ChatFilterListener;
 import org.bcnlab.beaconLabsVelocity.listener.FileChatLogger;
 import org.bcnlab.beaconLabsVelocity.listener.PingListener;
+import org.bcnlab.beaconLabsVelocity.listener.MuteListener;
+import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.loader.ConfigurationLoader;
@@ -27,7 +32,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
-import java.util.logging.ErrorManager;
 
 @Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.0.0", url = "bcnlab.org", authors = {"Vincent Wackler"})
 public class BeaconLabsVelocity {
@@ -50,8 +54,10 @@ public class BeaconLabsVelocity {
     @Inject
     private CommandManager commandManager;
 
+    private PunishmentService punishmentService;
+    private PunishmentConfig punishmentConfig; // Add field for config
     private DatabaseManager databaseManager;
-
+    
     @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
         // Core
@@ -84,20 +90,35 @@ public class BeaconLabsVelocity {
             prefix = "&4ConfigError &8» ";
         }
 
-        // Initialize and connect DatabaseManager
+        // DatabaseManager
         databaseManager = new DatabaseManager(this, logger);
         databaseManager.connect();
 
-        // Listeners
+        // Load punishment configuration and register commands/listeners
+        try {
+            punishmentConfig = new PunishmentConfig(dataDirectory, logger); // Assign to field
+            // Initialize PunishmentService
+            punishmentService = new PunishmentService(this, databaseManager, punishmentConfig, logger);
+            // Register punishment commands
+            new PunishmentCommandRegistrar(commandManager, punishmentConfig, punishmentService, this, server, logger).registerAll();
+            // Register Listeners
+            server.getEventManager().register(this, new MuteListener(this, punishmentService, punishmentConfig, logger));
+            server.getEventManager().register(this, new BanLoginListener(this, punishmentService, punishmentConfig, logger));
+        } catch (IOException e) {
+            logger.error("Failed to load punishments.yml or register punishment components", e);
+        }
+
+        // Other Listeners
         server.getEventManager().register(this, new ChatFilterListener(this, server));
         server.getEventManager().register(this, new FileChatLogger(getDataDirectory().toString()));
         server.getEventManager().register(this, new PingListener(this, server));
 
-        // Chatreport
+        // Other Commands
         commandManager.register("chatreport", new ChatReportCommand(new FileChatLogger(getDataDirectory().toString()), this, server));
         commandManager.register("lobby", new LobbyCommand(this, server));
         commandManager.register("l", new LobbyCommand(this, server));
         commandManager.register("hub", new LobbyCommand(this, server));
+        commandManager.register("labsvelocity", new LabsVelocityCommand(this));
 
         logger.info("BeaconLabsVelocity is initialized!");
     }
@@ -119,7 +140,6 @@ public class BeaconLabsVelocity {
         return version;
     }
 
-    // Getter for DatabaseManager
     public DatabaseManager getDatabaseManager() {
         return databaseManager;
     }

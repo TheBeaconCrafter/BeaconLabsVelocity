@@ -1,0 +1,53 @@
+# punishments.yml
+# Configuration for punishment messages and predefined reasons.
+# Placeholders: {player}, {duration}, {reason}, {type}, {date}, {issuer}
+
+messages:
+  no-permission: "&cYou do not have permission to use this command."
+  player-not-found: "&cPlayer &f{player} &cnot found."
+  self-punish: "&cYou cannot punish yourself."
+  mute-success: "&a{player} has been muted for {duration}. Reason: {reason}"
+  ban-success: "&a{player} has been banned for {duration}. Reason: {reason}"
+  kick-success: "&a{player} has been kicked. Reason: {reason}"
+  warn-success: "&a{player} has been warned. Reason: {reason}"
+  unban-success: "&a{player} has been unbanned."
+  unmute-success: "&a{player} has been unmuted."
+  info-header: "&6Punishment Info for {player}"
+  info-line: "&7- {type} on {date}: {reason} ({duration})"
+  history-header: "&6Punishment History for {player}:"
+  history-empty: "&cNo punishment history found."
+  history-line: "{status} &7- &e{type} &7on &b{date} &7by &d{issuer}&7: &f{reason} &7(&a{duration}&7)"
+  default-reason: "No reason specified"
+  mute-enforce: "&cYou are currently muted and cannot send messages."
+  ban-login-deny: |
+    &c&lYou are banned from this server!
+
+    &7Reason: &f{reason}
+    &7Expires: &f{duration}
+
+    &eAppeal at: &fyourwebsite.com/appeal
+  ban-screen: |
+    &c&lYou have been banned from this server!
+
+    &7Reason: &f{reason}
+    &7Expires: &f{duration}
+
+    &eAppeal at: &fyourwebsite.com/appeal
+  kick-screen: |
+    &c&lYou have been kicked from this server!
+
+    &7Reason: &f{reason}
+
+predefined-reasons:
+  spam:
+    type: mute
+    duration: "10m"
+    reason: "Spamming chat"
+  grief:
+    type: ban
+    duration: "1d"
+    reason: "Griefing"
+  harassment:
+    type: warn
+    duration: "0"
+    reason: "Harassment"
