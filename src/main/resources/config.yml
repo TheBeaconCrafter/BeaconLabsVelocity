@@ -1,2 +1,16 @@
 prefix: "&6BeaconLabs &8» "
 lobby-server: "lobby"
+
+# Server List MOTD Configuration
+# Supports MiniMessage format: https://docs.adventure.kyori.net/minimessage/format.html
+# Examples:
+# - Gradients: <gradient:#ff0000:#0000ff>Red to Blue</gradient>
+# - Hover/Click Events: <hover:show_text:'Hello!'><click:run_command:/help>Click Me</click></hover>
+# - Standard Codes: <red>, <bold>, <italic>, etc. (Legacy '&' codes are NOT supported here)
+# - Unicode symbols (e.g., », «, ★, ❤, ✦) can still be used.
+motd:
+  line1: "<gradient:#5e4fa2:#f79459><bold>BeaconLabs</bold></gradient> <gray>»</gray> <hover:show_text:'<rainbow>Join the Adventure!</rainbow>'><gold>Your Network!</gold></hover>"
+  line2: "<aqua>Playing on <yellow>1.21.4+</yellow></aqua>"
+  max-players: 100
+  version-name: "BeaconLabs 1.21.4+"
+  version-protocol: 769 # Protocol version for 1.21.4. Change if needed.

@@ -15,6 +15,7 @@ import org.bcnlab.beaconLabsVelocity.command.chat.ChatReportCommand;
 import org.bcnlab.beaconLabsVelocity.command.server.LobbyCommand;
 import org.bcnlab.beaconLabsVelocity.listener.ChatFilterListener;
 import org.bcnlab.beaconLabsVelocity.listener.FileChatLogger;
+import org.bcnlab.beaconLabsVelocity.listener.PingListener;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.loader.ConfigurationLoader;
@@ -55,11 +56,6 @@ public class BeaconLabsVelocity {
         // Broadcast
         commandManager.register("broadcast", new BroadcastCommand(this));
         commandManager.register("bc", new BroadcastCommand(this));
-
-        // Lobby
-        commandManager.register("lobby", new LobbyCommand(this, server));
-        commandManager.register("l", new LobbyCommand(this, server));
-        commandManager.register("hub", new LobbyCommand(this, server));
     }
 
     @Subscribe
@@ -87,9 +83,13 @@ public class BeaconLabsVelocity {
         // Listeners
         server.getEventManager().register(this, new ChatFilterListener(this, server));
         server.getEventManager().register(this, new FileChatLogger(getDataDirectory().toString()));
+        server.getEventManager().register(this, new PingListener(this, server));
 
         // Chatreport
         commandManager.register("chatreport", new ChatReportCommand(new FileChatLogger(getDataDirectory().toString()), this, server));
+        commandManager.register("lobby", new LobbyCommand(this, server));
+        commandManager.register("l", new LobbyCommand(this, server));
+        commandManager.register("hub", new LobbyCommand(this, server));
 
         logger.info("BeaconLabsVelocity is initialized!");
     }
