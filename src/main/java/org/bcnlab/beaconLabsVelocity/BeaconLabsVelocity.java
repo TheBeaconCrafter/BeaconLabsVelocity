@@ -6,9 +6,12 @@ import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
+import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.command.LabsVelocityCommand;
+import org.bcnlab.beaconLabsVelocity.command.chat.BroadcastCommand;
+import org.bcnlab.beaconLabsVelocity.listener.ChatFilterListener;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.loader.ConfigurationLoader;
@@ -18,6 +21,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.logging.ErrorManager;
 
 @Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.0.0", url = "bcnlab.org", authors = {"Vincent Wackler"})
 public class BeaconLabsVelocity {
@@ -35,8 +39,16 @@ public class BeaconLabsVelocity {
     private Logger logger;
 
     @Inject
+    private ProxyServer server;
+
+    @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
+        // Core
         commandManager.register("labsvelocity", new LabsVelocityCommand(this));
+
+        // Broadcast
+        commandManager.register("broadcast", new BroadcastCommand(this));
+        commandManager.register("bc", new BroadcastCommand(this));
     }
 
     @Subscribe
@@ -61,6 +73,9 @@ public class BeaconLabsVelocity {
             prefix = "&4ConfigError &8» ";
         }
 
+        // Listeners
+        server.getEventManager().register(this, new ChatFilterListener(this, server));
+
         logger.info("BeaconLabsVelocity is initialized!");
     }
 
@@ -74,5 +89,17 @@ public class BeaconLabsVelocity {
 
     public ConfigurationNode getConfig() {
         return config;
+    }
+
+    public ProxyServer getServer() {
+        return server;
+    }
+
+    public Logger getLogger() {
+        return logger;
+    }
+
+    public Path getDataDirectory() {
+        return dataDirectory;
     }
 }
