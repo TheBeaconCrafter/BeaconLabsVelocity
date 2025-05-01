@@ -14,3 +14,17 @@ motd:
   max-players: 100
   version-name: "BeaconLabs 1.21.4+"
   version-protocol: 769 # Protocol version for 1.21.4. Change if needed.
+
+# Database Configuration (MariaDB/MySQL)
+database:
+  enabled: false # Set to true to enable database connection
+  host: "localhost"
+  port: 3306
+  database: "velocity_db"
+  username: "velocity_user"
+  password: "your_password"
+  # HikariCP Pool Settings (Optional - sensible defaults are used)
+  # pool-size: 10
+  # connection-timeout: 30000 # milliseconds
+  # idle-timeout: 600000 # milliseconds
+  # max-lifetime: 1800000 # milliseconds

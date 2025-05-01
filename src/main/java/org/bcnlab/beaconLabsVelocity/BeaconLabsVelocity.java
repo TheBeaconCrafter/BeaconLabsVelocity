@@ -3,6 +3,7 @@ package org.bcnlab.beaconLabsVelocity;
 import com.google.inject.Inject;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
+import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
@@ -13,6 +14,7 @@ import org.bcnlab.beaconLabsVelocity.command.LabsVelocityCommand;
 import org.bcnlab.beaconLabsVelocity.command.chat.BroadcastCommand;
 import org.bcnlab.beaconLabsVelocity.command.chat.ChatReportCommand;
 import org.bcnlab.beaconLabsVelocity.command.server.LobbyCommand;
+import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
 import org.bcnlab.beaconLabsVelocity.listener.ChatFilterListener;
 import org.bcnlab.beaconLabsVelocity.listener.FileChatLogger;
 import org.bcnlab.beaconLabsVelocity.listener.PingListener;
@@ -48,6 +50,8 @@ public class BeaconLabsVelocity {
     @Inject
     private CommandManager commandManager;
 
+    private DatabaseManager databaseManager;
+
     @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
         // Core
@@ -80,6 +84,10 @@ public class BeaconLabsVelocity {
             prefix = "&4ConfigError &8» ";
         }
 
+        // Initialize and connect DatabaseManager
+        databaseManager = new DatabaseManager(this, logger);
+        databaseManager.connect();
+
         // Listeners
         server.getEventManager().register(this, new ChatFilterListener(this, server));
         server.getEventManager().register(this, new FileChatLogger(getDataDirectory().toString()));
@@ -94,12 +102,26 @@ public class BeaconLabsVelocity {
         logger.info("BeaconLabsVelocity is initialized!");
     }
 
+    @Subscribe
+    public void onProxyShutdown(ProxyShutdownEvent event) {
+        // Disconnect DatabaseManager
+        if (databaseManager != null) {
+            databaseManager.disconnect();
+        }
+        logger.info("BeaconLabsVelocity is shutting down.");
+    }
+
     public Component getPrefix() {
         return LegacyComponentSerializer.legacyAmpersand().deserialize(prefix);
     }
 
     public String getVersion() {
         return version;
+    }
+
+    // Getter for DatabaseManager
+    public DatabaseManager getDatabaseManager() {
+        return databaseManager;
     }
 
     public ConfigurationNode getConfig() {
