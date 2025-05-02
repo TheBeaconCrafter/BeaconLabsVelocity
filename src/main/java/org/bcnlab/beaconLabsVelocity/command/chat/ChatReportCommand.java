@@ -39,7 +39,7 @@ public class ChatReportCommand implements SimpleCommand {
         String[] args = invocation.arguments();
 
         if (args.length != 1) {
-            sender.sendMessage(plugin.getPrefix().append(Component.text("Usage: /chatreport <player>")));
+            sender.sendMessage(plugin.getPrefix().append(Component.text("Usage: /chatreport <player>", NamedTextColor.RED)));
             return;
         }
 

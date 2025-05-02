@@ -10,11 +10,15 @@ import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import org.bcnlab.beaconLabsVelocity.command.CoreCommandRegistrar;
 import org.bcnlab.beaconLabsVelocity.command.LabsVelocityCommand;
-import org.bcnlab.beaconLabsVelocity.command.chat.BroadcastCommand;
+import org.bcnlab.beaconLabsVelocity.command.admin.AdminCommandRegistrar;
+import org.bcnlab.beaconLabsVelocity.command.chat.ChatCommandRegistrar;
 import org.bcnlab.beaconLabsVelocity.command.chat.ChatReportCommand;
 import org.bcnlab.beaconLabsVelocity.command.server.LobbyCommand;
+import org.bcnlab.beaconLabsVelocity.command.server.ServerCommandRegistrar;
 import org.bcnlab.beaconLabsVelocity.command.punishment.PunishmentCommandRegistrar;
+import org.bcnlab.beaconLabsVelocity.command.util.UtilCommandRegistrar;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
 import org.bcnlab.beaconLabsVelocity.listener.*;
@@ -53,15 +57,9 @@ public class BeaconLabsVelocity {
     private PunishmentService punishmentService;
     private PunishmentConfig punishmentConfig;
     private DatabaseManager databaseManager;
-    
-    @Inject
+      @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
-        // Core
-        commandManager.register("labsvelocity", new LabsVelocityCommand(this));
-
-        // Broadcast
-        commandManager.register("broadcast", new BroadcastCommand(this));
-        commandManager.register("bc", new BroadcastCommand(this));
+        // Commands are now registered in onProxyInitialization
     }
 
     @Subscribe
@@ -110,14 +108,27 @@ public class BeaconLabsVelocity {
         // Other Listeners
         server.getEventManager().register(this, new ChatFilterListener(this, server));
         server.getEventManager().register(this, new FileChatLogger(getDataDirectory().toString()));
-        server.getEventManager().register(this, new PingListener(this, server));
+        server.getEventManager().register(this, new PingListener(this, server));        // Other Commands
 
-        // Other Commands
-        commandManager.register("chatreport", new ChatReportCommand(new FileChatLogger(getDataDirectory().toString()), this, server));
-        commandManager.register("lobby", new LobbyCommand(this, server));
-        commandManager.register("l", new LobbyCommand(this, server));
-        commandManager.register("hub", new LobbyCommand(this, server));
-        commandManager.register("labsvelocity", new LabsVelocityCommand(this));
+        // Register server commands
+        new org.bcnlab.beaconLabsVelocity.command.server.ServerCommandRegistrar(
+                commandManager, this, server, logger).registerAll();
+
+        // Register core commands
+        new org.bcnlab.beaconLabsVelocity.command.CoreCommandRegistrar(
+                commandManager, this, server, logger).registerAll();
+
+        // Register chat commands
+        new org.bcnlab.beaconLabsVelocity.command.chat.ChatCommandRegistrar(
+                commandManager, this, server, logger).registerAll();
+
+        // Register utility commands
+        new org.bcnlab.beaconLabsVelocity.command.util.UtilCommandRegistrar(
+            commandManager, this, server, logger).registerAll();
+        
+        // Register admin commands
+        new org.bcnlab.beaconLabsVelocity.command.admin.AdminCommandRegistrar(
+            commandManager, this, server, logger).registerAll();
 
         logger.info("BeaconLabsVelocity is initialized!");
     }
