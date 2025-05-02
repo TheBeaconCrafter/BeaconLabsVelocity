@@ -11,55 +11,68 @@ import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
 import org.bcnlab.beaconLabsVelocity.util.DurationUtils;
 import org.slf4j.Logger;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.UUID;
+
 public class BanLoginListener {
 
-    private final BeaconLabsVelocity plugin;
     private final PunishmentService punishmentService;
     private final PunishmentConfig punishmentConfig;
     private final Logger logger;
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
 
     public BanLoginListener(BeaconLabsVelocity plugin, PunishmentService punishmentService, PunishmentConfig punishmentConfig, Logger logger) {
-        this.plugin = plugin;
         this.punishmentService = punishmentService;
         this.punishmentConfig = punishmentConfig;
         this.logger = logger;
     }
 
     @Subscribe
-    public void onPlayerLogin(LoginEvent event) {
+    public void onLogin(LoginEvent event) {
         Player player = event.getPlayer();
+        UUID playerUuid = player.getUniqueId();
 
         // Don't check players with bypass permission
         if (player.hasPermission("beaconlabs.punish.ban.bypass")) {
             return;
         }
 
-        PunishmentService.PunishmentRecord activeBan = null;
-        try {
-            activeBan = punishmentService.getActiveBan(player.getUniqueId());
-        } catch (Exception e) {
-             logger.error("Error checking ban status for " + player.getUsername(), e);
-             // Allow login on error? Or deny? For safety, maybe deny.
-             // event.setResult(ResultedEvent.ComponentResult.denied(Component.text("Error checking your ban status.", NamedTextColor.RED)));
-             return; // Allow login for now
-        }
+        if (punishmentService.isBanned(playerUuid)) {            PunishmentService.PunishmentRecord banRecord = punishmentService.getActiveBan(playerUuid);
+            // Use the correct config key as specified in the user's config
+            String banMessageTemplate = punishmentConfig.getMessage("ban-login-deny");
+            String defaultKickMessage = "&cYou are banned from this server.";            if (banRecord != null && banMessageTemplate != null) {
+                String reason = banRecord.reason;
+                long duration = banRecord.duration;
+                long endTime = banRecord.endTime;
 
+                String formattedDuration = (duration < 0) ? "Permanent" : DurationUtils.formatDuration(duration);
+                String formattedEndTime = (endTime > 0) ? DATE_FORMAT.format(new Date(endTime)) : "Never";
 
-        if (activeBan != null) {
-            String banMessageFormat = punishmentConfig.getMessage("ban-login-deny");
-            if (banMessageFormat == null) {
-                banMessageFormat = "&cYou are banned.\nReason: {reason}\nExpires: {duration}"; // Fallback
-                logger.warn("Missing 'ban-login-deny' message in punishments.yml");
+                // Log the values being used to help debug template issues
+                logger.debug("Ban message replacement values: reason='{}', duration='{}', expires='{}'", 
+                            reason, formattedDuration, formattedEndTime);
+
+                String banMessage = banMessageTemplate
+                        .replace("{reason}", reason)
+                        .replace("{duration}", formattedDuration)
+                        .replace("{expires}", formattedEndTime);
+
+                Component kickReason = LegacyComponentSerializer.legacyAmpersand().deserialize(banMessage);
+                event.setResult(LoginEvent.ComponentResult.denied(kickReason));
+                logger.info("Denied login for banned player: " + player.getUsername() + " (UUID: " + playerUuid + ")");
+            } else {
+                // Fallback kick message if details are missing or template is null
+                if (banMessageTemplate == null) {
+                    logger.warn("Ban message template 'ban-login-deny' not found in punishments.yml");
+                }
+                if (banRecord == null) {
+                    logger.warn("Could not retrieve active ban record for " + player.getUsername());
+                }
+                Component defaultKickReason = LegacyComponentSerializer.legacyAmpersand().deserialize(defaultKickMessage);
+                event.setResult(LoginEvent.ComponentResult.denied(defaultKickReason));
+                logger.warn("Denied login for banned player " + player.getUsername() + ". Used default kick message.");
             }
-
-            String reason = activeBan.reason != null ? activeBan.reason : "N/A";
-            String durationStr = DurationUtils.formatDuration(activeBan.duration); // Use duration from record
-
-            Component banMessage = LegacyComponentSerializer.legacyAmpersand().deserialize(
-                    banMessageFormat.replace("{reason}", reason)
-                                  .replace("{duration}", durationStr)
-            );
-            event.setResult(LoginEvent.ComponentResult.denied(banMessage));
         }
     }
 }

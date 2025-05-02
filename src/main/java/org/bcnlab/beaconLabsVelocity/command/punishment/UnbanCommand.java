@@ -11,6 +11,7 @@ import org.bcnlab.beaconLabsVelocity.service.PunishmentService; // Import servic
 import org.slf4j.Logger; // Import Logger
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -50,19 +51,15 @@ public class UnbanCommand implements SimpleCommand {
         if (args.length < 1) {
             src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize("&cUsage: /unban <player>")));
             return;
-        }
-
-        String targetName = args[0];
-        // Note: Unbanning often needs to work for offline players.
-        // We might need a way to look up UUIDs for offline players later.
-        // For now, it only works for online players.
-        Player target = server.getPlayer(targetName).orElse(null);
-
-        if (target == null) {
+        }        String targetName = args[0];
+        // Use the new method to get UUID for both online and offline players
+        UUID targetUUID = service.getPlayerUUID(targetName);
+        
+        if (targetUUID == null) {
             String notFoundMsg = config.getMessage("player-not-found");
             if (notFoundMsg == null) {
                 notFoundMsg = "&cPlayer &f{player} &cnot found.";
-                 logger.warn("Missing 'player-not-found' message in punishments.yml");
+                logger.warn("Missing 'player-not-found' message in punishments.yml");
             }
             src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(
                     notFoundMsg.replace("{player}", targetName)
@@ -72,25 +69,24 @@ public class UnbanCommand implements SimpleCommand {
 
         boolean success = false;
         try {
-             success = service.unban(target.getUniqueId()); // Use unban()
+            success = service.unban(targetUUID); // Use unban() with UUID
         } catch (Exception e) {
             logger.error("Error occurred while unbanning " + targetName, e);
             src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize("&cAn internal error occurred.")));
             return;
         }
 
-
         String msg;
         if (success) {
             String successMsg = config.getMessage("unban-success");
             if (successMsg == null) {
                 successMsg = "&a{player} has been unbanned.";
-                 logger.warn("Missing 'unban-success' message in punishments.yml");
+                logger.warn("Missing 'unban-success' message in punishments.yml");
             }
-            msg = successMsg.replace("{player}", target.getUsername());
+            msg = successMsg.replace("{player}", targetName);
         } else {
             // Provide a more specific message if possible, otherwise generic failure
-             msg = "&cNo active ban found for " + targetName + " or an error occurred.";
+            msg = "&cNo active ban found for " + targetName + " or an error occurred.";
         }
         // Add prefix to final message
         src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(msg)));

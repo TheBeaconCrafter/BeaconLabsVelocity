@@ -42,6 +42,6 @@ public class PunishmentCommandRegistrar {
         // Unban
         commandManager.register("unban", new UnbanCommand(plugin, server, service, config, logger));
         // Unmute
-        commandManager.register("unmute", new UnmuteCommand(plugin, server, service, config));
+        commandManager.register("unmute", new UnmuteCommand(plugin, server, service, config, logger));
     }
 }

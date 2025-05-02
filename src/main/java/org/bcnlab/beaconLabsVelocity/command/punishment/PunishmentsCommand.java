@@ -46,15 +46,25 @@ public class PunishmentsCommand implements SimpleCommand {
             return;
         }
         String targetName = args[0];
-        Player target = server.getPlayer(targetName).orElse(null);
-        if (target == null) {
+        
+        // Use PunishmentService to get UUID for online or offline players
+        UUID targetUUID = service.getPlayerUUID(targetName);
+        
+        if (targetUUID == null) {
+            String notFoundMsg = config.getMessage("player-not-found");
+            if (notFoundMsg == null) {
+                notFoundMsg = "&cPlayer &f{player} &cnot found.";
+                // Consider adding logger warning here if needed
+            }
             src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand()
-                    .deserialize(config.getMessage("player-not-found").replace("{player}", targetName))));
+                    .deserialize(notFoundMsg.replace("{player}", targetName))));
             return;
         }
-        UUID uuid = target.getUniqueId();
-        List<PunishmentRecord> history = service.getHistory(uuid);
+        
+        // Fetch history using the found UUID
+        List<PunishmentRecord> history = service.getHistory(targetUUID);
 
+        // Use the provided targetName for the header, as we might not have the exact casing from the DB
         String header = config.getMessage("history-header").replace("{player}", targetName);
         src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(header));
 

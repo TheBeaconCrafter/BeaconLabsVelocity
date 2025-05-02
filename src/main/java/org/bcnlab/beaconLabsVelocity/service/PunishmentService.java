@@ -1,5 +1,6 @@
 package org.bcnlab.beaconLabsVelocity.service;
 
+import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
@@ -28,6 +29,33 @@ public class PunishmentService {
         this.db = db;
         this.config = config;
         this.logger = logger;
+    }
+    
+    /**
+     * Attempts to find the UUID of a player based on their last known username in the punishments table.
+     * Case-insensitive search. Prioritizes online players.
+     * @param username The username to search for.
+     * @return The UUID if found, otherwise null.
+     */
+    public UUID getPlayerUUID(String username) {
+        // Prioritize online players first for case sensitivity and freshness
+        UUID onlineUUID = plugin.getServer().getPlayer(username).map(Player::getUniqueId).orElse(null);
+        if (onlineUUID != null) {
+            return onlineUUID;
+        }
+        
+        // If offline, check the database (case-insensitive)
+        String sql = "SELECT player_uuid FROM punishments WHERE LOWER(player_name) = LOWER(?) ORDER BY start_time DESC LIMIT 1";
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username.toLowerCase());
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return UUID.fromString(rs.getString("player_uuid"));
+            }
+        } catch (Exception e) {
+            logger.error("Failed to get UUID for username: " + username, e);
+        }
+        return null; // Not found
     }
 
     private void expireOld() {
@@ -130,8 +158,6 @@ public class PunishmentService {
         }
         return null;
     }
-
-
     /**
      * Check if a player has an active mute.
      */
@@ -148,6 +174,27 @@ public class PunishmentService {
             logger.error("Failed to check mute status for " + targetId, e);
         }
         return false;
+    }
+    
+    /**
+     * Gets the details of the active mute for a player, if any.
+     * Returns null if not muted.
+     */
+    public PunishmentRecord getActiveMute(UUID targetId) {
+        expireOld();
+        String sql = "SELECT reason, duration, end_time FROM punishments WHERE player_uuid=? AND type='mute' AND active=true ORDER BY start_time DESC LIMIT 1";
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, targetId.toString());
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                // Create a record just for mute details
+                return new PunishmentRecord(null, "mute", rs.getString("reason"),
+                                            rs.getLong("duration"), 0, rs.getLong("end_time"), true);
+            }
+        } catch (Exception e) {
+            logger.error("Failed to get active mute details for " + targetId, e);
+        }
+        return null;
     }
 
     public List<PunishmentRecord> getHistory(UUID targetId) {

@@ -1,8 +1,10 @@
 package org.bcnlab.beaconLabsVelocity.listener;
 
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.command.CommandExecuteEvent; // Import CommandExecuteEvent
 import com.velocitypowered.api.event.player.PlayerChatEvent;
 import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.command.CommandSource; // Import CommandSource
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -86,10 +88,27 @@ public class FileChatLogger {
         String message = event.getMessage();
 
         long logStartTime = System.currentTimeMillis();
-        String logMessage = String.format("%s", message);
+        String logMessage = String.format("[CHAT] %s", message); 
 
-        // Log the chat message
         logChat(playerId, playerName, logMessage, logStartTime);
+    }
+
+    @Subscribe
+    public void onCommand(CommandExecuteEvent event) {
+        CommandSource source = event.getCommandSource();
+        
+        // Only log commands executed by players
+        if (source instanceof Player) {
+            Player player = (Player) source;
+            UUID playerId = player.getUniqueId();
+            String playerName = player.getUsername();
+            String command = event.getCommand();
+
+            long logStartTime = System.currentTimeMillis();
+            String logMessage = String.format("[CMD] /%s", command); 
+
+            logChat(playerId, playerName, logMessage, logStartTime);
+        }
     }
 
     private String formatLogMessage(String message, long logStartTime, long currentTime) {

@@ -17,11 +17,7 @@ import org.bcnlab.beaconLabsVelocity.command.server.LobbyCommand;
 import org.bcnlab.beaconLabsVelocity.command.punishment.PunishmentCommandRegistrar;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
-import org.bcnlab.beaconLabsVelocity.listener.BanLoginListener;
-import org.bcnlab.beaconLabsVelocity.listener.ChatFilterListener;
-import org.bcnlab.beaconLabsVelocity.listener.FileChatLogger;
-import org.bcnlab.beaconLabsVelocity.listener.PingListener;
-import org.bcnlab.beaconLabsVelocity.listener.MuteListener;
+import org.bcnlab.beaconLabsVelocity.listener.*;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
@@ -102,7 +98,10 @@ public class BeaconLabsVelocity {
             // Register punishment commands
             new PunishmentCommandRegistrar(commandManager, punishmentConfig, punishmentService, this, server, logger).registerAll();
             // Register Listeners
+            // Register the mute listener that handles all chat blocking for muted players
             server.getEventManager().register(this, new MuteListener(this, punishmentService, punishmentConfig, logger));
+            
+            // Register the ban login listener to prevent banned players from joining
             server.getEventManager().register(this, new BanLoginListener(this, punishmentService, punishmentConfig, logger));
         } catch (IOException e) {
             logger.error("Failed to load punishments.yml or register punishment components", e);
