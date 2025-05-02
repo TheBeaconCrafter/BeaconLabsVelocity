@@ -77,19 +77,21 @@ public class BanCommand implements SimpleCommand {
         Component kickComp = plugin.getPrefix().append(
                 LegacyComponentSerializer.legacyAmpersand().deserialize(rawKick)
         );
-        target.disconnect(kickComp);
-        // Broadcast to notified players
-        String rawBroadcast = config.getMessage("ban-broadcast")
-                .replace("{player}", target.getUsername())
-                .replace("{issuer}", (src instanceof Player) ? ((Player) src).getUsername() : "Console")
-                .replace("{duration}", DurationUtils.formatDuration(duration))
-                .replace("{reason}", reason);
-        Component broadcastComp = plugin.getPrefix().append(
-                LegacyComponentSerializer.legacyAmpersand().deserialize(rawBroadcast)
-        );
-        server.getAllPlayers().stream()
-                .filter(p -> p.hasPermission("beaconlabs.punish.notify"))
-                .forEach(p -> p.sendMessage(broadcastComp));
+        target.disconnect(kickComp);        // Broadcast to notified players
+        String rawBroadcast = config.getMessage("ban-broadcast");
+        if (rawBroadcast != null) {
+            rawBroadcast = rawBroadcast
+                    .replace("{player}", target.getUsername())
+                    .replace("{issuer}", (src instanceof Player) ? ((Player) src).getUsername() : "Console")
+                    .replace("{duration}", DurationUtils.formatDuration(duration))
+                    .replace("{reason}", reason);
+            Component broadcastComp = plugin.getPrefix().append(
+                    LegacyComponentSerializer.legacyAmpersand().deserialize(rawBroadcast)
+            );
+            server.getAllPlayers().stream()
+                    .filter(p -> p.hasPermission("beaconlabs.punish.notify"))
+                    .forEach(p -> p.sendMessage(broadcastComp));
+        }
     }
 
     @Override

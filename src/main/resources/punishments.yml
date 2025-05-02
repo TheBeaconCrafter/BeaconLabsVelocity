@@ -34,6 +34,7 @@ messages:
     &7Expires: &f{duration}
 
     &eAppeal at: &fyourwebsite.com/appeal
+  ban-broadcast: "&c{player} &7has been banned by &f{issuer} &7for &f{duration}&7. Reason: &f{reason}"
   kick-screen: |
     &c&lYou have been kicked from this server!
 

@@ -60,15 +60,17 @@ public class KickCommand implements SimpleCommand {
         service.punish(target.getUniqueId(), target.getUsername(),
                 (src instanceof Player) ? ((Player) src).getUniqueId() : null,
                 (src instanceof Player) ? ((Player) src).getUsername() : "Console",
-                "kick", 0L, reason);
-        // Notify executor
-        String msg = config.getMessage("kick-success")
+                "kick", 0L, reason);        // Notify executor
+        String successMsg = config.getMessage("kick-success")
                 .replace("{player}", target.getUsername())
                 .replace("{reason}", reason);
-        Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(msg);
-        src.sendMessage(comp);
-        // Kick target
-        target.disconnect(comp);
+        src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(successMsg)));
+        
+        // Kick target with kick-screen message
+        String kickScreenMsg = config.getMessage("kick-screen")
+                .replace("{reason}", reason);
+        Component kickComp = LegacyComponentSerializer.legacyAmpersand().deserialize(kickScreenMsg);
+        target.disconnect(kickComp);
     }
 
     @Override
