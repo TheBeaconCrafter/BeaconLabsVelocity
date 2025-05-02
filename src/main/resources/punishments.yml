@@ -16,7 +16,7 @@ messages:
   info-line: "&7- {type} on {date}: {reason} ({duration})"
   history-header: "&6Punishment History for {player}:"
   history-empty: "&cNo punishment history found."
-  history-line: "{status} &7- &e{type} &7on &b{date} &7by &d{issuer}&7: &f{reason} &7(&a{duration}&7)"
+  history-line: "{status} &7- &e{type} &7on &b{date} &7by &d{issuer}&7: &f{reason} &7(&a{duration}&7) &7[Expires: &c{expiry}&7]"
   default-reason: "No reason specified"
   mute-enforce: "&cYou are currently muted and cannot send messages."
   mute-message: "&c&lYou are currently muted and cannot chat. &7Reason: &f{reason}"

@@ -71,18 +71,18 @@ public class PunishmentsCommand implements SimpleCommand {
         if (history.isEmpty()) {
             src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("history-empty")));
             return;
-        }
-
-        for (PunishmentRecord record : history) {
+        }        for (PunishmentRecord record : history) {
             String status = record.active ? "&aActive" : "&cInactive";
             String durationStr = DurationUtils.formatDuration(record.duration);
             String dateStr = dateFormat.format(new Date(record.startTime));
+            String expiryStr = (record.endTime <= 0) ? "Never" : dateFormat.format(new Date(record.endTime));
             String line = config.getMessage("history-line")
                     .replace("{status}", status)
                     .replace("{type}", record.type)
                     .replace("{date}", dateStr)
                     .replace("{reason}", record.reason)
                     .replace("{duration}", durationStr)
+                    .replace("{expiry}", expiryStr)
                     .replace("{issuer}", record.issuerName != null ? record.issuerName : "Console");
             src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(line));
         }

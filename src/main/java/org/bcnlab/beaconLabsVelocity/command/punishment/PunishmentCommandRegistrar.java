@@ -24,9 +24,7 @@ public class PunishmentCommandRegistrar {
         this.config = config;
         this.service = service;
         this.logger = logger;
-    }
-
-    public void registerAll() {
+    }    public void registerAll() {
         // Mute
         commandManager.register("mute", new MuteCommand(plugin, server, config, service));
         // Ban
@@ -43,5 +41,7 @@ public class PunishmentCommandRegistrar {
         commandManager.register("unban", new UnbanCommand(plugin, server, service, config, logger));
         // Unmute
         commandManager.register("unmute", new UnmuteCommand(plugin, server, service, config, logger));
+        // Clear punishments
+        commandManager.register("cpunish", new ClearPunishmentCommand(plugin, server, config, service));
     }
 }

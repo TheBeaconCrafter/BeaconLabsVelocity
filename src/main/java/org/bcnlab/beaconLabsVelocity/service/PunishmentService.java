@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class PunishmentService {
+    private static final java.text.SimpleDateFormat DATE_FORMAT = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
     private final BeaconLabsVelocity plugin;
     private final DatabaseManager db;
     private final PunishmentConfig config;
@@ -71,24 +72,85 @@ public class PunishmentService {
     public void punish(UUID targetId, String targetName, UUID issuerId, String issuerName, String type, long durationMs, String reason) {
         long now = System.currentTimeMillis();
         long end = durationMs < 0 ? 0L : now + durationMs;
-        String sql = "INSERT INTO punishments (player_uuid,player_name,issuer_uuid,issuer_name,type,reason,duration,start_time,end_time,active) VALUES (?,?,?,?,?,?,?,?,?,true)";
+        // Insert punishment; kicks are recorded as inactive
+        String sql = "INSERT INTO punishments (player_uuid,player_name,issuer_uuid,issuer_name,type,reason,duration,start_time,end_time,active) VALUES (?,?,?,?,?,?,?,?,?,?)";
         try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, targetId.toString());
             ps.setString(2, targetName);
-            // Store issuer UUID or "CONSOLE" if null
             ps.setString(3, issuerId != null ? issuerId.toString() : "CONSOLE");
             ps.setString(4, issuerName);
             ps.setString(5, type);
             ps.setString(6, reason);
             ps.setLong(7, durationMs);
             ps.setTimestamp(8, new Timestamp(now));
-            if (end>0) ps.setTimestamp(9, new Timestamp(end)); else ps.setNull(9, java.sql.Types.TIMESTAMP);
+            if (end > 0) ps.setTimestamp(9, new Timestamp(end)); else ps.setNull(9, java.sql.Types.TIMESTAMP);
+            // Kicks should be inactive immediately
+            boolean active = !"kick".equalsIgnoreCase(type);
+            ps.setBoolean(10, active);
             ps.executeUpdate();
         } catch (Exception e) {
             logger.error("Failed to record punishment", e);
         }
         // send webhook stub
         DiscordWebhook.send(String.format("%s punished %s: %s for %s", issuerName, targetName, type, reason));
+        // Broadcast punishment to players with notify permission
+        String broadcastTemplate = config.getMessage(type + "-broadcast");
+        if (broadcastTemplate != null) {
+            String formattedDuration = DurationUtils.formatDuration(durationMs);
+            String expiry = (end <= 0) ? "Never" : DATE_FORMAT.format(new java.util.Date(end));
+            String msg = broadcastTemplate
+                    .replace("{player}", targetName)
+                    .replace("{issuer}", issuerName)
+                    .replace("{reason}", reason)
+                    .replace("{duration}", formattedDuration)
+                    .replace("{expiry}", expiry);
+            // Send with plugin prefix
+            Component comp = plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(msg));
+            plugin.getServer().getAllPlayers().stream()
+                    .filter(p -> p.hasPermission("beaconlabs.punish.notify"))
+                    .forEach(p -> p.sendMessage(comp));
+            // Log to console
+            logger.info(LegacyComponentSerializer.legacySection().serialize(comp));
+        }
+        // Broadcast punishment to players with notify permission
+        String broadcastKey = type + "-broadcast";
+        if (broadcastTemplate != null) {
+            String formattedDuration = DurationUtils.formatDuration(durationMs);
+            String expiry = (end <= 0) ? "Never" : DATE_FORMAT.format(new java.util.Date(end));
+            String broadcastMsg = broadcastTemplate
+                    .replace("{player}", targetName)
+                    .replace("{issuer}", issuerName)
+                    .replace("{reason}", reason)
+                    .replace("{duration}", formattedDuration)
+                    .replace("{expiry}", expiry);
+            Component comp = plugin.getPrefix().append(
+                    LegacyComponentSerializer.legacyAmpersand().deserialize(broadcastMsg)
+            );
+            plugin.getServer().getAllPlayers().stream()
+                    .filter(p -> p.hasPermission("beaconlabs.punish.notify"))
+                    .forEach(p -> p.sendMessage(comp));
+            // Also log to console
+            logger.info(LegacyComponentSerializer.legacySection().serialize(comp));
+        }
+        // Broadcast punishment to players with notify permission
+        if (broadcastTemplate != null) {
+            String formattedDuration = DurationUtils.formatDuration(durationMs);
+            String expiry = (end <= 0) ? "Never" : DATE_FORMAT.format(new java.util.Date(end));
+            String broadcastMsg = broadcastTemplate
+                    .replace("{player}", targetName)
+                    .replace("{issuer}", issuerName)
+                    .replace("{reason}", reason)
+                    .replace("{duration}", formattedDuration)
+                    .replace("{expiry}", expiry);
+            Component comp = plugin.getPrefix().append(
+                    LegacyComponentSerializer.legacyAmpersand().deserialize(broadcastMsg)
+            );
+            plugin.getServer().getAllPlayers().stream()
+                    .filter(p -> p.hasPermission("beaconlabs.punish.notify"))
+                    .forEach(p -> p.sendMessage(comp));
+            // Log to console as well
+            logger.info(LegacyComponentSerializer.legacySection().serialize(comp));
+        }
     }
 
     /**
@@ -195,9 +257,7 @@ public class PunishmentService {
             logger.error("Failed to get active mute details for " + targetId, e);
         }
         return null;
-    }
-
-    public List<PunishmentRecord> getHistory(UUID targetId) {
+    }    public List<PunishmentRecord> getHistory(UUID targetId) {
         expireOld();
         List<PunishmentRecord> list = new ArrayList<>();
         String sql = "SELECT issuer_name,type,reason,duration,start_time,end_time,active FROM punishments WHERE player_uuid=? ORDER BY start_time DESC";
@@ -216,6 +276,27 @@ public class PunishmentService {
             logger.error("Failed to fetch punishment history", e);
         }
         return list;
+    }
+    
+    /**
+     * Clear all punishments for a player (both active and inactive)
+     * @param targetId The UUID of the player to clear punishments for
+     * @return The number of punishments cleared
+     */
+    public int clearPunishments(UUID targetId) {
+        String sql = "DELETE FROM punishments WHERE player_uuid=?";
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, targetId.toString());
+            int count = ps.executeUpdate();
+            
+            if (count > 0) {
+                DiscordWebhook.send(String.format("Cleared all punishments for player %s (%d removed)", targetId, count));
+            }
+            return count;
+        } catch (Exception e) {
+            logger.error("Failed to clear punishments for player " + targetId, e);
+            return 0;
+        }
     }
 
     public static class PunishmentRecord {

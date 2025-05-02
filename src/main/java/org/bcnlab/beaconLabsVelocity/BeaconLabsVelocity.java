@@ -51,7 +51,7 @@ public class BeaconLabsVelocity {
     private CommandManager commandManager;
 
     private PunishmentService punishmentService;
-    private PunishmentConfig punishmentConfig; // Add field for config
+    private PunishmentConfig punishmentConfig;
     private DatabaseManager databaseManager;
     
     @Inject
