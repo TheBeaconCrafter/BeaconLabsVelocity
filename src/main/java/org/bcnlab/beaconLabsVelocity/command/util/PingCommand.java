@@ -30,41 +30,37 @@ public class PingCommand implements SimpleCommand {
     @Override
     public void execute(Invocation invocation) {
         CommandSource source = invocation.source();
-        String[] args = invocation.arguments();        // If no arguments provided, show own ping (if player)
+        String[] args = invocation.arguments();
         if (args.length == 0) {
             if (source instanceof Player player) {
-                // Player checking their own ping
                 long pingValue = player.getPing();
                 Component message = formatPingMessage(player.getUsername(), pingValue);
                 source.sendMessage(plugin.getPrefix().append(message));
             } else {
-                // Console needs to specify a player
                 source.sendMessage(plugin.getPrefix().append(Component.text("Usage: /ping <player>", NamedTextColor.RED)));
             }
             return;
         }
 
-        // If arguments are provided, attempt to check another player's ping
         String targetName = args[0];
         
-        // Check permission if source is checking another player
-        if (source instanceof Player && !((Player) source).getUsername().equalsIgnoreCase(targetName) && 
+        if (source instanceof Player && !((Player) source).getUsername().equalsIgnoreCase(targetName) &&
             !source.hasPermission("beaconlabs.command.ping.others")) {
             source.sendMessage(plugin.getPrefix().append(Component.text("You don't have permission to check other players' ping.", NamedTextColor.RED)));
             return;
         }
 
-        // Find target player
         Optional<Player> optionalTarget = server.getPlayer(targetName);
         if (optionalTarget.isEmpty()) {
             source.sendMessage(plugin.getPrefix().append(Component.text("Player not found: " + targetName, NamedTextColor.RED)));
             return;
-        }        // Get and display ping
+        }
         Player target = optionalTarget.get();
         long pingValue = target.getPing();
         Component message = formatPingMessage(target.getUsername(), pingValue);
         source.sendMessage(plugin.getPrefix().append(message));
-    }    /**
+    }
+    /*
      * Format a ping message with color based on ping value
      */
     private Component formatPingMessage(String playerName, long ping) {
@@ -90,7 +86,6 @@ public class PingCommand implements SimpleCommand {
         CommandSource source = invocation.source();
         String[] args = invocation.arguments();
         
-        // Suggest player names if checking others and has permission
         if (args.length == 1 && (!(source instanceof Player) || source.hasPermission("beaconlabs.command.ping.others"))) {
             String partialName = args[0].toLowerCase();
             return server.getAllPlayers().stream()

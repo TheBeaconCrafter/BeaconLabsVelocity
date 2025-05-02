@@ -18,10 +18,11 @@ public class UtilCommandRegistrar {
         this.commandManager = commandManager;
         this.plugin = plugin;
         this.server = server;
-    }
-
-    public void registerAll() {
+    }    public void registerAll() {
         // Ping command
         commandManager.register("ping", new PingCommand(plugin, server));
+        
+        // Skin command
+        commandManager.register("skin", new SkinCommand(plugin, server));
     }
 }
