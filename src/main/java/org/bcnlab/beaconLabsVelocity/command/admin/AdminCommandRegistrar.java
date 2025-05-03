@@ -36,5 +36,9 @@ public class AdminCommandRegistrar {
         if (plugin.getPlayerStatsService() != null) {
             commandManager.register("ips", new IpsCommand(server, plugin.getPlayerStatsService(), service, plugin));
         }
+        // Maintenance command - only register if maintenance service is available
+        if (plugin.getMaintenanceService() != null) {
+            commandManager.register("maintenance", new MaintenanceCommand(plugin, plugin.getMaintenanceService()));
+        }
     }
 }

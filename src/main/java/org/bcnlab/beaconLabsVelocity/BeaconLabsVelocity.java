@@ -22,8 +22,9 @@ import org.bcnlab.beaconLabsVelocity.command.util.UtilCommandRegistrar;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
 import org.bcnlab.beaconLabsVelocity.listener.*;
-import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
+import org.bcnlab.beaconLabsVelocity.service.MaintenanceService;
 import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
+import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.loader.ConfigurationLoader;
@@ -53,10 +54,12 @@ public class BeaconLabsVelocity {
     private ProxyServer server;
 
     @Inject
-    private CommandManager commandManager;    private PunishmentService punishmentService;
+    private CommandManager commandManager;    
+    private PunishmentService punishmentService;
     private PunishmentConfig punishmentConfig;
     private DatabaseManager databaseManager;
     private PlayerStatsService playerStatsService;
+    private MaintenanceService maintenanceService;
       @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
         // Commands are now registered in onProxyInitialization
@@ -77,7 +80,14 @@ public class BeaconLabsVelocity {
                     .build();
 
             config = loader.load();
-            prefix = config.node("prefix").getString("&6BeaconLabs &8» ");
+            
+            // Make sure config is not null before accessing it
+            if (config != null) {
+                prefix = config.node("prefix").getString("&6BeaconLabs &8» ");
+            } else {
+                logger.error("Failed to load config: Configuration is null");
+                prefix = "&4ConfigError &8» ";
+            }
 
         } catch (IOException e) {
             logger.error("Failed to load config!", e);
@@ -103,8 +113,7 @@ public class BeaconLabsVelocity {
         } catch (IOException e) {
             logger.error("Failed to load punishments.yml or register punishment components", e);
         }
-        
-        // Initialize PlayerStatsService for playtime tracking and IP history
+          // Initialize PlayerStatsService for playtime tracking and IP history
         if (databaseManager != null && databaseManager.isConnected()) {
             playerStatsService = new PlayerStatsService(this, databaseManager, logger);
             server.getEventManager().register(this, new PlayerStatsListener(this, playerStatsService, logger));
@@ -112,6 +121,11 @@ public class BeaconLabsVelocity {
         } else {
             logger.warn("Database is not connected. Player stats tracking will be disabled.");
         }
+        
+        // Initialize MaintenanceService
+        maintenanceService = new MaintenanceService(this, server, logger);
+        server.getEventManager().register(this, new MaintenanceListener(maintenanceService));
+        logger.info("Maintenance service has been enabled.");
 
         // Other Listeners
         server.getEventManager().register(this, new ChatFilterListener(this, server));
@@ -176,7 +190,34 @@ public class BeaconLabsVelocity {
         return dataDirectory;
     }
     
-    public PlayerStatsService getPlayerStatsService() {
+    /**
+     * Saves the current configuration to file
+     * @return true if saved successfully, false otherwise
+     */
+    public boolean saveConfig() {
+        try {
+            if (config == null) {
+                logger.error("Cannot save config: Configuration is null");
+                return false;
+            }
+            
+            Path configPath = dataDirectory.resolve("config.yml");
+            YamlConfigurationLoader loader = YamlConfigurationLoader.builder()
+                .path(configPath)
+                .build();
+                
+            loader.save(config);
+            return true;
+        } catch (IOException e) {
+            logger.error("Failed to save config", e);
+            return false;
+        }
+    }
+      public PlayerStatsService getPlayerStatsService() {
         return playerStatsService;
+    }
+    
+    public MaintenanceService getMaintenanceService() {
+        return maintenanceService;
     }
 }

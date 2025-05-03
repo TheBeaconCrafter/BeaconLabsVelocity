@@ -23,8 +23,16 @@ database:
   database: "velocity_db"
   username: "velocity_user"
   password: "your_password"
-  # HikariCP Pool Settings (Optional - sensible defaults are used)
-  # pool-size: 10
+  # HikariCP Pool Settings (Optional - sensible defaults are used)  # pool-size: 10
   # connection-timeout: 30000 # milliseconds
   # idle-timeout: 600000 # milliseconds
   # max-lifetime: 1800000 # milliseconds
+
+# Maintenance Mode Configuration
+maintenance:
+  enabled: false # Whether maintenance mode is currently active
+  kick-message: "&4BeaconLabs &r&8| &c&lSERVER MAINTENANCE\n&7The server is currently under maintenance. Please check back later."
+  motd:
+    line1: "<gradient:#5e4fa2:#f79459><bold>BeaconLabs</bold></gradient> <gray>»</gray> <hover:show_text:'<rainbow>Join the Adventure!</rainbow>'><gold>In Maintenance</gold></hover>"
+    line2: "<aqua>We're working on something. Check back later!</aqua>"
+  bypass-permission: "beaconlabs.maintenance.bypass" # Permission to bypass maintenance mode
