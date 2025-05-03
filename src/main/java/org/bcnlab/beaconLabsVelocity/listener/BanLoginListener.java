@@ -12,7 +12,6 @@ import org.bcnlab.beaconLabsVelocity.util.DurationUtils;
 import org.slf4j.Logger;
 
 import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.UUID;
 
 public class BanLoginListener {
@@ -44,10 +43,14 @@ public class BanLoginListener {
             String defaultKickMessage = "&cYou are banned from this server.";            if (banRecord != null && banMessageTemplate != null) {
                 String reason = banRecord.reason;
                 long duration = banRecord.duration;
-                long endTime = banRecord.endTime;
-
-                String formattedDuration = (duration < 0) ? "Permanent" : DurationUtils.formatDuration(duration);
-                String formattedEndTime = (endTime > 0) ? DATE_FORMAT.format(new Date(endTime)) : "Never";
+                long endTime = banRecord.endTime;                String formattedDuration = (duration < 0) ? "Permanent" : DurationUtils.formatDuration(duration);
+                  String formattedEndTime;
+                if (endTime <= 0) {
+                    formattedEndTime = "Never";
+                } else {
+                    // Use the utility method to handle various timestamp formats
+                    formattedEndTime = DATE_FORMAT.format(PunishmentService.parseTimestamp(endTime));
+                }
 
                 // Log the values being used to help debug template issues
                 logger.debug("Ban message replacement values: reason='{}', duration='{}', expires='{}'", 

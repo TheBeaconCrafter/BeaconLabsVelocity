@@ -269,14 +269,29 @@ public class InfoCommand implements SimpleCommand {
                     src.sendMessage(Component.text("Active Punishments:", NamedTextColor.RED)
                         .decorate(TextDecoration.BOLD));
                     hasActivePunishments = true;
-                }
-                
-                // Format dates in a cleaner way
-                String formattedDate = DATE_FORMAT.format(new Date(record.startTime));
+                }                // Format dates in a cleaner way
+                String formattedDate;
                 String duration = DurationUtils.formatDuration(record.duration);
-                String expiry = record.duration > 0 
-                    ? DATE_FORMAT.format(new Date(record.startTime + record.duration)) 
-                    : "Never";
+                String expiry;
+                  try {
+                    // Use the utility method to handle various timestamp formats
+                    Date startDate = PunishmentService.parseTimestamp(record.startTime);
+                    formattedDate = DATE_FORMAT.format(startDate);
+                    
+                    if (record.duration <= 0) {
+                        expiry = "Never";
+                    } else {
+                        // Calculate expiry time by adding duration to start time
+                        Date expiryDate = new Date(startDate.getTime() + record.duration);
+                        expiry = DATE_FORMAT.format(expiryDate);
+                    }
+                } catch (Exception e) {
+                    formattedDate = "Invalid date";
+                    expiry = "Invalid date";
+                    plugin.getServer().getConsoleCommandSource().sendMessage(
+                        Component.text("Error formatting punishment dates: " + e.getMessage(), NamedTextColor.RED)
+                    );
+                }
                 
                 // Type badge with appropriate color
                 NamedTextColor typeColor = record.type.equalsIgnoreCase("ban") ? NamedTextColor.DARK_RED : 

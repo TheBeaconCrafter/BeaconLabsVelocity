@@ -12,7 +12,6 @@ import org.bcnlab.beaconLabsVelocity.service.PunishmentService.PunishmentRecord;
 import org.bcnlab.beaconLabsVelocity.util.DurationUtils;
 
 import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -71,11 +70,18 @@ public class PunishmentsCommand implements SimpleCommand {
         if (history.isEmpty()) {
             src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("history-empty")));
             return;
-        }        for (PunishmentRecord record : history) {
-            String status = record.active ? "&aActive" : "&cInactive";
+        }        for (PunishmentRecord record : history) {            String status = record.active ? "&aActive" : "&cInactive";
             String durationStr = DurationUtils.formatDuration(record.duration);
-            String dateStr = dateFormat.format(new Date(record.startTime));
-            String expiryStr = (record.endTime <= 0) ? "Never" : dateFormat.format(new Date(record.endTime));
+              // Format start date using the utility method
+            String dateStr = dateFormat.format(PunishmentService.parseTimestamp(record.startTime));
+            
+            // Format expiry date using the utility method
+            String expiryStr;
+            if (record.endTime <= 0) {
+                expiryStr = "Never";
+            } else {
+                expiryStr = dateFormat.format(PunishmentService.parseTimestamp(record.endTime));
+            }
             String line = config.getMessage("history-line")
                     .replace("{status}", status)
                     .replace("{type}", record.type)
