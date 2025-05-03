@@ -12,6 +12,7 @@ import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
 import org.bcnlab.beaconLabsVelocity.util.DurationUtils;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -39,49 +40,93 @@ public class BanCommand implements SimpleCommand {
         if (args.length < 2) {
             src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize("&cUsage: /ban <player> <duration> [reason]")));
             return;
-        }
-        String targetName = args[0];
+        }        String targetName = args[0];
         if (src instanceof Player && ((Player) src).getUsername().equalsIgnoreCase(targetName)) {
             src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("self-punish"))));
             return;
         }
-        Player target = server.getPlayer(targetName).orElse(null);
-        if (target == null) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(
-                    config.getMessage("player-not-found").replace("{player}", targetName)
-            )));
-            return;
-        }
+        
+        // Parse duration and reason first
         long duration = DurationUtils.parseDuration(args[1]);
         String reason = config.getMessage("default-reason");
         if (args.length > 2) {
             reason = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
         }
-        // Record the ban (kicks marked inactive)
-        service.punish(
-                target.getUniqueId(), target.getUsername(),
-                (src instanceof Player) ? ((Player) src).getUniqueId() : null,
-                (src instanceof Player) ? ((Player) src).getUsername() : "Console",
-                "ban", duration, reason
-        );
-        // Notify executor with prefix
-        String successMsg = config.getMessage("ban-success")
-                .replace("{player}", target.getUsername())
-                .replace("{duration}", DurationUtils.formatDuration(duration))
-                .replace("{reason}", reason);
-        src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(successMsg)));
-        // Disconnect the player with ban-kick-message template and prefix
-        String rawKick = config.getMessage("ban-screen")
-                .replace("{reason}", reason)
-                .replace("{duration}", DurationUtils.formatDuration(duration));
-        Component kickComp = plugin.getPrefix().append(
-                LegacyComponentSerializer.legacyAmpersand().deserialize(rawKick)
-        );
-        target.disconnect(kickComp);        // Broadcast to notified players
+        
+        // Try to find the player
+        Optional<Player> optionalTarget = server.getPlayer(targetName);
+        
+        if (optionalTarget.isPresent()) {
+            // Player is online - ban them directly
+            Player target = optionalTarget.get();
+            
+            // Record the ban
+            service.punish(
+                    target.getUniqueId(), target.getUsername(),
+                    (src instanceof Player) ? ((Player) src).getUniqueId() : null,
+                    (src instanceof Player) ? ((Player) src).getUsername() : "Console",
+                    "ban", duration, reason
+            );
+            
+            // Notify executor with prefix
+            String successMsg = config.getMessage("ban-success")
+                    .replace("{player}", target.getUsername())
+                    .replace("{duration}", DurationUtils.formatDuration(duration))
+                    .replace("{reason}", reason);
+            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(successMsg)));
+            
+            // Disconnect the player with ban-kick-message template and prefix
+            String rawKick = config.getMessage("ban-screen")
+                    .replace("{reason}", reason)
+                    .replace("{duration}", DurationUtils.formatDuration(duration));
+            Component kickComp = plugin.getPrefix().append(
+                    LegacyComponentSerializer.legacyAmpersand().deserialize(rawKick)
+            );
+            target.disconnect(kickComp);
+            
+        } else {
+            // Player is offline - try to look up UUID in database
+            UUID offlineUuid = service.getPlayerUUID(targetName);
+            
+            if (offlineUuid != null) {
+                // Found player data - apply ban to offline player
+                service.punish(
+                        offlineUuid, targetName,
+                        (src instanceof Player) ? ((Player) src).getUniqueId() : null,
+                        (src instanceof Player) ? ((Player) src).getUsername() : "Console",
+                        "ban", duration, reason
+                );
+                
+                // Notify executor with prefix
+                String successMsg = config.getMessage("ban-success")
+                        .replace("{player}", targetName)
+                        .replace("{duration}", DurationUtils.formatDuration(duration))
+                        .replace("{reason}", reason) + " (Offline player)";
+                src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(successMsg)));
+                
+            } else {
+                // Create a new offline ban entry
+                UUID generatedUuid = UUID.nameUUIDFromBytes(("offlineplayer:" + targetName.toLowerCase()).getBytes());
+                
+                service.punish(
+                        generatedUuid, targetName,
+                        (src instanceof Player) ? ((Player) src).getUniqueId() : null,
+                        (src instanceof Player) ? ((Player) src).getUsername() : "Console",
+                        "ban", duration, reason
+                );
+                
+                // Notify executor with prefix
+                String successMsg = config.getMessage("ban-success")
+                        .replace("{player}", targetName)
+                        .replace("{duration}", DurationUtils.formatDuration(duration))
+                        .replace("{reason}", reason) + " (New offline player)";
+                src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(successMsg)));
+            }
+        }        // Broadcast to notified players
         String rawBroadcast = config.getMessage("ban-broadcast");
         if (rawBroadcast != null) {
             rawBroadcast = rawBroadcast
-                    .replace("{player}", target.getUsername())
+                    .replace("{player}", targetName)
                     .replace("{issuer}", (src instanceof Player) ? ((Player) src).getUsername() : "Console")
                     .replace("{duration}", DurationUtils.formatDuration(duration))
                     .replace("{reason}", reason);

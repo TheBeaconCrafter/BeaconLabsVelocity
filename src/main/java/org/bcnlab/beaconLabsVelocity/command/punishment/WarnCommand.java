@@ -13,6 +13,7 @@ import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
 import org.bcnlab.beaconLabsVelocity.util.DurationUtils;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -43,18 +44,13 @@ public class WarnCommand implements SimpleCommand {
         if (args.length < 2) {
             src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize("&cUsage: /warn <player> <reasonKey>")));
             return;
-        }
-        String targetName = args[0];
+        }        String targetName = args[0];
         if (src instanceof Player && ((Player) src).getUsername().equalsIgnoreCase(targetName)) {
             src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("self-punish"))));
             return;
         }
-        Player target = server.getPlayer(targetName).orElse(null);
-        if (target == null) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand()
-                    .deserialize(config.getMessage("player-not-found").replace("{player}", targetName))));
-            return;
-        }
+        
+        // First validate the reason key
         String reasonKey = args[1].toLowerCase();
         PredefinedReason pr = config.getPredefinedReason(reasonKey);
         if (pr == null) {
@@ -63,18 +59,76 @@ public class WarnCommand implements SimpleCommand {
             src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize("&cUnknown reason key. Available: " + keys)));
             return;
         }
+        
+        // Get the duration and reason
         long duration = DurationUtils.parseDuration(pr.getDuration());
         String reason = pr.getReason();
-        service.punish(
-                target.getUniqueId(), target.getUsername(),
-                (src instanceof Player) ? ((Player) src).getUniqueId() : null,
-                (src instanceof Player) ? ((Player) src).getUsername() : "Console",
-                pr.getType(), duration, reason
-        );
-        String msg = config.getMessage("warn-success")
-                .replace("{player}", target.getUsername())
-                .replace("{reason}", reason);
-        src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(msg));
+        
+        // Try to find the player
+        Optional<Player> optionalTarget = server.getPlayer(targetName);
+        
+        if (optionalTarget.isPresent()) {
+            // Player is online
+            Player target = optionalTarget.get();
+            
+            // Apply the warning
+            service.punish(
+                    target.getUniqueId(), target.getUsername(),
+                    (src instanceof Player) ? ((Player) src).getUniqueId() : null,
+                    (src instanceof Player) ? ((Player) src).getUsername() : "Console",
+                    pr.getType(), duration, reason
+            );
+            
+            // Send success message
+            String msg = config.getMessage("warn-success")
+                    .replace("{player}", target.getUsername())
+                    .replace("{reason}", reason);
+            src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(msg));
+            
+            // Notify the player
+            target.sendMessage(plugin.getPrefix().append(
+                LegacyComponentSerializer.legacyAmpersand().deserialize(
+                    "&cYou have been warned: " + reason
+                )
+            ));
+            
+        } else {
+            // Player is offline - try to look up UUID in database
+            UUID offlineUuid = service.getPlayerUUID(targetName);
+            
+            if (offlineUuid != null) {
+                // Found player data - apply warning to offline player
+                service.punish(
+                        offlineUuid, targetName,
+                        (src instanceof Player) ? ((Player) src).getUniqueId() : null,
+                        (src instanceof Player) ? ((Player) src).getUsername() : "Console",
+                        pr.getType(), duration, reason
+                );
+                
+                // Notify executor with prefix
+                String msg = config.getMessage("warn-success")
+                        .replace("{player}", targetName)
+                        .replace("{reason}", reason) + " (Offline player)";
+                src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(msg));
+                
+            } else {
+                // Create a new offline warning entry
+                UUID generatedUuid = UUID.nameUUIDFromBytes(("offlineplayer:" + targetName.toLowerCase()).getBytes());
+                
+                service.punish(
+                        generatedUuid, targetName,
+                        (src instanceof Player) ? ((Player) src).getUniqueId() : null,
+                        (src instanceof Player) ? ((Player) src).getUsername() : "Console",
+                        pr.getType(), duration, reason
+                );
+                
+                // Notify executor with prefix
+                String msg = config.getMessage("warn-success")
+                        .replace("{player}", targetName)
+                        .replace("{reason}", reason) + " (New offline player)";
+                src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(msg));
+            }
+        }
     }
 
     @Override

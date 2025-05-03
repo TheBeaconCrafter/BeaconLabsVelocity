@@ -4,9 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -62,9 +60,7 @@ public class InfoCommand implements SimpleCommand {
             src.sendMessage(plugin.getPrefix().append(
                 Component.text("Usage: /info <player>", NamedTextColor.RED)));
             return;
-        }
-
-        // Get target player
+        }        // Get target player
         String targetName = args[0];
         Optional<Player> optionalTarget = server.getPlayer(targetName);
         
@@ -107,25 +103,43 @@ public class InfoCommand implements SimpleCommand {
                 .decorate(TextDecoration.BOLD));
             
             // Send punishment info
-            sendPunishmentInfo(src, target);
+            sendPunishmentInfo(src, uuid, targetName);
             
         } else {
-            // Player is offline - show offline message with warning icon
-            src.sendMessage(Component.text("⚠ Player is currently offline", NamedTextColor.RED)
-                .decorate(TextDecoration.BOLD));
+            // Player is offline - try to find in the database
+            UUID offlineUuid = service.getPlayerUUID(targetName);
             
-            // Try to get UUID from offline data (future enhancement)
-            src.sendMessage(Component.text("UUID: ", NamedTextColor.YELLOW)
-                .append(Component.text("Not available for offline players", NamedTextColor.GRAY)));
+            if (offlineUuid != null) {
+                // Found an offline player in the database
+                src.sendMessage(Component.text("⚠ Player is currently offline", NamedTextColor.RED));
                 
-            src.sendMessage(Component.text("Last Seen: ", NamedTextColor.YELLOW)
-                .append(Component.text("Not available", NamedTextColor.GRAY)));
-            
-            src.sendMessage(Component.empty());
-            src.sendMessage(Component.text("» NOTE", NamedTextColor.GOLD)
-                .decorate(TextDecoration.BOLD));
-            src.sendMessage(Component.text("Player data lookup for offline players is not currently supported.", 
-                NamedTextColor.GRAY));
+                // Show offline player profile
+                src.sendMessage(Component.text("» PROFILE", NamedTextColor.AQUA)
+                    .decorate(TextDecoration.BOLD));
+                
+                // Show UUID
+                Component uuidComponent = Component.text()
+                    .append(Component.text("UUID: ", NamedTextColor.YELLOW))
+                    .append(Component.text(offlineUuid.toString(), NamedTextColor.WHITE)
+                        .clickEvent(ClickEvent.copyToClipboard(offlineUuid.toString()))
+                        .hoverEvent(HoverEvent.showText(Component.text("Click to copy UUID", NamedTextColor.GRAY))))
+                    .build();
+                src.sendMessage(uuidComponent);
+                
+                // Separator for punishment section
+                src.sendMessage(Component.empty());
+                src.sendMessage(Component.text("» PUNISHMENT STATUS", NamedTextColor.RED)
+                    .decorate(TextDecoration.BOLD));
+                
+                // Send punishment info for offline player
+                sendPunishmentInfo(src, offlineUuid, targetName);
+            } else {
+                // Completely unknown player
+                src.sendMessage(Component.text("⚠ Player has never been seen on this server", NamedTextColor.RED)
+                    .decorate(TextDecoration.BOLD));
+                
+                src.sendMessage(Component.text("No information is available for this player.", NamedTextColor.GRAY));
+            }
         }
         
         // Bottom divider for clean look
@@ -157,11 +171,9 @@ public class InfoCommand implements SimpleCommand {
         
         src.sendMessage(Component.text("Account: ", NamedTextColor.YELLOW)
             .append(Component.text(accountIcon + (target.isOnlineMode() ? "Premium" : "Non-Premium"), accountColor)));
-        
-        // Protocol with elegant formatting
+          // Protocol with elegant formatting
         src.sendMessage(Component.text("Version: ", NamedTextColor.YELLOW)
-            .append(Component.text(target.getProtocolVersion().getName() + " ", NamedTextColor.WHITE))
-            .append(Component.text("(" + target.getProtocolVersion().getProtocol() + ")", NamedTextColor.GRAY)));
+            .append(Component.text("Protocol " + target.getProtocolVersion().getProtocol(), NamedTextColor.WHITE)));
     }
     
     /**
@@ -220,13 +232,11 @@ public class InfoCommand implements SimpleCommand {
         src.sendMessage(Component.text("Ping: ", NamedTextColor.YELLOW)
             .append(Component.text(ping + "ms ", pingColor))
             .append(Component.text("(" + pingQuality + ")", NamedTextColor.GRAY)));
-    }
-    
-    /**
-     * Sends punishment information section for a player
+    }    /**
+     * Sends punishment information section for a player using UUID and name
+     * This works for both online and offline players
      */
-    private void sendPunishmentInfo(CommandSource src, Player target) {
-        UUID uuid = target.getUniqueId();
+    private void sendPunishmentInfo(CommandSource src, UUID uuid, String playerName) {
         boolean banned = service.isBanned(uuid);
         boolean muted = service.isMuted(uuid);
         
