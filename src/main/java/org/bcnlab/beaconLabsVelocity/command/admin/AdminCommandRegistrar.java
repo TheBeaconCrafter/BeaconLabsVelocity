@@ -5,6 +5,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
+import org.bcnlab.beaconLabsVelocity.service.WhitelistService;
 import org.slf4j.Logger;
 
 /**
@@ -35,10 +36,19 @@ public class AdminCommandRegistrar {
         // IP history command - only register if PlayerStatsService is available
         if (plugin.getPlayerStatsService() != null) {
             commandManager.register("ips", new IpsCommand(server, plugin.getPlayerStatsService(), service, plugin));
-        }
-        // Maintenance command - only register if maintenance service is available
+        }        // Maintenance command - only register if maintenance service is available
         if (plugin.getMaintenanceService() != null) {
             commandManager.register("maintenance", new MaintenanceCommand(plugin, plugin.getMaintenanceService()));
+        }
+          // Whitelist command - only register if whitelist service is available
+        if (plugin.getWhitelistService() != null) {
+            ProxyWhitelistCommand whitelistCommand = new ProxyWhitelistCommand(plugin, plugin.getDatabaseManager());
+            commandManager.register("proxywhitelist", whitelistCommand);
+            commandManager.register("pwhitelist", whitelistCommand);
+            commandManager.register("pw", whitelistCommand);
+            logger.info("Proxy whitelist commands registered.");
+        } else {
+            logger.warn("WhitelistService is not available. Proxy whitelist commands will not be registered.");
         }
     }
 }

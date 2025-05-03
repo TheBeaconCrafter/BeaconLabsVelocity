@@ -26,10 +26,12 @@ import org.bcnlab.beaconLabsVelocity.service.MaintenanceService;
 import org.bcnlab.beaconLabsVelocity.service.MessageService;
 import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
+import org.bcnlab.beaconLabsVelocity.service.WhitelistService;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.loader.ConfigurationLoader;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
+import org.bcnlab.beaconLabsVelocity.service.WhitelistService;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -55,12 +57,13 @@ public class BeaconLabsVelocity {
     private ProxyServer server;
 
     @Inject
-    private CommandManager commandManager;      private PunishmentService punishmentService;
+    private CommandManager commandManager;    private PunishmentService punishmentService;
     private PunishmentConfig punishmentConfig;
     private DatabaseManager databaseManager;
     private PlayerStatsService playerStatsService;
     private MaintenanceService maintenanceService;
     private MessageService messageService;
+    private WhitelistService whitelistService;
       @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
         // Commands are now registered in onProxyInitialization
@@ -125,17 +128,24 @@ public class BeaconLabsVelocity {
           // Initialize MaintenanceService
         maintenanceService = new MaintenanceService(this, server, logger);
         server.getEventManager().register(this, new MaintenanceListener(maintenanceService));
-        logger.info("Maintenance service has been enabled.");
-        
-        // Initialize MessageService for private messaging
+        logger.info("Maintenance service has been enabled.");        // Initialize MessageService for private messaging
         messageService = new MessageService(this, server, logger);
         server.getEventManager().register(this, new MessageListener(messageService));
         logger.info("Message service has been enabled.");
+        
+        // Initialize WhitelistService and register WhitelistListener if database is connected
+        if (databaseManager != null && databaseManager.isConnected()) {
+            whitelistService = new WhitelistService(this, server, databaseManager, logger);
+            server.getEventManager().register(this, new WhitelistListener(this, databaseManager));
+            logger.info("Whitelist service has been enabled.");
+        } else {
+            logger.warn("Database is not connected. Whitelist service will be disabled.");
+        }
 
         // Other Listeners
         server.getEventManager().register(this, new ChatFilterListener(this, server));
         server.getEventManager().register(this, new FileChatLogger(getDataDirectory().toString()));
-        server.getEventManager().register(this, new PingListener(this, server));        // Other Commands
+        server.getEventManager().register(this, new PingListener(this, server));// Other Commands
 
         // Register server commands
         new org.bcnlab.beaconLabsVelocity.command.server.ServerCommandRegistrar(
@@ -224,8 +234,11 @@ public class BeaconLabsVelocity {
     public MaintenanceService getMaintenanceService() {
         return maintenanceService;
     }
-    
-    public MessageService getMessageService() {
+      public MessageService getMessageService() {
         return messageService;
+    }
+    
+    public WhitelistService getWhitelistService() {
+        return whitelistService;
     }
 }

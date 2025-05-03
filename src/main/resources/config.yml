@@ -36,3 +36,9 @@ maintenance:
     line1: "<gradient:#5e4fa2:#f79459><bold>BeaconLabs</bold></gradient> <gray>»</gray> <hover:show_text:'<rainbow>Join the Adventure!</rainbow>'><gold>In Maintenance</gold></hover>"
     line2: "<aqua>We're working on something. Check back later!</aqua>"
   bypass-permission: "beaconlabs.maintenance.bypass" # Permission to bypass maintenance mode
+
+# Whitelist Configuration
+whitelist:
+  enabled: false # Whether whitelist is currently active
+  kick-message: "&4BeaconLabs &r&8| &c&lWHITELIST ONLY\n&7You are not on the whitelist.\n&7Please contact an administrator to gain access."
+  # Bypass permission is "beaconlabs.whitelist.bypass"
