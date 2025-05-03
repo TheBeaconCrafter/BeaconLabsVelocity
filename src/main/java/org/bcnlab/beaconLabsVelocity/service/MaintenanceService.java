@@ -70,7 +70,6 @@ public class MaintenanceService {
                         
                         // Only update if at least one line has content
                         if (!line1.isEmpty() || !line2.isEmpty()) {
-                            logger.info("Using line-based maintenance MOTD format");
                             maintenanceMOTD = line1 + "\n" + line2;
                         } else {
                             logger.info("Maintenance MOTD lines are empty, using default");
@@ -80,11 +79,10 @@ public class MaintenanceService {
                         String directMotd = motdNode.getString("");
                         if (!directMotd.isEmpty()) {
                             maintenanceMOTD = directMotd;
-                            logger.info("Using direct maintenance MOTD format");
                         }
                     }
                 } else {
-                    logger.info("No MOTD configuration found in maintenance section");
+                    logger.warn("No MOTD configuration found in maintenance section");
                 }
             }
             
@@ -143,13 +141,11 @@ public class MaintenanceService {
                             String indent = originalLine.substring(0, originalLine.indexOf("enabled:"));
                             lines.set(i, indent + "enabled: " + enabled + " # Whether maintenance mode is currently active");
                             updated = true;
-                            logger.info("Updated maintenance enabled flag in config: " + enabled);
                             break;
                         }
                     }
                       // Only write if we actually changed something
                     if (updated) {
-                        logger.info("Writing updated config to: " + configPath);
                         java.nio.file.Files.write(configPath, lines);
                     } else {
                         logger.warn("Could not find maintenance.enabled key in config file, trying alternative approach");                        // Try a regex-based replacement as a backup approach
@@ -181,15 +177,12 @@ public class MaintenanceService {
                         
                         // Only write if we actually made a change
                         if (!content.equals(newContent)) {
-                            logger.info("Applied regex-based update to maintenance.enabled flag");
                             java.nio.file.Files.writeString(configPath, newContent);
                             updated = true;
                         }
                     }
                       // Log the final result
-                    if (updated) {
-                        logger.info("Successfully updated maintenance mode to: " + enabled);
-                    } else {
+                    if (!updated) {
                         logger.error("Failed to update maintenance mode in config file, using fallback approach with Configurate API");
                         
                         // Emergency fallback - use the normal API as a last resort
@@ -238,9 +231,7 @@ public class MaintenanceService {
             logger.info("Maintenance toggle: already in requested state (" + enable + ")");
             return true;
         }
-        
-        logger.info("Toggling maintenance mode to: " + enable);
-        
+                
         // Set cooldown if enabling maintenance
         if (enable) {
             startCooldown();
@@ -250,7 +241,6 @@ public class MaintenanceService {
         maintenanceMode.set(enable);
         
         // Save to config
-        logger.info("Saving maintenance state to config...");
         saveMaintenanceState(enable);
         
         // If enabling, kick players without permission
@@ -381,9 +371,7 @@ public class MaintenanceService {
                 }
                 
                 // Save using plugin's method to preserve formatting
-                plugin.saveConfig();
-                logger.info("Updated maintenance MOTD in config");
-            }
+                plugin.saveConfig();            }
         } catch (Exception e) {
             logger.error("Failed to save maintenance MOTD", e);
         }

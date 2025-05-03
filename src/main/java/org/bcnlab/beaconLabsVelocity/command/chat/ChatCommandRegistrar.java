@@ -5,6 +5,8 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.command.chat.BroadcastCommand;
 import org.bcnlab.beaconLabsVelocity.command.chat.ChatReportCommand;
+import org.bcnlab.beaconLabsVelocity.command.chat.MessageCommand;
+import org.bcnlab.beaconLabsVelocity.command.chat.ReplyCommand;
 import org.bcnlab.beaconLabsVelocity.listener.FileChatLogger;
 import org.slf4j.Logger;
 
@@ -23,9 +25,7 @@ public class ChatCommandRegistrar {
         this.plugin = plugin;
         this.server = server;
         this.logger = logger;
-    }
-
-    public void registerAll() {
+    }    public void registerAll() {
         // ChatReport command
         commandManager.register("chatreport", new ChatReportCommand(
             new FileChatLogger(plugin.getDataDirectory().toString()), plugin, server));
@@ -34,5 +34,18 @@ public class ChatCommandRegistrar {
         BroadcastCommand broadcastCommand = new BroadcastCommand(plugin);
         commandManager.register("broadcast", broadcastCommand);
         commandManager.register("bc", broadcastCommand);
+        
+        // Private messaging commands
+        MessageCommand messageCommand = new MessageCommand(plugin, plugin.getMessageService());
+        commandManager.register("msg", messageCommand);
+        commandManager.register("tell", messageCommand);
+        commandManager.register("w", messageCommand);
+        commandManager.register("whisper", messageCommand);
+        commandManager.register("m", messageCommand);
+        
+        // Reply command
+        ReplyCommand replyCommand = new ReplyCommand(plugin, plugin.getMessageService());
+        commandManager.register("r", replyCommand);
+        commandManager.register("reply", replyCommand);
     }
 }

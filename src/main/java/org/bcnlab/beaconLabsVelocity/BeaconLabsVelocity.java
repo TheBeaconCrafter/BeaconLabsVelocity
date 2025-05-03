@@ -23,6 +23,7 @@ import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
 import org.bcnlab.beaconLabsVelocity.listener.*;
 import org.bcnlab.beaconLabsVelocity.service.MaintenanceService;
+import org.bcnlab.beaconLabsVelocity.service.MessageService;
 import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
 import org.slf4j.Logger;
@@ -54,12 +55,12 @@ public class BeaconLabsVelocity {
     private ProxyServer server;
 
     @Inject
-    private CommandManager commandManager;    
-    private PunishmentService punishmentService;
+    private CommandManager commandManager;      private PunishmentService punishmentService;
     private PunishmentConfig punishmentConfig;
     private DatabaseManager databaseManager;
     private PlayerStatsService playerStatsService;
     private MaintenanceService maintenanceService;
+    private MessageService messageService;
       @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
         // Commands are now registered in onProxyInitialization
@@ -121,11 +122,15 @@ public class BeaconLabsVelocity {
         } else {
             logger.warn("Database is not connected. Player stats tracking will be disabled.");
         }
-        
-        // Initialize MaintenanceService
+          // Initialize MaintenanceService
         maintenanceService = new MaintenanceService(this, server, logger);
         server.getEventManager().register(this, new MaintenanceListener(maintenanceService));
         logger.info("Maintenance service has been enabled.");
+        
+        // Initialize MessageService for private messaging
+        messageService = new MessageService(this, server, logger);
+        server.getEventManager().register(this, new MessageListener(messageService));
+        logger.info("Message service has been enabled.");
 
         // Other Listeners
         server.getEventManager().register(this, new ChatFilterListener(this, server));
@@ -212,12 +217,15 @@ public class BeaconLabsVelocity {
             logger.error("Failed to save config", e);
             return false;
         }
-    }
-      public PlayerStatsService getPlayerStatsService() {
+    }    public PlayerStatsService getPlayerStatsService() {
         return playerStatsService;
     }
     
     public MaintenanceService getMaintenanceService() {
         return maintenanceService;
+    }
+    
+    public MessageService getMessageService() {
+        return messageService;
     }
 }
