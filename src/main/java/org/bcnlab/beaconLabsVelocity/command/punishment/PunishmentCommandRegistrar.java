@@ -3,6 +3,7 @@ package org.bcnlab.beaconLabsVelocity.command.punishment;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.proxy.ProxyServer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
+import org.bcnlab.beaconLabsVelocity.command.admin.InfoCommand;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
 import org.slf4j.Logger;
@@ -24,7 +25,9 @@ public class PunishmentCommandRegistrar {
         this.config = config;
         this.service = service;
         this.logger = logger;
-    }    public void registerAll() {
+    }
+
+    public void registerAll() {
         // Mute
         commandManager.register("mute", new MuteCommand(plugin, server, config, service));
         // Ban
@@ -33,8 +36,6 @@ public class PunishmentCommandRegistrar {
         commandManager.register("kick", new KickCommand(plugin, server, config, service));
         // Warn
         commandManager.register("warn", new WarnCommand(plugin, server, config, service));
-        // Info
-        commandManager.register("info", new InfoCommand(server, service, plugin, config));
         // Punishments history
         commandManager.register("punishments", new PunishmentsCommand(plugin, server, service, config));
         // Unban

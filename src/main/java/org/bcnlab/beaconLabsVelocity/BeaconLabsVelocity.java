@@ -128,7 +128,7 @@ public class BeaconLabsVelocity {
         
         // Register admin commands
         new org.bcnlab.beaconLabsVelocity.command.admin.AdminCommandRegistrar(
-            commandManager, this, server, logger).registerAll();
+            commandManager, punishmentConfig, punishmentService, this, server, logger).registerAll();
 
         logger.info("BeaconLabsVelocity is initialized!");
     }
