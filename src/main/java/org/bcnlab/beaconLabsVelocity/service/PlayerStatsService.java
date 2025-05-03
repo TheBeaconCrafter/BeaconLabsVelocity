@@ -290,8 +290,7 @@ public class PlayerStatsService {
         
         return 0; // No playtime found
     }
-    
-    /**
+      /**
      * Get a player's last IP addresses (up to 3)
      */
     public List<IpHistoryEntry> getPlayerIpHistory(UUID playerId) {
@@ -312,6 +311,32 @@ public class PlayerStatsService {
             }
         } catch (SQLException e) {
             logger.error("Failed to get IP history for: " + playerId, e);
+        }
+        
+        return ipHistory;
+    }
+    
+    /**
+     * Get all of a player's IP addresses without limit
+     */
+    public List<IpHistoryEntry> getAllPlayerIpHistory(UUID playerId) {
+        List<IpHistoryEntry> ipHistory = new ArrayList<>();
+        
+        try (Connection conn = db.getConnection()) {
+            String sql = "SELECT ip_address, timestamp FROM ip_history WHERE player_uuid = ? ORDER BY timestamp DESC";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, playerId.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        ipHistory.add(new IpHistoryEntry(
+                            rs.getString("ip_address"),
+                            rs.getLong("timestamp")
+                        ));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Failed to get all IP history for: " + playerId, e);
         }
         
         return ipHistory;

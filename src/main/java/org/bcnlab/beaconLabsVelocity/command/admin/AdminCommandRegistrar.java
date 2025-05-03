@@ -27,12 +27,14 @@ public class AdminCommandRegistrar {
         this.config = config;
         this.service = service;
         this.logger = logger;
-    }
-
-    public void registerAll() {
+    }    public void registerAll() {
         // GoTo command
         commandManager.register("goto", new GoToCommand(plugin, server));
         // Info
         commandManager.register("info", new InfoCommand(server, service, plugin, config));
+        // IP history command - only register if PlayerStatsService is available
+        if (plugin.getPlayerStatsService() != null) {
+            commandManager.register("ips", new IpsCommand(server, plugin.getPlayerStatsService(), service, plugin));
+        }
     }
 }
