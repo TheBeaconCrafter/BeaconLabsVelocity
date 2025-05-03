@@ -109,36 +109,104 @@ public class MaintenanceService {
             if (plugin.getConfig() != null) {
                 plugin.getConfig().node("maintenance", "enabled").set(enabled);
             }
-            
-            // But now instead of saving the whole config, just update the enabled flag directly in the file
+              // But now instead of saving the whole config, just update the enabled flag directly in the file
             try {
                 Path configPath = plugin.getDataDirectory().resolve("config.yml");
+                logger.info("Config path: " + configPath.toString());
                 
                 // Check if file exists
                 if (java.nio.file.Files.exists(configPath)) {
                     // Read all lines
                     java.util.List<String> lines = java.nio.file.Files.readAllLines(configPath);
                     boolean updated = false;
+                    boolean inMaintenanceSection = false;
                     
                     // Find and replace only the maintenance.enabled line
                     for (int i = 0; i < lines.size(); i++) {
-                        String line = lines.get(i);
-                        // Look for "enabled:" with proper indentation, preserving it
-                        if (line.trim().startsWith("enabled:")) {
-                            // Keep the same indentation, just change the value
-                            String indent = line.substring(0, line.indexOf("enabled:"));
-                            lines.set(i, indent + "enabled: " + enabled);
+                        String line = lines.get(i).trim();
+                        
+                        // Check if we're entering the maintenance section
+                        if (line.equals("maintenance:")) {
+                            inMaintenanceSection = true;
+                            continue;
+                        }
+                        
+                        // If we're in a new section, we're no longer in maintenance
+                        if (inMaintenanceSection && line.endsWith(":") && !line.startsWith(" ") && !line.startsWith("#")) {
+                            inMaintenanceSection = false;
+                        }
+                        
+                        // If we're in maintenance section and find enabled: line
+                        if (inMaintenanceSection && line.trim().startsWith("enabled:")) {
+                            // Keep the original indentation
+                            String originalLine = lines.get(i);
+                            String indent = originalLine.substring(0, originalLine.indexOf("enabled:"));
+                            lines.set(i, indent + "enabled: " + enabled + " # Whether maintenance mode is currently active");
                             updated = true;
                             logger.info("Updated maintenance enabled flag in config: " + enabled);
                             break;
                         }
                     }
-                    
-                    // Only write if we actually changed something
+                      // Only write if we actually changed something
                     if (updated) {
+                        logger.info("Writing updated config to: " + configPath);
                         java.nio.file.Files.write(configPath, lines);
                     } else {
-                        logger.warn("Could not find maintenance.enabled key in config file");
+                        logger.warn("Could not find maintenance.enabled key in config file, trying alternative approach");                        // Try a regex-based replacement as a backup approach
+                        String content = String.join("\n", lines);
+                        String newContent = content;
+                        
+                        // Look for the maintenance section and its enabled flag
+                        int maintenanceIndex = content.indexOf("maintenance:");
+                        if (maintenanceIndex != -1) {
+                            int enabledIndex = content.indexOf("enabled:", maintenanceIndex);
+                            if (enabledIndex != -1) {
+                                // Find the end of the enabled line
+                                int lineEnd = content.indexOf("\n", enabledIndex);
+                                if (lineEnd == -1) lineEnd = content.length(); // Handle EOF
+                                
+                                // Get the line
+                                String enabledLine = content.substring(enabledIndex, lineEnd);
+                                
+                                // Create replacement with same indentation and comment if present
+                                String replacement = enabledLine.replaceFirst("(enabled:\\s*)(true|false)(.*)", 
+                                                                           "$1" + enabled + "$3");
+                                
+                                // Replace in the content
+                                newContent = content.substring(0, enabledIndex) + 
+                                             replacement + 
+                                             content.substring(lineEnd);
+                            }
+                        }
+                        
+                        // Only write if we actually made a change
+                        if (!content.equals(newContent)) {
+                            logger.info("Applied regex-based update to maintenance.enabled flag");
+                            java.nio.file.Files.writeString(configPath, newContent);
+                            updated = true;
+                        }
+                    }
+                      // Log the final result
+                    if (updated) {
+                        logger.info("Successfully updated maintenance mode to: " + enabled);
+                    } else {
+                        logger.error("Failed to update maintenance mode in config file, using fallback approach with Configurate API");
+                        
+                        // Emergency fallback - use the normal API as a last resort
+                        try {
+                            // Update only the enabled flag
+                            plugin.getConfig().node("maintenance", "enabled").set(enabled);
+                            
+                            // Save with default Configurate loader
+                            YamlConfigurationLoader loader = YamlConfigurationLoader.builder()
+                                .path(configPath)
+                                .build();
+                                
+                            loader.save(plugin.getConfig());
+                            logger.info("Used fallback Configurate API to save maintenance state");
+                        } catch (Exception saveEx) {
+                            logger.error("Even fallback approach failed", saveEx);
+                        }
                     }
                 } else {
                     logger.warn("Config file does not exist, cannot update maintenance state directly");
@@ -152,8 +220,7 @@ public class MaintenanceService {
             logger.error("Error when saving maintenance state", e);
         }
     }
-    
-    /**
+      /**
      * Toggle maintenance mode
      * 
      * @param enable Whether to enable or disable maintenance mode
@@ -162,13 +229,17 @@ public class MaintenanceService {
     public boolean toggleMaintenance(boolean enable) {
         // Check if cooldown is active
         if (cooldownActive.get()) {
+            logger.info("Maintenance toggle rejected: cooldown is active");
             return false;
         }
         
         // If we're already in the requested state, no change needed
         if (maintenanceMode.get() == enable) {
+            logger.info("Maintenance toggle: already in requested state (" + enable + ")");
             return true;
         }
+        
+        logger.info("Toggling maintenance mode to: " + enable);
         
         // Set cooldown if enabling maintenance
         if (enable) {
@@ -179,6 +250,7 @@ public class MaintenanceService {
         maintenanceMode.set(enable);
         
         // Save to config
+        logger.info("Saving maintenance state to config...");
         saveMaintenanceState(enable);
         
         // If enabling, kick players without permission
