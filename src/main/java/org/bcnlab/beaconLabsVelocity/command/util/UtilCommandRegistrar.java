@@ -24,5 +24,12 @@ public class UtilCommandRegistrar {
         
         // Skin command
         commandManager.register("skin", new SkinCommand(plugin, server));
+        
+        // Playtime command
+        if (plugin.getPlayerStatsService() != null) {
+            PlaytimeCommand playtimeCommand = new PlaytimeCommand(plugin, server, plugin.getPlayerStatsService());
+            commandManager.register("playtime", playtimeCommand);
+            commandManager.register("pt", playtimeCommand); // Alias
+        }
     }
 }

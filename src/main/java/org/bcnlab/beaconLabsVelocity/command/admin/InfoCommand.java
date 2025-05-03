@@ -12,6 +12,8 @@ import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
+import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
+import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService.IpHistoryEntry;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService.PunishmentRecord;
 import org.bcnlab.beaconLabsVelocity.util.DiscordWebhook;
@@ -34,12 +36,14 @@ public class InfoCommand implements SimpleCommand {
     private final PunishmentService service;
     private final PunishmentConfig config;
     private final BeaconLabsVelocity plugin;
+    private final PlayerStatsService playerStatsService;
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     public InfoCommand(ProxyServer server, PunishmentService service, BeaconLabsVelocity plugin, PunishmentConfig config) {
         this.server = server;
         this.service = service;
         this.plugin = plugin;
+        this.playerStatsService = plugin.getPlayerStatsService();
         this.config = config;
     }
 
@@ -116,8 +120,7 @@ public class InfoCommand implements SimpleCommand {
                 // Show offline player profile
                 src.sendMessage(Component.text("» PROFILE", NamedTextColor.AQUA)
                     .decorate(TextDecoration.BOLD));
-                
-                // Show UUID
+                  // Show UUID
                 Component uuidComponent = Component.text()
                     .append(Component.text("UUID: ", NamedTextColor.YELLOW))
                     .append(Component.text(offlineUuid.toString(), NamedTextColor.WHITE)
@@ -125,6 +128,40 @@ public class InfoCommand implements SimpleCommand {
                         .hoverEvent(HoverEvent.showText(Component.text("Click to copy UUID", NamedTextColor.GRAY))))
                     .build();
                 src.sendMessage(uuidComponent);
+                
+                // Show playtime for offline player
+                long playtimeMs = playerStatsService.getPlayerPlaytime(offlineUuid);
+                String formattedPlaytime = PlayerStatsService.formatPlaytime(playtimeMs);
+                src.sendMessage(Component.text("Playtime: ", NamedTextColor.YELLOW)
+                    .append(Component.text(formattedPlaytime, NamedTextColor.WHITE)));
+                
+                // Show IP history for offline player (for admins only)
+                if (src.hasPermission("beaconlabs.admin.viewips")) {
+                    List<IpHistoryEntry> ipHistory = playerStatsService.getPlayerIpHistory(offlineUuid);
+                    if (!ipHistory.isEmpty()) {
+                        src.sendMessage(Component.empty());
+                        src.sendMessage(Component.text("Last Known IPs:", NamedTextColor.YELLOW)
+                            .decorate(TextDecoration.UNDERLINED));
+                        
+                        int count = 0;
+                        for (IpHistoryEntry entry : ipHistory) {
+                            count++;
+                            if (count > 3) break; // Only show last 3
+                            
+                            String historyIp = entry.getIpAddress();
+                            Date timestamp = new Date(entry.getTimestamp());
+                            String dateStr = DATE_FORMAT.format(timestamp);
+                            
+                            Component historyComponent = Component.text("  " + historyIp, NamedTextColor.WHITE)
+                                .clickEvent(ClickEvent.copyToClipboard(historyIp))
+                                .hoverEvent(HoverEvent.showText(Component.text("Click to copy IP", NamedTextColor.GRAY)));
+                            
+                            src.sendMessage(historyComponent
+                                .append(Component.text(" - ", NamedTextColor.DARK_GRAY))
+                                .append(Component.text(dateStr, NamedTextColor.GRAY)));
+                        }
+                    }
+                }
                 
                 // Separator for punishment section
                 src.sendMessage(Component.empty());
@@ -149,8 +186,7 @@ public class InfoCommand implements SimpleCommand {
         DiscordWebhook.send("Info viewed for " + targetName + " by " + 
             (src instanceof Player ? ((Player) src).getUsername() : "Console"));
     }
-    
-    /**
+      /**
      * Sends profile information section for a player
      */
     private void sendProfileInfo(CommandSource src, Player target) {
@@ -171,12 +207,19 @@ public class InfoCommand implements SimpleCommand {
         
         src.sendMessage(Component.text("Account: ", NamedTextColor.YELLOW)
             .append(Component.text(accountIcon + (target.isOnlineMode() ? "Premium" : "Non-Premium"), accountColor)));
-          // Protocol with elegant formatting
+          
+        // Protocol with elegant formatting
         src.sendMessage(Component.text("Version: ", NamedTextColor.YELLOW)
             .append(Component.text("Protocol " + target.getProtocolVersion().getProtocol(), NamedTextColor.WHITE)));
+        
+        // Playtime information
+        long playtimeMs = playerStatsService.getPlayerPlaytime(uuid);
+        String formattedPlaytime = PlayerStatsService.formatPlaytime(playtimeMs);
+        
+        src.sendMessage(Component.text("Playtime: ", NamedTextColor.YELLOW)
+            .append(Component.text(formattedPlaytime, NamedTextColor.WHITE)));
     }
-    
-    /**
+      /**
      * Sends connection information section for a player
      */
     private void sendConnectionInfo(CommandSource src, Player target) {
@@ -201,11 +244,42 @@ public class InfoCommand implements SimpleCommand {
                 .clickEvent(ClickEvent.copyToClipboard(ipAddress))
                 .hoverEvent(HoverEvent.showText(Component.text("Click to copy IP address", NamedTextColor.GRAY))));
         src.sendMessage(ipComponent);
-        
-        // Client brand with fancy formatting
+          // Client brand with fancy formatting
         String clientBrand = target.getClientBrand() != null ? target.getClientBrand() : "Unknown";
         src.sendMessage(Component.text("Client: ", NamedTextColor.YELLOW)
             .append(Component.text(clientBrand, NamedTextColor.WHITE)));
+        
+        // Previous IP addresses (if admin has permission)
+        if (src.hasPermission("beaconlabs.admin.viewips")) {
+            List<IpHistoryEntry> ipHistory = playerStatsService.getPlayerIpHistory(target.getUniqueId());
+            
+            // Remove the current IP if it's in the history to avoid duplication
+            ipHistory.removeIf(entry -> entry.getIpAddress().equals(ipAddress));
+            
+            if (!ipHistory.isEmpty()) {
+                src.sendMessage(Component.empty());
+                src.sendMessage(Component.text("Previous IPs:", NamedTextColor.YELLOW)
+                    .decorate(TextDecoration.UNDERLINED));
+                
+                int count = 0;
+                for (IpHistoryEntry entry : ipHistory) {
+                    count++;
+                    if (count > 3) break; // Only show last 3
+                    
+                    String historyIp = entry.getIpAddress();
+                    Date timestamp = new Date(entry.getTimestamp());
+                    String dateStr = DATE_FORMAT.format(timestamp);
+                    
+                    Component historyComponent = Component.text("  " + historyIp, NamedTextColor.WHITE)
+                        .clickEvent(ClickEvent.copyToClipboard(historyIp))
+                        .hoverEvent(HoverEvent.showText(Component.text("Click to copy IP", NamedTextColor.GRAY)));
+                    
+                    src.sendMessage(historyComponent
+                        .append(Component.text(" - ", NamedTextColor.DARK_GRAY))
+                        .append(Component.text(dateStr, NamedTextColor.GRAY)));
+                }
+            }
+        }
         
         // Ping with color gradient based on quality
         long ping = target.getPing();

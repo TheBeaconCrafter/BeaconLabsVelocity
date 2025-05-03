@@ -23,6 +23,7 @@ import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
 import org.bcnlab.beaconLabsVelocity.listener.*;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
+import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.loader.ConfigurationLoader;
@@ -52,11 +53,10 @@ public class BeaconLabsVelocity {
     private ProxyServer server;
 
     @Inject
-    private CommandManager commandManager;
-
-    private PunishmentService punishmentService;
+    private CommandManager commandManager;    private PunishmentService punishmentService;
     private PunishmentConfig punishmentConfig;
     private DatabaseManager databaseManager;
+    private PlayerStatsService playerStatsService;
       @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
         // Commands are now registered in onProxyInitialization
@@ -98,11 +98,19 @@ public class BeaconLabsVelocity {
             // Register Listeners
             // Register the mute listener that handles all chat blocking for muted players
             server.getEventManager().register(this, new MuteListener(this, punishmentService, punishmentConfig, logger));
-            
-            // Register the ban login listener to prevent banned players from joining
+                  // Register the ban login listener to prevent banned players from joining
             server.getEventManager().register(this, new BanLoginListener(this, punishmentService, punishmentConfig, logger));
         } catch (IOException e) {
             logger.error("Failed to load punishments.yml or register punishment components", e);
+        }
+        
+        // Initialize PlayerStatsService for playtime tracking and IP history
+        if (databaseManager != null && databaseManager.isConnected()) {
+            playerStatsService = new PlayerStatsService(this, databaseManager, logger);
+            server.getEventManager().register(this, new PlayerStatsListener(this, playerStatsService, logger));
+            logger.info("Player stats tracking has been enabled.");
+        } else {
+            logger.warn("Database is not connected. Player stats tracking will be disabled.");
         }
 
         // Other Listeners
@@ -164,9 +172,11 @@ public class BeaconLabsVelocity {
 
     public Logger getLogger() {
         return logger;
-    }
-
-    public Path getDataDirectory() {
+    }    public Path getDataDirectory() {
         return dataDirectory;
+    }
+    
+    public PlayerStatsService getPlayerStatsService() {
+        return playerStatsService;
     }
 }
