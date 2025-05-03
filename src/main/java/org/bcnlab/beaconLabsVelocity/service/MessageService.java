@@ -20,18 +20,75 @@ public class MessageService {
     private final BeaconLabsVelocity plugin;
     private final ProxyServer server;
     private final Logger logger;
+    private Object luckPerms; // Using Object type to avoid compilation issues
     
     // Store the last conversation partner for each player
     private final Map<UUID, UUID> lastMessageRecipients = new ConcurrentHashMap<>();
-    
-    // Format for messages
-    private final String outgoingFormat = "&7You &8-> &7%s&8: &f%s";
-    private final String incomingFormat = "&7%s &8-> &7You&8: &f%s";
+      // Format for messages with brackets around player sections
+    private final String outgoingFormat = "&8[&7You &8-> %s&7%s&8]: &f%s";  // Args: prefix, name, message
+    private final String incomingFormat = "&8[%s&7%s &8-> &7You&8]: &f%s"; // Args: prefix, name, message
 
     public MessageService(BeaconLabsVelocity plugin, ProxyServer server, Logger logger) {
         this.plugin = plugin;
         this.server = server;
         this.logger = logger;
+        
+        // We'll initialize LuckPerms in a delayed task to ensure it's loaded
+        server.getScheduler()
+            .buildTask(plugin, this::initializeLuckPerms)
+            .delay(2, java.util.concurrent.TimeUnit.SECONDS)
+            .schedule();
+    }
+    
+    /**
+     * Initialize LuckPerms API
+     */
+    private void initializeLuckPerms() {
+        try {
+            // Use reflection to avoid direct compilation dependency
+            Class<?> providerClass = Class.forName("net.luckperms.api.LuckPermsProvider");
+            this.luckPerms = providerClass.getMethod("get").invoke(null);
+            logger.info("Successfully hooked into LuckPerms for player prefixes.");
+        } catch (Exception e) {
+            logger.warn("Failed to hook into LuckPerms. Player prefixes will not be shown.", e);
+            this.luckPerms = null;
+        }
+    }
+      /**
+     * Get a player's prefix from LuckPerms or empty if not available
+     *
+     * @param player The player to get the prefix for
+     * @return The formatted prefix string
+     */
+    private String getPlayerPrefix(Player player) {
+        if (luckPerms == null) {
+            return "";
+        }
+        
+        try {
+            // Use reflection to safely access LuckPerms API
+            Class<?> luckPermsClass = luckPerms.getClass();
+            Object userManager = luckPermsClass.getMethod("getUserManager").invoke(luckPerms);
+            Object user = userManager.getClass().getMethod("getUser", UUID.class).invoke(userManager, player.getUniqueId());
+            
+            if (user == null) {
+                return "";
+            }
+            
+            Object cachedData = user.getClass().getMethod("getCachedData").invoke(user);
+            Object metaData = cachedData.getClass().getMethod("getMetaData").invoke(cachedData);
+            String prefix = (String) metaData.getClass().getMethod("getPrefix").invoke(metaData);
+            
+            if (prefix == null || prefix.isEmpty()) {
+                return "";
+            }
+            
+            // Format prefix - no brackets needed as they'll be around the entire player section
+            return prefix + " ";
+        } catch (Exception e) {
+            logger.warn("Error getting prefix for player {}: {}", player.getUsername(), e.getMessage());
+            return "";
+        }
     }
 
     /**
@@ -48,12 +105,16 @@ public class MessageService {
             return false;
         }
 
+        // Get prefixes for both players
+        String recipientPrefix = getPlayerPrefix(recipient);
+        String senderPrefix = getPlayerPrefix(sender);
+
         // Format messages for sender and recipient
         Component senderMessage = LegacyComponentSerializer.legacyAmpersand()
-                .deserialize(String.format(outgoingFormat, recipient.getUsername(), message));
+                .deserialize(String.format(outgoingFormat, recipientPrefix, recipient.getUsername(), message));
         
         Component recipientMessage = LegacyComponentSerializer.legacyAmpersand()
-                .deserialize(String.format(incomingFormat, sender.getUsername(), message));
+                .deserialize(String.format(incomingFormat, senderPrefix, sender.getUsername(), message));
 
         // Send the messages
         sender.sendMessage(senderMessage);

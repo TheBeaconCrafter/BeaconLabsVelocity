@@ -192,12 +192,14 @@
                 <version>3.6.3</version>
             </plugin>
         </plugins>
-    </reporting>
-
-    <repositories>
+    </reporting>    <repositories>
         <repository>
             <id>papermc-repo</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
+        </repository>
+        <repository>
+            <id>luck-repo</id>
+            <url>https://repo.luckperms.net/repository/maven-public/</url>
         </repository>
     </repositories>
 
@@ -224,12 +226,17 @@
             <artifactId>mariadb-java-client</artifactId>
             <version>3.3.3</version>
             <scope>runtime</scope>
-        </dependency>
-        <dependency>
+        </dependency>        <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
             <version>5.1.0</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.luckperms</groupId>
+            <artifactId>api</artifactId>
+            <version>5.4</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>

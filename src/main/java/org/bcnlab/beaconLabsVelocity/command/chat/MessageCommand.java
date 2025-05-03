@@ -35,7 +35,7 @@ public class MessageCommand implements SimpleCommand {
 
         // Check if source is a player
         if (!(source instanceof Player)) {
-            source.sendMessage(Component.text("Only players can use this command.", NamedTextColor.RED));
+            source.sendMessage(plugin.getPrefix().append(Component.text("Only players can use this command.", NamedTextColor.RED)));
             return;
         }
 
@@ -43,7 +43,7 @@ public class MessageCommand implements SimpleCommand {
 
         // Check arguments
         if (args.length < 2) {
-            sender.sendMessage(Component.text("Usage: /msg <player> <message>", NamedTextColor.RED));
+            sender.sendMessage(plugin.getPrefix().append(Component.text("Usage: /msg <player> <message>", NamedTextColor.RED)));
             return;
         }
 
@@ -52,7 +52,7 @@ public class MessageCommand implements SimpleCommand {
         Optional<Player> optRecipient = plugin.getServer().getPlayer(recipientName);
 
         if (!optRecipient.isPresent()) {
-            sender.sendMessage(Component.text("Player '" + recipientName + "' not found or offline.", NamedTextColor.RED));
+            sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + recipientName + "' not found or offline.", NamedTextColor.RED)));
             return;
         }
 

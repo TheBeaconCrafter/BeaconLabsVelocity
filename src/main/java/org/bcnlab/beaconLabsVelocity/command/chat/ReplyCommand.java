@@ -32,7 +32,7 @@ public class ReplyCommand implements SimpleCommand {
 
         // Check if source is a player
         if (!(source instanceof Player)) {
-            source.sendMessage(Component.text("Only players can use this command.", NamedTextColor.RED));
+            source.sendMessage(plugin.getPrefix().append(Component.text("Only players can use this command.", NamedTextColor.RED)));
             return;
         }
 
@@ -40,7 +40,7 @@ public class ReplyCommand implements SimpleCommand {
 
         // Check arguments
         if (args.length < 1) {
-            sender.sendMessage(Component.text("Usage: /r <message>", NamedTextColor.RED));
+            sender.sendMessage(plugin.getPrefix().append(Component.text("Usage: /r <message>", NamedTextColor.RED)));
             return;
         }
 
@@ -48,14 +48,14 @@ public class ReplyCommand implements SimpleCommand {
         Optional<Player> optRecipient = messageService.getLastMessageSender(sender);
 
         if (!optRecipient.isPresent()) {
-            sender.sendMessage(Component.text("You have no one to reply to.", NamedTextColor.RED));
+            sender.sendMessage(plugin.getPrefix().append(Component.text("You have no one to reply to.", NamedTextColor.RED)));
             return;
         }
 
         // Check if the recipient is still online
         Player recipient = optRecipient.get();
         if (!recipient.isActive()) {
-            sender.sendMessage(Component.text("Player '" + recipient.getUsername() + "' is no longer online.", NamedTextColor.RED));
+            sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + recipient.getUsername() + "' is no longer online.", NamedTextColor.RED)));
             return;
         }
 

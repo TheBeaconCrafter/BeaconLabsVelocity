@@ -142,4 +142,9 @@ public class ChatReportCommand implements SimpleCommand {
         }
         return List.of();
     }
+
+    @Override
+    public boolean hasPermission(Invocation invocation) {
+        return invocation.source().hasPermission("beaconlabs.chat.chatreport");
+    }
 }
