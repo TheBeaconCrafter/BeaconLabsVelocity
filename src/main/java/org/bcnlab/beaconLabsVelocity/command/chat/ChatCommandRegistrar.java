@@ -42,10 +42,14 @@ public class ChatCommandRegistrar {
         commandManager.register("w", messageCommand);
         commandManager.register("whisper", messageCommand);
         commandManager.register("m", messageCommand);
-        
-        // Reply command
+          // Reply command
         ReplyCommand replyCommand = new ReplyCommand(plugin, plugin.getMessageService());
         commandManager.register("r", replyCommand);
         commandManager.register("reply", replyCommand);
+        
+        // Team chat command
+        TeamChatCommand teamChatCommand = new TeamChatCommand(plugin, plugin.getMessageService());
+        commandManager.register("teamchat", teamChatCommand);
+        commandManager.register("tc", teamChatCommand);
     }
 }

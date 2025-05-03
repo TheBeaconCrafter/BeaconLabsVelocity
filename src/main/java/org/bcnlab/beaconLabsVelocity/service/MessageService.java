@@ -53,14 +53,13 @@ public class MessageService {
             logger.warn("Failed to hook into LuckPerms. Player prefixes will not be shown.", e);
             this.luckPerms = null;
         }
-    }
-      /**
+    }    /**
      * Get a player's prefix from LuckPerms or empty if not available
      *
      * @param player The player to get the prefix for
      * @return The formatted prefix string
      */
-    private String getPlayerPrefix(Player player) {
+    public String getPlayerPrefix(Player player) {
         if (luckPerms == null) {
             return "";
         }
