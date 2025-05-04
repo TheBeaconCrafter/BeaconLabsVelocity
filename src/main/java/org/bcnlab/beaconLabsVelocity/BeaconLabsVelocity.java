@@ -10,17 +10,10 @@ import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import org.bcnlab.beaconLabsVelocity.command.CoreCommandRegistrar;
-import org.bcnlab.beaconLabsVelocity.command.LabsVelocityCommand;
+import org.bcnlab.beaconLabsVelocity.command.JoinMeCommand;
 import org.bcnlab.beaconLabsVelocity.command.ReportCommand;
 import org.bcnlab.beaconLabsVelocity.command.ReportsCommand;
-import org.bcnlab.beaconLabsVelocity.command.admin.AdminCommandRegistrar;
-import org.bcnlab.beaconLabsVelocity.command.chat.ChatCommandRegistrar;
-import org.bcnlab.beaconLabsVelocity.command.chat.ChatReportCommand;
-import org.bcnlab.beaconLabsVelocity.command.server.LobbyCommand;
-import org.bcnlab.beaconLabsVelocity.command.server.ServerCommandRegistrar;
 import org.bcnlab.beaconLabsVelocity.command.punishment.PunishmentCommandRegistrar;
-import org.bcnlab.beaconLabsVelocity.command.util.UtilCommandRegistrar;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
 import org.bcnlab.beaconLabsVelocity.listener.*;
@@ -189,10 +182,12 @@ public class BeaconLabsVelocity {
         // Register utility commands
         new org.bcnlab.beaconLabsVelocity.command.util.UtilCommandRegistrar(
             commandManager, this, server, logger).registerAll();
-        
-        // Register admin commands
+          // Register admin commands
         new org.bcnlab.beaconLabsVelocity.command.admin.AdminCommandRegistrar(
             commandManager, punishmentConfig, punishmentService, this, server, logger).registerAll();
+
+        // Register JoinMeCommand
+        commandManager.register("joinme", new JoinMeCommand(this, server));
 
         logger.info("BeaconLabsVelocity is initialized!");
     }

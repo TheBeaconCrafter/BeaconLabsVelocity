@@ -23,7 +23,8 @@ database:
   database: "velocity_db"
   username: "velocity_user"
   password: "your_password"
-  # HikariCP Pool Settings (Optional - sensible defaults are used)  # pool-size: 10
+  # HikariCP Pool Settings (Optional - sensible defaults are used)
+  # pool-size: 10
   # connection-timeout: 30000 # milliseconds
   # idle-timeout: 600000 # milliseconds
   # max-lifetime: 1800000 # milliseconds
@@ -47,3 +48,10 @@ whitelist:
 reports:
   cooldown-seconds: 60 # Cooldown between reports (in seconds)
   notify-permission: "beaconlabs.reports.notify" # Permission for staff to receive report notifications
+
+# JoinMe Command Configuration
+joinme:
+  cooldown-seconds: 300 # Cooldown between uses of joinme (in seconds)
+  permissions:
+    use: "beaconlabs.command.joinme" # Permission to use the command
+    bypass-cooldown: "beaconlabs.command.joinme.bypass" # Permission to bypass the cooldown

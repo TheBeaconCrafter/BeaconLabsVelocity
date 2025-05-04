@@ -27,6 +27,7 @@ public class CoreCommandRegistrar {
         // Staff list command
         commandManager.register("staff", new StaffCommand(plugin));
         commandManager.register("team", new StaffCommand(plugin)); // Alias
+        commandManager.register("joinme", new JoinMeCommand(plugin, server)); // Alias
         
         logger.info("Core commands registered.");
     }
