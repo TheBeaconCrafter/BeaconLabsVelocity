@@ -20,10 +20,14 @@ public class CoreCommandRegistrar {
         this.plugin = plugin;
         this.server = server;
         this.logger = logger;
-    }
-
-    public void registerAll() {
+    }    public void registerAll() {
         // Core plugin command
         commandManager.register("labsvelocity", new LabsVelocityCommand(plugin));
+        
+        // Staff list command
+        commandManager.register("staff", new StaffCommand(plugin));
+        commandManager.register("team", new StaffCommand(plugin)); // Alias
+        
+        logger.info("Core commands registered.");
     }
 }
