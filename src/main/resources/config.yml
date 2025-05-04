@@ -42,3 +42,8 @@ whitelist:
   enabled: false # Whether whitelist is currently active
   kick-message: "&4BeaconLabs &r&8| &c&lWHITELIST ONLY\n&7You are not on the whitelist.\n&7Please contact an administrator to gain access."
   # Bypass permission is "beaconlabs.whitelist.bypass"
+
+# Player Reporting System Configuration
+reports:
+  cooldown-seconds: 60 # Cooldown between reports (in seconds)
+  notify-permission: "beaconlabs.reports.notify" # Permission for staff to receive report notifications

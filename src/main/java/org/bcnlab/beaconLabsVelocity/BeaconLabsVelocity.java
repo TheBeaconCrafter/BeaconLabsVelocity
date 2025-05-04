@@ -12,6 +12,8 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.command.CoreCommandRegistrar;
 import org.bcnlab.beaconLabsVelocity.command.LabsVelocityCommand;
+import org.bcnlab.beaconLabsVelocity.command.ReportCommand;
+import org.bcnlab.beaconLabsVelocity.command.ReportsCommand;
 import org.bcnlab.beaconLabsVelocity.command.admin.AdminCommandRegistrar;
 import org.bcnlab.beaconLabsVelocity.command.chat.ChatCommandRegistrar;
 import org.bcnlab.beaconLabsVelocity.command.chat.ChatReportCommand;
@@ -26,12 +28,12 @@ import org.bcnlab.beaconLabsVelocity.service.MaintenanceService;
 import org.bcnlab.beaconLabsVelocity.service.MessageService;
 import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
+import org.bcnlab.beaconLabsVelocity.service.ReportService;
 import org.bcnlab.beaconLabsVelocity.service.WhitelistService;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.loader.ConfigurationLoader;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
-import org.bcnlab.beaconLabsVelocity.service.WhitelistService;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -64,6 +66,7 @@ public class BeaconLabsVelocity {
     private MaintenanceService maintenanceService;
     private MessageService messageService;
     private WhitelistService whitelistService;
+    private ReportService reportService;
       @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
         // Commands are now registered in onProxyInitialization
@@ -131,14 +134,39 @@ public class BeaconLabsVelocity {
         logger.info("Maintenance service has been enabled.");        // Initialize MessageService for private messaging
         messageService = new MessageService(this, server, logger);
         server.getEventManager().register(this, new MessageListener(messageService));
-        logger.info("Message service has been enabled.");
-          // Initialize WhitelistService and register WhitelistListener if database is connected
+        logger.info("Message service has been enabled.");        // Initialize WhitelistService and register WhitelistListener if database is connected
         if (databaseManager != null && databaseManager.isConnected()) {
             whitelistService = new WhitelistService(this, server, databaseManager, logger);
             server.getEventManager().register(this, new WhitelistListener(this, whitelistService));
             logger.info("Whitelist service has been enabled.");
         } else {
             logger.warn("Database is not connected. Whitelist service will be disabled.");
+        }
+        
+        // Initialize ReportService for player reporting system if database is connected
+        if (databaseManager != null && databaseManager.isConnected()) {
+            reportService = new ReportService(this, databaseManager, logger);
+            
+            // Register report commands
+            commandManager.register("report", new ReportCommand(this, reportService));
+            commandManager.register("reports", new ReportsCommand(this, reportService));
+            
+            logger.info("Report service has been enabled.");
+        } else {
+            logger.warn("Database is not connected. Report service will be disabled.");
+        }
+        
+        // Initialize ReportService for player reporting system if database is connected
+        if (databaseManager != null && databaseManager.isConnected()) {
+            reportService = new ReportService(this, databaseManager, logger);
+            
+            // Register report commands
+            commandManager.register("report", new ReportCommand(this, reportService));
+            commandManager.register("reports", new ReportsCommand(this, reportService));
+            
+            logger.info("Report service has been enabled.");
+        } else {
+            logger.warn("Database is not connected. Report service will be disabled.");
         }
 
         // Other Listeners
