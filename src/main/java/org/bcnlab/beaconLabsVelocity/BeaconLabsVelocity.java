@@ -132,11 +132,10 @@ public class BeaconLabsVelocity {
         messageService = new MessageService(this, server, logger);
         server.getEventManager().register(this, new MessageListener(messageService));
         logger.info("Message service has been enabled.");
-        
-        // Initialize WhitelistService and register WhitelistListener if database is connected
+          // Initialize WhitelistService and register WhitelistListener if database is connected
         if (databaseManager != null && databaseManager.isConnected()) {
             whitelistService = new WhitelistService(this, server, databaseManager, logger);
-            server.getEventManager().register(this, new WhitelistListener(this, databaseManager));
+            server.getEventManager().register(this, new WhitelistListener(this, whitelistService));
             logger.info("Whitelist service has been enabled.");
         } else {
             logger.warn("Database is not connected. Whitelist service will be disabled.");
