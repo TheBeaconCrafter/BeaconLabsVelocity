@@ -406,6 +406,71 @@ public class PlayerStatsService {
     }
     
     /**
+     * Get the last time a player was seen (login or logout)
+     * 
+     * @param playerId The UUID of the player
+     * @return The timestamp in milliseconds when the player was last seen, or 0 if never seen
+     */
+    public long getLastSeenTime(UUID playerId) {
+        // If player is currently online, return current time
+        if (playerSessionStart.containsKey(playerId)) {
+            return System.currentTimeMillis();
+        }
+        
+        try (Connection conn = db.getConnection()) {
+            String sql = "SELECT last_seen FROM player_stats WHERE player_uuid = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, playerId.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getLong("last_seen");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Failed to get last seen time for: " + playerId, e);
+        }
+        
+        return 0; // No record found
+    }
+    
+    /**
+     * Get players who have used the same IP address
+     * 
+     * @param ipAddress The IP address to search for
+     * @return List of PlayerData entries for players who used this IP
+     */
+    public List<PlayerData> getPlayersWithSameIp(String ipAddress) {
+        List<PlayerData> players = new ArrayList<>();
+        
+        try (Connection conn = db.getConnection()) {
+            // Find distinct players who used this IP, joining with player_stats to get names
+            String sql = "SELECT DISTINCT h.player_uuid, s.player_name, s.last_seen " + 
+                         "FROM ip_history h " +
+                         "JOIN player_stats s ON h.player_uuid = s.player_uuid " +
+                         "WHERE h.ip_address = ? " +
+                         "ORDER BY s.last_seen DESC";
+                         
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, ipAddress);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        players.add(new PlayerData(
+                            UUID.fromString(rs.getString("player_uuid")),
+                            rs.getString("player_name"),
+                            rs.getLong("last_seen")
+                        ));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Failed to get players with IP: " + ipAddress, e);
+        }
+        
+        return players;
+    }
+    
+    /**
      * Class to hold IP history data
      */
     public static class IpHistoryEntry {
@@ -454,6 +519,33 @@ public class PlayerStatsService {
         
         public String getFormattedPlaytime() {
             return formatPlaytime(playtime);
+        }
+    }
+    
+    /**
+     * Class to hold basic player data
+     */
+    public static class PlayerData {
+        private final UUID playerId;
+        private final String playerName;
+        private final long lastSeen;
+        
+        public PlayerData(UUID playerId, String playerName, long lastSeen) {
+            this.playerId = playerId;
+            this.playerName = playerName;
+            this.lastSeen = lastSeen;
+        }
+        
+        public UUID getPlayerId() {
+            return playerId;
+        }
+        
+        public String getPlayerName() {
+            return playerName;
+        }
+        
+        public long getLastSeen() {
+            return lastSeen;
         }
     }
 }

@@ -128,12 +128,23 @@ public class InfoCommand implements SimpleCommand {
                         .hoverEvent(HoverEvent.showText(Component.text("Click to copy UUID", NamedTextColor.GRAY))))
                     .build();
                 src.sendMessage(uuidComponent);
-                
-                // Show playtime for offline player
+                  // Show playtime for offline player
                 long playtimeMs = playerStatsService.getPlayerPlaytime(offlineUuid);
                 String formattedPlaytime = PlayerStatsService.formatPlaytime(playtimeMs);
                 src.sendMessage(Component.text("Playtime: ", NamedTextColor.YELLOW)
                     .append(Component.text(formattedPlaytime, NamedTextColor.WHITE)));
+                
+                // Show last seen information for offline player
+                long lastSeenTime = playerStatsService.getLastSeenTime(offlineUuid);
+                if (lastSeenTime > 0) {
+                    Date lastSeenDate = new Date(lastSeenTime);
+                    String lastSeenStr = DATE_FORMAT.format(lastSeenDate);
+                    src.sendMessage(Component.text("Last seen: ", NamedTextColor.YELLOW)
+                        .append(Component.text(lastSeenStr, NamedTextColor.WHITE)));
+                } else {
+                    src.sendMessage(Component.text("Last seen: ", NamedTextColor.YELLOW)
+                        .append(Component.text("Unknown", NamedTextColor.GRAY)));
+                }
                 
                 // Show IP history for offline player (for admins only)
                 if (src.hasPermission("beaconlabs.admin.viewips")) {
@@ -159,6 +170,50 @@ public class InfoCommand implements SimpleCommand {
                             src.sendMessage(historyComponent
                                 .append(Component.text(" - ", NamedTextColor.DARK_GRAY))
                                 .append(Component.text(dateStr, NamedTextColor.GRAY)));
+                        }                    }
+                    
+                    // Get the most recent IP address for this offline player
+                    if (!ipHistory.isEmpty() && src.hasPermission("beaconlabs.admin.viewips")) {
+                        String lastIp = ipHistory.get(0).getIpAddress();
+                        
+                        // Find other players who used this IP
+                        List<PlayerStatsService.PlayerData> playersWithSameIp = playerStatsService.getPlayersWithSameIp(lastIp);
+                        
+                        // Remove the current player from the list
+                        playersWithSameIp.removeIf(p -> p.getPlayerId().equals(offlineUuid));
+                        
+                        if (!playersWithSameIp.isEmpty()) {
+                            src.sendMessage(Component.empty());
+                            src.sendMessage(Component.text("» PLAYERS WITH SAME IP", NamedTextColor.DARK_AQUA)
+                                .decorate(TextDecoration.BOLD));
+                                
+                            for (PlayerStatsService.PlayerData player : playersWithSameIp) {
+                                boolean isOnline = server.getPlayer(player.getPlayerId()).isPresent();
+                                NamedTextColor nameColor = isOnline ? NamedTextColor.GREEN : NamedTextColor.WHITE;
+                                TextDecoration nameDeco = isOnline ? TextDecoration.BOLD : null;
+                                
+                                Component playerComp = Component.text(player.getPlayerName(), nameColor);
+                                if (nameDeco != null) {
+                                    playerComp = playerComp.decorate(nameDeco);
+                                }
+                                
+                                Component entry = Component.text("  • ", NamedTextColor.GRAY)
+                                    .append(playerComp
+                                        .clickEvent(ClickEvent.runCommand("/info " + player.getPlayerName()))
+                                        .hoverEvent(HoverEvent.showText(Component.text("Click to view player info", NamedTextColor.YELLOW)))
+                                    );
+                                    
+                                // Add online/offline status
+                                if (isOnline) {
+                                    entry = entry.append(Component.text(" (Online)", NamedTextColor.GREEN));
+                                } else {
+                                    Date lastSeen = new Date(player.getLastSeen());
+                                    String lastSeenStr = DATE_FORMAT.format(lastSeen);
+                                    entry = entry.append(Component.text(" (Last seen: " + lastSeenStr + ")", NamedTextColor.GRAY));
+                                }
+                                
+                                src.sendMessage(entry);
+                            }
                         }
                     }
                 }
@@ -211,13 +266,17 @@ public class InfoCommand implements SimpleCommand {
         // Protocol with elegant formatting
         src.sendMessage(Component.text("Version: ", NamedTextColor.YELLOW)
             .append(Component.text("Protocol " + target.getProtocolVersion().getProtocol(), NamedTextColor.WHITE)));
-        
-        // Playtime information
+          // Playtime information
         long playtimeMs = playerStatsService.getPlayerPlaytime(uuid);
         String formattedPlaytime = PlayerStatsService.formatPlaytime(playtimeMs);
         
         src.sendMessage(Component.text("Playtime: ", NamedTextColor.YELLOW)
             .append(Component.text(formattedPlaytime, NamedTextColor.WHITE)));
+            
+        // Last seen information - for online players, this is "Online now"
+        src.sendMessage(Component.text("Last seen: ", NamedTextColor.YELLOW)
+            .append(Component.text("Online now", NamedTextColor.GREEN)
+                .decorate(TextDecoration.ITALIC)));
     }
       /**
      * Sends connection information section for a player
@@ -302,11 +361,55 @@ public class InfoCommand implements SimpleCommand {
             pingColor = NamedTextColor.RED;
             pingQuality = "Very Poor";
         }
-        
-        src.sendMessage(Component.text("Ping: ", NamedTextColor.YELLOW)
+          src.sendMessage(Component.text("Ping: ", NamedTextColor.YELLOW)
             .append(Component.text(ping + "ms ", pingColor))
             .append(Component.text("(" + pingQuality + ")", NamedTextColor.GRAY)));
-    }    /**
+              // Players with the same IP (if admin has permission)
+        if (src.hasPermission("beaconlabs.admin.viewips")) {
+            // Use the already extracted IP address from above
+            String playerIp = address != null ? address.getAddress().getHostAddress() : null;
+              if (playerIp != null) {
+                List<PlayerStatsService.PlayerData> playersWithSameIp = playerStatsService.getPlayersWithSameIp(playerIp);
+                
+                // Remove the current player from the list
+                playersWithSameIp.removeIf(p -> p.getPlayerId().equals(target.getUniqueId()));
+                
+                if (!playersWithSameIp.isEmpty()) {
+                    src.sendMessage(Component.empty());
+                    src.sendMessage(Component.text("» PLAYERS WITH SAME IP", NamedTextColor.DARK_AQUA)
+                        .decorate(TextDecoration.BOLD));
+                        
+                    for (PlayerStatsService.PlayerData player : playersWithSameIp) {
+                        boolean isOnline = server.getPlayer(player.getPlayerId()).isPresent();
+                        NamedTextColor nameColor = isOnline ? NamedTextColor.GREEN : NamedTextColor.WHITE;
+                        TextDecoration nameDeco = isOnline ? TextDecoration.BOLD : null;
+                        
+                        Component playerComp = Component.text(player.getPlayerName(), nameColor);
+                        if (nameDeco != null) {
+                            playerComp = playerComp.decorate(nameDeco);
+                        }
+                        
+                        Component entry = Component.text("  • ", NamedTextColor.GRAY)
+                            .append(playerComp
+                                .clickEvent(ClickEvent.runCommand("/info " + player.getPlayerName()))
+                                .hoverEvent(HoverEvent.showText(Component.text("Click to view player info", NamedTextColor.YELLOW)))
+                            );
+                            
+                        // Add online/offline status
+                        if (isOnline) {
+                            entry = entry.append(Component.text(" (Online)", NamedTextColor.GREEN));
+                        } else {
+                            Date lastSeen = new Date(player.getLastSeen());
+                            String lastSeenStr = DATE_FORMAT.format(lastSeen);
+                            entry = entry.append(Component.text(" (Last seen: " + lastSeenStr + ")", NamedTextColor.GRAY));
+                        }
+                        
+                        src.sendMessage(entry);
+                    }
+                }
+            }
+        }
+    }/**
      * Sends punishment information section for a player using UUID and name
      * This works for both online and offline players
      */
