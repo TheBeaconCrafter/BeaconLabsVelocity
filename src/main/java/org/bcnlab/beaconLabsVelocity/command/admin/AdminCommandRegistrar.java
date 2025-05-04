@@ -5,7 +5,6 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
-import org.bcnlab.beaconLabsVelocity.service.WhitelistService;
 import org.slf4j.Logger;
 
 /**
@@ -42,7 +41,7 @@ public class AdminCommandRegistrar {
         }
           // Whitelist command - only register if whitelist service is available
         if (plugin.getWhitelistService() != null) {
-            ProxyWhitelistCommand whitelistCommand = new ProxyWhitelistCommand(plugin, plugin.getDatabaseManager());
+            ProxyWhitelistCommand whitelistCommand = new ProxyWhitelistCommand(plugin, plugin.getWhitelistService());
             commandManager.register("proxywhitelist", whitelistCommand);
             commandManager.register("pwhitelist", whitelistCommand);
             commandManager.register("pw", whitelistCommand);

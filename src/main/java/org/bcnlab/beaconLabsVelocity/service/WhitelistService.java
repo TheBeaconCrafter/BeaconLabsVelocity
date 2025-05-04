@@ -9,7 +9,10 @@ import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.serialize.SerializationException;
+import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -113,22 +116,114 @@ public class WhitelistService {
         }
         
         logger.info("Whitelist mode is " + (whitelistEnabled.get() ? "enabled" : "disabled"));
-    }
-    
-    /**
+    }   /**
      * Save whitelist state to config
      */
     public void saveWhitelistState(boolean enabled) {
         try {
-            // Update config
-            ConfigurationNode config = plugin.getConfig();
-            if (config != null) {
-                config.node("whitelist", "enabled").set(enabled);
-                plugin.saveConfig();
-                logger.info("Updated whitelist state in config: " + (enabled ? "enabled" : "disabled"));
+            // Update the current state in memory first
+            whitelistEnabled.set(enabled);
+              // But now instead of saving the whole config, just update the enabled flag directly in the file
+            try {
+                Path configPath = plugin.getDataDirectory().resolve("config.yml");
+                logger.info("Config path: " + configPath.toString());
+                
+                // Check if file exists
+                if (java.nio.file.Files.exists(configPath)) {
+                    // Read all lines
+                    java.util.List<String> lines = java.nio.file.Files.readAllLines(configPath);
+                    boolean updated = false;                    boolean inWhitelistSection = false;
+                    
+                    // Find and replace only the whitelist.enabled line
+                    for (int i = 0; i < lines.size(); i++) {
+                        String line = lines.get(i).trim();
+                        
+                        // Check if we're entering the whitelist section
+                        if (line.equals("whitelist:")) {
+                            inWhitelistSection = true;
+                            continue;
+                        }
+                        
+                        // If we're in a new section, we're no longer in whitelist
+                        if (inWhitelistSection && line.endsWith(":") && !line.startsWith(" ") && !line.startsWith("#")) {
+                            inWhitelistSection = false;
+                        }
+                        
+                        // If we're in whitelist section and find enabled: line
+                        if (inWhitelistSection && line.trim().startsWith("enabled:")) {
+                            // Keep the original indentation
+                            String originalLine = lines.get(i);
+                            String indent = originalLine.substring(0, originalLine.indexOf("enabled:"));
+                            lines.set(i, indent + "enabled: " + enabled + " # Whether whitelist mode is currently active");
+                            updated = true;
+                            break;
+                        }
+                    }
+                      // Only write if we actually changed something
+                    if (updated) {
+                        java.nio.file.Files.write(configPath, lines);
+                    } else {                        logger.warn("Could not find whitelist.enabled key in config file, trying alternative approach");                        // Try a regex-based replacement as a backup approach
+                        String content = String.join("\n", lines);
+                        String newContent = content;
+                        
+                        // Look for the whitelist section and its enabled flag
+                        int whitelistIndex = content.indexOf("whitelist:");
+                        if (whitelistIndex != -1) {
+                            int enabledIndex = content.indexOf("enabled:", whitelistIndex);
+                            if (enabledIndex != -1) {
+                                // Find the end of the enabled line
+                                int lineEnd = content.indexOf("\n", enabledIndex);
+                                if (lineEnd == -1) lineEnd = content.length(); // Handle EOF
+                                
+                                // Get the line
+                                String enabledLine = content.substring(enabledIndex, lineEnd);
+                                
+                                // Create replacement with same indentation and comment if present
+                                String replacement = enabledLine.replaceFirst("(enabled:\\s*)(true|false)(.*)", 
+                                                                           "$1" + enabled + "$3");
+                                
+                                // Replace in the content
+                                newContent = content.substring(0, enabledIndex) + 
+                                             replacement + 
+                                             content.substring(lineEnd);
+                            }
+                        }
+                        
+                        // Only write if we actually made a change
+                        if (!content.equals(newContent)) {
+                            java.nio.file.Files.writeString(configPath, newContent);
+                            updated = true;
+                        }
+                    }
+                      // Log the final result
+                    if (!updated) {                        logger.error("Failed to update whitelist mode in config file, using fallback approach with Configurate API");
+                        
+                        // Emergency fallback - use the normal API as a last resort
+                        try {
+                            // Update only the enabled flag
+                            plugin.getConfig().node("whitelist", "enabled").set(enabled);
+                            
+                            // Save with default Configurate loader
+                            YamlConfigurationLoader loader = YamlConfigurationLoader.builder()
+                                .path(configPath)
+                                .build();
+                                
+                            loader.save(plugin.getConfig());
+                            logger.info("Used fallback Configurate API to save whitelist state");
+                        } catch (Exception saveEx) {
+                            logger.error("Even fallback approach failed", saveEx);
+                        }
+                    }
+                } else {
+                    logger.warn("Config file does not exist, cannot update whitelist state directly");
+                    // Fall back to using the normal save if file doesn't exist
+                    plugin.saveConfig();
+                }
+            } catch (IOException e) {
+                logger.error("Failed to directly update whitelist state in config", e);
             }
-        } catch (SerializationException e) {
-            logger.error("Failed to save whitelist state to config", e);
+        } catch (Exception e) {
+            logger.error("Error when saving whitelist state", e);
         }
     }
     
