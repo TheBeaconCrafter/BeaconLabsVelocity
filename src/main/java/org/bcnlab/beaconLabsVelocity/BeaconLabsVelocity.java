@@ -22,6 +22,7 @@ import org.bcnlab.beaconLabsVelocity.service.MessageService;
 import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
 import org.bcnlab.beaconLabsVelocity.service.ReportService;
+import org.bcnlab.beaconLabsVelocity.service.ServerGuardService;
 import org.bcnlab.beaconLabsVelocity.service.WhitelistService;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
@@ -55,11 +56,11 @@ public class BeaconLabsVelocity {
     private CommandManager commandManager;    private PunishmentService punishmentService;
     private PunishmentConfig punishmentConfig;
     private DatabaseManager databaseManager;
-    private PlayerStatsService playerStatsService;
-    private MaintenanceService maintenanceService;
+    private PlayerStatsService playerStatsService;    private MaintenanceService maintenanceService;
     private MessageService messageService;
     private WhitelistService whitelistService;
     private ReportService reportService;
+    private ServerGuardService serverGuardService;
       @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
         // Commands are now registered in onProxyInitialization
@@ -160,8 +161,11 @@ public class BeaconLabsVelocity {
             logger.info("Report service has been enabled.");
         } else {
             logger.warn("Database is not connected. Report service will be disabled.");
-        }
-
+        }        // Initialize ServerGuardService
+        serverGuardService = new ServerGuardService(this, server, logger);
+        server.getEventManager().register(this, new ServerGuardListener(this, serverGuardService));
+        logger.info("Server guard system has been enabled.");
+        
         // Other Listeners
         server.getEventManager().register(this, new ChatFilterListener(this, server));
         server.getEventManager().register(this, new FileChatLogger(getDataDirectory().toString()));
@@ -184,9 +188,7 @@ public class BeaconLabsVelocity {
             commandManager, this, server, logger).registerAll();
           // Register admin commands
         new org.bcnlab.beaconLabsVelocity.command.admin.AdminCommandRegistrar(
-            commandManager, punishmentConfig, punishmentService, this, server, logger).registerAll();
-
-        // Register JoinMeCommand
+            commandManager, punishmentConfig, punishmentService, this, server, logger).registerAll();        // Register JoinMeCommand 
         commandManager.register("joinme", new JoinMeCommand(this, server));
 
         logger.info("BeaconLabsVelocity is initialized!");
@@ -262,5 +264,9 @@ public class BeaconLabsVelocity {
     
     public WhitelistService getWhitelistService() {
         return whitelistService;
+    }
+
+    public ServerGuardService getServerGuardService() {
+        return serverGuardService;
     }
 }

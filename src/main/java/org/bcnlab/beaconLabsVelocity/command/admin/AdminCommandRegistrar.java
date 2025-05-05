@@ -1,5 +1,6 @@
 package org.bcnlab.beaconLabsVelocity.command.admin;
 
+import com.velocitypowered.api.command.Command;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.proxy.ProxyServer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
@@ -36,12 +37,20 @@ public class AdminCommandRegistrar {
         if (plugin.getPlayerStatsService() != null) {
             commandManager.register("ips", new IpsCommand(server, plugin.getPlayerStatsService(), service, plugin));
         }
-        
-        // Server metrics command
+          // Server metrics command
         ServerMetricsCommand serverMetricsCommand = new ServerMetricsCommand(plugin);
         commandManager.register("servermetrics", serverMetricsCommand);
         commandManager.register("sm", serverMetricsCommand);
-        logger.info("Server metrics commands registered.");// Maintenance command - only register if maintenance service is available
+        logger.info("Server metrics commands registered.");
+          // Server guard command
+        if (plugin.getServerGuardService() != null) {
+            ServerGuardCommand serverGuardCommand = new ServerGuardCommand(plugin, server, plugin.getServerGuardService());
+            commandManager.register("serverguard", serverGuardCommand);
+            commandManager.register("sg", serverGuardCommand);
+            logger.info("Server guard commands registered.");
+        }
+        
+        // Maintenance command - only register if maintenance service is available
         if (plugin.getMaintenanceService() != null) {
             commandManager.register("maintenance", new MaintenanceCommand(plugin, plugin.getMaintenanceService()));
         }

@@ -1,0 +1,23 @@
+# Server Guard Configuration
+# Controls which servers players can access
+
+# Default action when a player attempts to join a server not explicitly allowed
+# Options: ALLOW, BLOCK
+default-action: BLOCK
+
+# Servers that are always allowed (no permission required)
+always-allowed:
+  - lobby
+  - hub
+  - auth
+
+# Permission-based server access
+# Format: server-name: permission
+permissions:
+  survival: beaconlabs.server.survival
+  creative: beaconlabs.server.creative
+  minigames: beaconlabs.server.minigames
+  skyblock: beaconlabs.server.skyblock
+  prison: beaconlabs.server.prison
+  development: beaconlabs.server.development
+  staff: beaconlabs.server.staff
