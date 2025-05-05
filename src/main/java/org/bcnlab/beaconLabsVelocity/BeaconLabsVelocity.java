@@ -34,7 +34,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 
-@Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.0.0", url = "bcnlab.org", authors = {"Vincent Wackler"})
+@Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.0", url = "bcnlab.org", authors = {"Vincent Wackler"})
 public class BeaconLabsVelocity {
 
     @Inject
@@ -44,7 +44,7 @@ public class BeaconLabsVelocity {
     private ConfigurationNode config;
 
     private String prefix;
-    private final String version = "1.0.0";
+    private final String version = "1.0";
 
     @Inject
     private Logger logger;
