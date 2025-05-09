@@ -112,10 +112,28 @@ public class InfoCommand implements SimpleCommand {
         } else {
             // Player is offline - try to find in the database
             UUID offlineUuid = service.getPlayerUUID(targetName);
+            String effectivePlayerName = targetName; // Name used for display, defaults to input
+
+            if (offlineUuid == null) {
+                // If not found via PunishmentService, try PlayerStatsService (e.g., from player_stats table)
+                // This ensures players who have joined but never been punished can still be looked up.
+                PlayerStatsService.PlayerData playerDataFromStats = playerStatsService.getPlayerDataByName(targetName);
+                if (playerDataFromStats != null) {
+                    offlineUuid = playerDataFromStats.getPlayerId();
+                    effectivePlayerName = playerDataFromStats.getPlayerName(); // Use canonical name from DB
+                    
+                    // If the name found is different (e.g. case) from the input, print a clarification.
+                    if (!effectivePlayerName.equalsIgnoreCase(targetName)) {
+                        src.sendMessage(Component.text("(Showing info for player: ", NamedTextColor.GRAY)
+                                          .append(Component.text(effectivePlayerName, NamedTextColor.GOLD))
+                                          .append(Component.text(")", NamedTextColor.GRAY)));
+                    }
+                }
+            }
             
             if (offlineUuid != null) {
-                // Found an offline player in the database
-                src.sendMessage(Component.text("⚠ Player is currently offline", NamedTextColor.RED));
+                // Found an offline player in the database (either punishment or player_stats)
+                src.sendMessage(Component.text("⚠ Player is currently offline.", NamedTextColor.GOLD)); // Changed color as they are found
                 
                 // Show offline player profile
                 src.sendMessage(Component.text("» PROFILE", NamedTextColor.AQUA)
@@ -128,6 +146,11 @@ public class InfoCommand implements SimpleCommand {
                         .hoverEvent(HoverEvent.showText(Component.text("Click to copy UUID", NamedTextColor.GRAY))))
                     .build();
                 src.sendMessage(uuidComponent);
+
+                // Show username (canonical name)
+                src.sendMessage(Component.text("Username: ", NamedTextColor.YELLOW)
+                    .append(Component.text(effectivePlayerName, NamedTextColor.WHITE)));
+
                   // Show playtime for offline player
                 long playtimeMs = playerStatsService.getPlayerPlaytime(offlineUuid);
                 String formattedPlaytime = PlayerStatsService.formatPlaytime(playtimeMs);
@@ -146,9 +169,12 @@ public class InfoCommand implements SimpleCommand {
                         .append(Component.text("Unknown", NamedTextColor.GRAY)));
                 }
                 
+                // Make offlineUuid effectively final for use in lambda
+                final UUID finalOfflineUuidForLambda = offlineUuid;
+
                 // Show IP history for offline player (for admins only)
                 if (src.hasPermission("beaconlabs.admin.viewips")) {
-                    List<IpHistoryEntry> ipHistory = playerStatsService.getPlayerIpHistory(offlineUuid);
+                    List<IpHistoryEntry> ipHistory = playerStatsService.getPlayerIpHistory(finalOfflineUuidForLambda);
                     if (!ipHistory.isEmpty()) {
                         src.sendMessage(Component.empty());
                         src.sendMessage(Component.text("Last Known IPs:", NamedTextColor.YELLOW)
@@ -180,7 +206,7 @@ public class InfoCommand implements SimpleCommand {
                         List<PlayerStatsService.PlayerData> playersWithSameIp = playerStatsService.getPlayersWithSameIp(lastIp);
                         
                         // Remove the current player from the list
-                        playersWithSameIp.removeIf(p -> p.getPlayerId().equals(offlineUuid));
+                        playersWithSameIp.removeIf(p -> p.getPlayerId().equals(finalOfflineUuidForLambda));
                         
                         if (!playersWithSameIp.isEmpty()) {
                             src.sendMessage(Component.empty());
@@ -223,8 +249,8 @@ public class InfoCommand implements SimpleCommand {
                 src.sendMessage(Component.text("» PUNISHMENT STATUS", NamedTextColor.RED)
                     .decorate(TextDecoration.BOLD));
                 
-                // Send punishment info for offline player
-                sendPunishmentInfo(src, offlineUuid, targetName);
+                // Send punishment info for offline player, using the effective (canonical) name
+                sendPunishmentInfo(src, offlineUuid, effectivePlayerName);
             } else {
                 // Completely unknown player
                 src.sendMessage(Component.text("⚠ Player has never been seen on this server", NamedTextColor.RED)

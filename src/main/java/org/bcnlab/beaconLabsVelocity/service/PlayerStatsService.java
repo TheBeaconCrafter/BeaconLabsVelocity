@@ -435,6 +435,45 @@ public class PlayerStatsService {
     }
     
     /**
+     * Get a player's data (UUID, canonical name, last_seen) by their name from the player_stats table.
+     * This method performs a case-insensitive search for the player name.
+     *
+     * @param playerName The name of the player (case-insensitively).
+     * @return PlayerData object containing UUID, canonical name, and last_seen, or null if not found.
+     */
+    public PlayerData getPlayerDataByName(String playerName) {
+        if (playerName == null || playerName.trim().isEmpty()) {
+            return null;
+        }
+        try (Connection conn = db.getConnection()) {
+            // Using LOWER() for case-insensitive search, assuming player_name column might be case-sensitive
+            // or the database collation handles it appropriately.
+            String sql = "SELECT player_uuid, player_name, last_seen FROM player_stats WHERE LOWER(player_name) = LOWER(?)";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, playerName.toLowerCase()); // Ensure consistent case for the query parameter
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        String uuidStr = rs.getString("player_uuid");
+                        String canonicalName = rs.getString("player_name"); // Get the canonical name
+                        long lastSeen = rs.getLong("last_seen");
+                        if (uuidStr != null && canonicalName != null) {
+                            try {
+                                return new PlayerData(UUID.fromString(uuidStr), canonicalName, lastSeen);
+                            } catch (IllegalArgumentException e) {
+                                logger.error("Invalid UUID format in database for player name " + playerName + ": " + uuidStr, e);
+                                return null;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Failed to get PlayerData for player name: " + playerName, e);
+        }
+        return null; // Player not found or error
+    }
+    
+    /**
      * Get players who have used the same IP address
      * 
      * @param ipAddress The IP address to search for

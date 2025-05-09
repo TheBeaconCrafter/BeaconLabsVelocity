@@ -44,7 +44,7 @@ public class BeaconLabsVelocity {
     private ConfigurationNode config;
 
     private String prefix;
-    private final String version = "1.0";
+    private final String version = "1.1";
 
     @Inject
     private Logger logger;
