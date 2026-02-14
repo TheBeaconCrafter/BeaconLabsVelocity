@@ -36,7 +36,9 @@ public class CrossProxyService {
     private static final String HEARTBEAT_KEY_PREFIX = "blv:proxyhb:";
     private static final String PREFIX_HASH_KEY = "blv:prefixes";
     private static final int HEARTBEAT_TTL_SECONDS = 90;
-    private static final int HEARTBEAT_REFRESH_INTERVAL_SECONDS = 30;
+    private static final int HEARTBEAT_REFRESH_INTERVAL_SECONDS = 20;
+    /** TTL for plist key so dead proxies disappear; also used as fallback "live" signal when heartbeat is delayed (e.g. Redis replication). */
+    private static final int PLIST_TTL_SECONDS = 120;
     private static final String PLAYER_SERVER_SEP = "\u001E";
     private static final String PLAYER_SERVER_PAIR_SEP = ":";
 
@@ -173,7 +175,7 @@ public class CrossProxyService {
                 }
             }
             String value = String.join(PLAYER_SERVER_SEP, entries);
-            sync.set(PLIST_KEY_PREFIX + proxyId, value);
+            sync.setex(PLIST_KEY_PREFIX + proxyId, PLIST_TTL_SECONDS, value);
         } catch (Exception e) {
             logger.debug("Failed to update player list: {}", e.getMessage());
         }
@@ -218,8 +220,45 @@ public class CrossProxyService {
         }
     }
 
-    /** Get all proxy IDs that are currently alive (heartbeat present). Dead proxies are excluded.
-     *  The current proxy is always included so we always show our own plist. */
+    /** Returns lines of debug info for /proxies debug (Redis state, proxy discovery, plist/heartbeat per proxy). */
+    public java.util.List<String> getDebugInfo() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        if (!enabled) {
+            out.add("[Cross-proxy] Enabled: false");
+            return out;
+        }
+        out.add("[Cross-proxy] Enabled: true");
+        out.add("[Cross-proxy] This proxy ID: " + proxyId);
+        out.add("[Cross-proxy] Local player count: " + server.getAllPlayers().size());
+        if (pubConnection == null) {
+            out.add("[Cross-proxy] Redis: not connected");
+            return out;
+        }
+        try {
+            var sync = pubConnection.sync();
+            out.add("[Cross-proxy] Redis: connected");
+            java.util.Set<String> allInSet = sync.smembers(PROXIES_SET);
+            out.add("[Cross-proxy] PROXIES_SET (blv:proxies) size: " + allInSet.size() + " -> " + String.join(", ", allInSet));
+            java.util.Set<String> live = getProxyIds();
+            out.add("[Cross-proxy] Live proxy IDs (used for /plist, tab completion): " + live.size() + " -> " + String.join(", ", live));
+            out.add("[Cross-proxy] Total online names (getOnlinePlayerNames): " + getOnlinePlayerNames().size());
+            for (String id : allInSet) {
+                if (id == null || id.isEmpty()) continue;
+                Long hb = sync.exists(HEARTBEAT_KEY_PREFIX + id);
+                Long plist = sync.exists(PLIST_KEY_PREFIX + id);
+                int plistSize = getPlayerListForProxy(id).size();
+                boolean inLive = live.contains(id);
+                String self = id.equals(proxyId) ? " (this proxy)" : "";
+                out.add("  [" + id + "]" + self + " heartbeat=" + (hb != null && hb > 0) + " plist_key=" + (plist != null && plist > 0) + " plist_players=" + plistSize + " in_live_list=" + inLive);
+            }
+        } catch (Exception e) {
+            out.add("[Cross-proxy] Redis error: " + e.getMessage());
+        }
+        return out;
+    }
+
+    /** Get all proxy IDs that are currently alive. Uses heartbeat first; if missing (e.g. Redis replication lag in prod),
+     *  treats proxy as live if its plist key exists (recent update). Current proxy is always included. */
     public java.util.Set<String> getProxyIds() {
         if (!enabled || pubConnection == null) return java.util.Collections.emptySet();
         try {
@@ -227,12 +266,18 @@ public class CrossProxyService {
             java.util.Set<String> all = sync.smembers(PROXIES_SET);
             java.util.Set<String> live = new java.util.HashSet<>();
             for (String id : all) {
+                if (id == null || id.isEmpty()) continue;
                 if (id.equals(proxyId)) {
                     live.add(id);
                     continue;
                 }
                 Long hb = sync.exists(HEARTBEAT_KEY_PREFIX + id);
                 if (hb != null && hb > 0) {
+                    live.add(id);
+                    continue;
+                }
+                Long plistExists = sync.exists(PLIST_KEY_PREFIX + id);
+                if (plistExists != null && plistExists > 0) {
                     live.add(id);
                 }
             }

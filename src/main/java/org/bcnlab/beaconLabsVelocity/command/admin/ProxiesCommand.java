@@ -7,15 +7,18 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * /proxies - list all connected proxies (their IDs).
+ * /proxies debug - print cross-proxy debug info (permission: beaconlabs.command.proxies.debug).
  */
 public class ProxiesCommand implements SimpleCommand {
 
     private static final String PERMISSION = "beaconlabs.command.proxies";
+    private static final String PERMISSION_DEBUG = "beaconlabs.command.proxies.debug";
 
     private final BeaconLabsVelocity plugin;
 
@@ -26,6 +29,28 @@ public class ProxiesCommand implements SimpleCommand {
     @Override
     public void execute(Invocation invocation) {
         CommandSource source = invocation.source();
+        String[] args = invocation.arguments();
+
+        if (args.length > 0 && "debug".equalsIgnoreCase(args[0])) {
+            if (!source.hasPermission(PERMISSION_DEBUG)) {
+                source.sendMessage(plugin.getPrefix().append(
+                        Component.text("You don't have permission to use this command.", NamedTextColor.RED)));
+                return;
+            }
+            if (plugin.getCrossProxyService() == null) {
+                source.sendMessage(plugin.getPrefix().append(
+                        Component.text("Cross-proxy service is not available.", NamedTextColor.RED)));
+                return;
+            }
+            List<String> lines = plugin.getCrossProxyService().getDebugInfo();
+            for (String line : lines) {
+                source.sendMessage(Component.text(line, NamedTextColor.GRAY));
+                plugin.getLogger().info("[proxies debug] " + line);
+            }
+            source.sendMessage(plugin.getPrefix().append(
+                    Component.text("Debug output also written to console/log.", NamedTextColor.DARK_GRAY)));
+            return;
+        }
 
         if (!source.hasPermission(PERMISSION)) {
             source.sendMessage(plugin.getPrefix().append(
@@ -55,5 +80,16 @@ public class ProxiesCommand implements SimpleCommand {
         source.sendMessage(plugin.getPrefix().append(
                 Component.text("Connected proxies (" + proxyIds.size() + "): ", NamedTextColor.GOLD))
                 .append(Component.text(list, NamedTextColor.AQUA)));
+    }
+
+    @Override
+    public List<String> suggest(Invocation invocation) {
+        String[] args = invocation.arguments();
+        if (args.length == 1 && invocation.source().hasPermission(PERMISSION_DEBUG)) {
+            if ("debug".toLowerCase().startsWith(args[0].toLowerCase())) {
+                return List.of("debug");
+            }
+        }
+        return List.of();
     }
 }
