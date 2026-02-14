@@ -206,12 +206,17 @@ public class ChatReportCommand implements SimpleCommand {
 
     @Override
     public List<String> suggest(Invocation invocation) {
-        if (invocation.arguments().length == 0 || invocation.arguments()[0].isEmpty()) {
-            return proxy.getAllPlayers().stream()
-                    .map(Player::getUsername)
+        if (invocation.arguments().length != 1) return List.of();
+        String input = invocation.arguments()[0].toLowerCase();
+        if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            return plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                    .filter(name -> name.toLowerCase().startsWith(input))
                     .collect(Collectors.toList());
         }
-        return List.of();
+        return proxy.getAllPlayers().stream()
+                .map(Player::getUsername)
+                .filter(name -> name.toLowerCase().startsWith(input))
+                .collect(Collectors.toList());
     }
 
     @Override

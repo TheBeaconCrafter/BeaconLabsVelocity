@@ -14,6 +14,7 @@ import org.bcnlab.beaconLabsVelocity.util.DurationUtils;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * /punishments <player> - show punishment history
@@ -98,7 +99,16 @@ public class PunishmentsCommand implements SimpleCommand {
     public List<String> suggest(Invocation invocation) {
         String[] args = invocation.arguments();
         if (args.length == 1) {
-            return server.getAllPlayers().stream().map(Player::getUsername).toList();
+            String prefix = args[0].toLowerCase();
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                return plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                        .filter(name -> name.toLowerCase().startsWith(prefix))
+                        .collect(Collectors.toList());
+            }
+            return server.getAllPlayers().stream()
+                    .map(Player::getUsername)
+                    .filter(name -> name.toLowerCase().startsWith(prefix))
+                    .collect(Collectors.toList());
         }
         return List.of();
     }

@@ -583,9 +583,15 @@ public class InfoCommand implements SimpleCommand {
     public List<String> suggest(Invocation invocation) {
         String[] args = invocation.arguments();
         if (args.length == 1) {
+            String input = args[0].toLowerCase();
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                return plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                    .filter(name -> name.toLowerCase().startsWith(input))
+                    .collect(Collectors.toList());
+            }
             return server.getAllPlayers().stream()
                 .map(Player::getUsername)
-                .filter(name -> name.toLowerCase().startsWith(args[0].toLowerCase()))
+                .filter(name -> name.toLowerCase().startsWith(input))
                 .collect(Collectors.toList());
         }
         return List.of();

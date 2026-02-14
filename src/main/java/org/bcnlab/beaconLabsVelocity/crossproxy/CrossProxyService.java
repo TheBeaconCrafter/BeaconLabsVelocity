@@ -573,8 +573,9 @@ public class CrossProxyService {
 
     private void handleJoinMeToPlayer(CrossProxyMessage msg) {
         String targetUsername = msg.getUsername();
-        String senderUsername = msg.getReason();
-        String serverName = msg.getServerName();
+        // Parse: reason=serverName, serverName=senderUsername (see CrossProxyMessage parse)
+        String senderUsername = msg.getServerName();
+        String serverName = msg.getReason();
         if (targetUsername == null || targetUsername.isEmpty() || serverName == null) return;
         Component joinMe = buildJoinMeComponent(senderUsername != null ? senderUsername : "?", serverName);
         server.getPlayer(targetUsername).ifPresent(player -> player.sendMessage(joinMe));
@@ -582,8 +583,9 @@ public class CrossProxyService {
 
     private void handleJoinMeBroadcast(CrossProxyMessage msg) {
         if (msg.getProxyId() != null && msg.getProxyId().equals(proxyId)) return; // originator already sent to local players
-        String senderUsername = msg.getUsername();
-        String serverName = msg.getServerName();
+        // Parse: reason=serverName, serverName=senderUsername
+        String senderUsername = msg.getServerName();
+        String serverName = msg.getReason();
         if (serverName == null) return;
         Component joinMe = buildJoinMeComponent(senderUsername != null ? senderUsername : "?", serverName);
         server.getAllPlayers().forEach(p -> p.sendMessage(joinMe));

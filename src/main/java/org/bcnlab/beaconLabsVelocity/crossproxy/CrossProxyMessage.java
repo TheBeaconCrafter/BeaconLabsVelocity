@@ -189,10 +189,10 @@ public final class CrossProxyMessage {
                 return new CrossProxyMessage(Type.WHITELIST_SET, parts[2], parts[3], null, null, parts[1], null, null); // serverName=enabled "true"/"false"
             }
             if ("JOINME_TO_PLAYER".equals(typeStr) && parts.length >= 6) {
-                return new CrossProxyMessage(Type.JOINME_TO_PLAYER, parts[4], parts[5], null, parts[3], parts[2], parts[1], null); // username=target, reason=serverName, serverName=senderUsername (receiver uses getReason=sender, getServerName=server)
+                return new CrossProxyMessage(Type.JOINME_TO_PLAYER, parts[4], parts[5], null, parts[3], parts[2], parts[1], null); // username=target, reason=serverName(parts[3]), serverName=senderUsername(parts[2])
             }
             if ("JOINME_BROADCAST".equals(typeStr) && parts.length >= 5) {
-                return new CrossProxyMessage(Type.JOINME_BROADCAST, parts[3], parts[4], null, parts[2], parts[1], null, null); // reason=serverName, serverName=senderUsername
+                return new CrossProxyMessage(Type.JOINME_BROADCAST, parts[3], parts[4], null, parts[2], parts[1], null, null); // reason=serverName(parts[2]), serverName=senderUsername(parts[1])
             }
         } catch (Exception ignored) { }
         return null;

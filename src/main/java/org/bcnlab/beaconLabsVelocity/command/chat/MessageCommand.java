@@ -74,16 +74,17 @@ public class MessageCommand implements SimpleCommand {
     @Override
     public List<String> suggest(Invocation invocation) {
         if (invocation.arguments().length == 0 || invocation.arguments().length == 1) {
-            // Suggest online player names for the first argument
             String input = invocation.arguments().length == 0 ? "" : invocation.arguments()[0].toLowerCase();
-            
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                return plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                    .filter(name -> name.toLowerCase().startsWith(input))
+                    .collect(Collectors.toList());
+            }
             return plugin.getServer().getAllPlayers().stream()
                     .map(Player::getUsername)
                     .filter(name -> name.toLowerCase().startsWith(input))
                     .collect(Collectors.toList());
         }
-        
-        // No suggestions for the message content
         return new ArrayList<>();
     }
 

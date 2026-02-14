@@ -85,7 +85,7 @@ public class SendCommand implements SimpleCommand {
 
         if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
             java.util.UUID uuid = plugin.getPunishmentService() != null ? plugin.getPunishmentService().getPlayerUUID(target) : null;
-            if (uuid != null) {
+            if (uuid != null && plugin.getCrossProxyService().getPlayerProxy(uuid) != null) {
                 plugin.getCrossProxyService().publishSendPlayer(uuid, serverName);
                 source.sendMessage(plugin.getPrefix().append(
                         Component.text("Sent " + target + " to " + serverName + " (cross-proxy).", NamedTextColor.GREEN)));
@@ -100,17 +100,20 @@ public class SendCommand implements SimpleCommand {
     @Override
     public List<String> suggest(Invocation invocation) {
         String[] args = invocation.arguments();
+        java.util.stream.Stream<String> playerNames = (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled())
+                ? plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                : server.getAllPlayers().stream().map(Player::getUsername);
         if (args.length == 0) {
-            return Stream.concat(
-                    Stream.of("*"),
-                    server.getAllPlayers().stream().map(Player::getUsername)
-            ).collect(Collectors.toList());
+            return Stream.concat(Stream.of("*"), playerNames).collect(Collectors.toList());
         }
         if (args.length == 1) {
             String prefix = args[0].toLowerCase();
             return Stream.concat(
                     Stream.of("*").filter(s -> s.startsWith(prefix)),
-                    server.getAllPlayers().stream().map(Player::getUsername).filter(n -> n.toLowerCase().startsWith(prefix))
+                    (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()
+                            ? plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                            : server.getAllPlayers().stream().map(Player::getUsername))
+                            .filter(n -> n.toLowerCase().startsWith(prefix))
             ).collect(Collectors.toList());
         }
         if (args.length == 2) {
