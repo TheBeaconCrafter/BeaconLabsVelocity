@@ -9,7 +9,9 @@ import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.sync.RedisPubSubCommands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.slf4j.Logger;
@@ -502,15 +504,11 @@ public class CrossProxyService {
         if (plugin.getMaintenanceService() == null) return;
 
         if (enable) {
-            if (isOriginator) {
-                // We ran the command; state was already set after our countdown. Do not broadcast (sender already got the message).
-                return;
-            }
-            // Remote: show same 10-second title countdown, then set maintenance and kick
-            if (broadcastLegacy != null && !broadcastLegacy.isEmpty()) {
+            if (broadcastLegacy != null && !broadcastLegacy.isEmpty() && !isOriginator) {
                 Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(broadcastLegacy);
                 server.getAllPlayers().forEach(p -> p.sendMessage(comp));
             }
+            // All proxies (including originator) run the countdown so the mid-screen alert shows everywhere
             plugin.getMaintenanceService().runRemoteMaintenanceCountdown(null);
         } else {
             plugin.getMaintenanceService().setMaintenanceFromRemote(false);
@@ -575,25 +573,44 @@ public class CrossProxyService {
 
     private void handleJoinMeToPlayer(CrossProxyMessage msg) {
         String targetUsername = msg.getUsername();
-        String messageLegacy = msg.getReason();
-        if (targetUsername == null || targetUsername.isEmpty() || messageLegacy == null) return;
-        server.getPlayer(targetUsername).ifPresent(player ->
-                player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(messageLegacy)));
+        String senderUsername = msg.getReason();
+        String serverName = msg.getServerName();
+        if (targetUsername == null || targetUsername.isEmpty() || serverName == null) return;
+        Component joinMe = buildJoinMeComponent(senderUsername != null ? senderUsername : "?", serverName);
+        server.getPlayer(targetUsername).ifPresent(player -> player.sendMessage(joinMe));
     }
 
     private void handleJoinMeBroadcast(CrossProxyMessage msg) {
         if (msg.getProxyId() != null && msg.getProxyId().equals(proxyId)) return; // originator already sent to local players
-        String messageLegacy = msg.getReason();
-        if (messageLegacy == null) return;
-        Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(messageLegacy);
-        server.getAllPlayers().forEach(p -> p.sendMessage(comp));
+        String senderUsername = msg.getUsername();
+        String serverName = msg.getServerName();
+        if (serverName == null) return;
+        Component joinMe = buildJoinMeComponent(senderUsername != null ? senderUsername : "?", serverName);
+        server.getAllPlayers().forEach(p -> p.sendMessage(joinMe));
     }
 
-    public void publishJoinMeToPlayer(String targetUsername, String messageLegacy) {
-        publish(CrossProxyMessage.joinMeToPlayer(targetUsername, messageLegacy, sharedSecret, proxyId));
+    private static Component buildJoinMeComponent(String senderUsername, String serverName) {
+        Component border = Component.text("▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬", NamedTextColor.GOLD, TextDecoration.BOLD);
+        Component header = Component.text("  ✦ JOIN ME INVITATION ✦  ", NamedTextColor.YELLOW, TextDecoration.BOLD);
+        Component playerComponent = Component.text(senderUsername, NamedTextColor.AQUA, TextDecoration.BOLD);
+        Component serverComponent = Component.text(serverName, NamedTextColor.GREEN, TextDecoration.BOLD)
+                .clickEvent(ClickEvent.runCommand("/server " + serverName))
+                .hoverEvent(HoverEvent.showText(Component.text("Click to join " + serverName, NamedTextColor.YELLOW)));
+        return Component.empty()
+                .append(Component.newline())
+                .append(border).append(Component.newline())
+                .append(header).append(Component.newline())
+                .append(Component.text("Player: ", NamedTextColor.YELLOW)).append(playerComponent).append(Component.newline())
+                .append(Component.text("Server: ", NamedTextColor.YELLOW)).append(serverComponent).append(Component.newline())
+                .append(Component.text("Click on the server name to join!", NamedTextColor.GRAY, TextDecoration.ITALIC)).append(Component.newline())
+                .append(border);
     }
 
-    public void publishJoinMeBroadcast(String messageLegacy) {
-        publish(CrossProxyMessage.joinMeBroadcast(messageLegacy, sharedSecret, proxyId));
+    public void publishJoinMeToPlayer(String targetUsername, String senderUsername, String serverName) {
+        publish(CrossProxyMessage.joinMeToPlayer(targetUsername, senderUsername, serverName, sharedSecret, proxyId));
+    }
+
+    public void publishJoinMeBroadcast(String senderUsername, String serverName) {
+        publish(CrossProxyMessage.joinMeBroadcast(senderUsername, serverName, sharedSecret, proxyId));
     }
 }

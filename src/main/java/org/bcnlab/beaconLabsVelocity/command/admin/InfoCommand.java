@@ -142,6 +142,14 @@ public class InfoCommand implements SimpleCommand {
                 if (onlineProxyId != null) {
                     src.sendMessage(Component.text("● Online on proxy: ", NamedTextColor.GREEN)
                             .append(Component.text(onlineProxyId, NamedTextColor.AQUA).decorate(TextDecoration.BOLD)));
+                    String currentServer = (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled())
+                            ? plugin.getCrossProxyService().getPlayerCurrentServer(effectivePlayerName) : null;
+                    if (currentServer != null && !currentServer.isEmpty()) {
+                        src.sendMessage(Component.text("Server: ", NamedTextColor.YELLOW)
+                                .append(Component.text(currentServer, NamedTextColor.AQUA)
+                                        .clickEvent(ClickEvent.runCommand("/server " + currentServer))
+                                        .hoverEvent(HoverEvent.showText(Component.text("Click to connect to this server", NamedTextColor.GRAY)))));
+                    }
                 } else {
                     src.sendMessage(Component.text("⚠ Player is currently offline.", NamedTextColor.GOLD));
                     if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {

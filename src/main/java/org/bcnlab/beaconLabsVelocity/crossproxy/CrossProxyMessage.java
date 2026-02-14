@@ -123,14 +123,14 @@ public final class CrossProxyMessage {
         return "WHITELIST_SET" + SEP + (enabled ? "true" : "false") + SEP + secret + SEP + proxyId;
     }
 
-    /** Build outbound JOINME_TO_PLAYER (target username, message legacy). */
-    public static String joinMeToPlayer(String targetUsername, String messageLegacy, String secret, String proxyId) {
-        return "JOINME_TO_PLAYER" + SEP + (targetUsername != null ? targetUsername : "") + SEP + (messageLegacy != null ? messageLegacy : "") + SEP + secret + SEP + proxyId;
+    /** Build outbound JOINME_TO_PLAYER (target, sender username, server name) so receiver can build clickable message. */
+    public static String joinMeToPlayer(String targetUsername, String senderUsername, String serverName, String secret, String proxyId) {
+        return "JOINME_TO_PLAYER" + SEP + (targetUsername != null ? targetUsername : "") + SEP + (senderUsername != null ? senderUsername : "") + SEP + (serverName != null ? serverName : "") + SEP + secret + SEP + proxyId;
     }
 
-    /** Build outbound JOINME_BROADCAST (message legacy). */
-    public static String joinMeBroadcast(String messageLegacy, String secret, String proxyId) {
-        return "JOINME_BROADCAST" + SEP + (messageLegacy != null ? messageLegacy : "") + SEP + secret + SEP + proxyId;
+    /** Build outbound JOINME_BROADCAST (sender username, server name) so receiver can build clickable message. */
+    public static String joinMeBroadcast(String senderUsername, String serverName, String secret, String proxyId) {
+        return "JOINME_BROADCAST" + SEP + (senderUsername != null ? senderUsername : "") + SEP + (serverName != null ? serverName : "") + SEP + secret + SEP + proxyId;
     }
 
     /**
@@ -188,13 +188,11 @@ public final class CrossProxyMessage {
             if ("WHITELIST_SET".equals(typeStr) && parts.length >= 4) {
                 return new CrossProxyMessage(Type.WHITELIST_SET, parts[2], parts[3], null, null, parts[1], null, null); // serverName=enabled "true"/"false"
             }
-            if ("JOINME_TO_PLAYER".equals(typeStr) && parts.length >= 5) {
-                String msgLegacy = parts.length == 5 ? parts[2] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 2, parts.length - 2));
-                return new CrossProxyMessage(Type.JOINME_TO_PLAYER, parts[parts.length - 2], parts[parts.length - 1], null, msgLegacy, null, parts[1], null); // username=target, reason=messageLegacy
+            if ("JOINME_TO_PLAYER".equals(typeStr) && parts.length >= 6) {
+                return new CrossProxyMessage(Type.JOINME_TO_PLAYER, parts[4], parts[5], null, parts[3], parts[2], parts[1], null); // username=target, reason=serverName, serverName=senderUsername (receiver uses getReason=sender, getServerName=server)
             }
-            if ("JOINME_BROADCAST".equals(typeStr) && parts.length >= 4) {
-                String msgLegacy = parts.length == 4 ? parts[1] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 1, parts.length - 2));
-                return new CrossProxyMessage(Type.JOINME_BROADCAST, parts[parts.length - 2], parts[parts.length - 1], null, msgLegacy, null, null, null);
+            if ("JOINME_BROADCAST".equals(typeStr) && parts.length >= 5) {
+                return new CrossProxyMessage(Type.JOINME_BROADCAST, parts[3], parts[4], null, parts[2], parts[1], null, null); // reason=serverName, serverName=senderUsername
             }
         } catch (Exception ignored) { }
         return null;

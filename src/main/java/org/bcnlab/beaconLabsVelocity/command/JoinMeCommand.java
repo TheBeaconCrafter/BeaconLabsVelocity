@@ -10,7 +10,6 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 
 import java.util.HashMap;
@@ -106,9 +105,7 @@ public class JoinMeCommand implements SimpleCommand {
                 );
             } else if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()
                     && plugin.getCrossProxyService().getPlayerCurrentServer(targetName) != null) {
-                Component message = createJoinMeMessage(player, serverName);
-                String legacy = LegacyComponentSerializer.legacyAmpersand().serialize(message);
-                plugin.getCrossProxyService().publishJoinMeToPlayer(targetName, legacy);
+                plugin.getCrossProxyService().publishJoinMeToPlayer(targetName, player.getUsername(), serverName);
                 player.sendMessage(plugin.getPrefix().append(
                     Component.text("Sent a join request to ", NamedTextColor.GREEN))
                     .append(Component.text(targetName, NamedTextColor.YELLOW))
@@ -123,8 +120,7 @@ public class JoinMeCommand implements SimpleCommand {
             // Broadcast joinme to all players (local + other proxies)
             broadcastJoinMe(player, serverName);
             if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
-                Component message = createJoinMeMessage(player, serverName);
-                plugin.getCrossProxyService().publishJoinMeBroadcast(LegacyComponentSerializer.legacyAmpersand().serialize(message));
+                plugin.getCrossProxyService().publishJoinMeBroadcast(player.getUsername(), serverName);
             }
             player.sendMessage(plugin.getPrefix().append(
                 Component.text("Broadcast join request to all players.", NamedTextColor.GREEN)
