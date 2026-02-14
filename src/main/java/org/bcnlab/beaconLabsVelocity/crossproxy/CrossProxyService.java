@@ -2,6 +2,7 @@ package org.bcnlab.beaconLabsVelocity.crossproxy;
 
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
+import com.velocitypowered.api.scheduler.ScheduledTask;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;
@@ -32,6 +33,9 @@ public class CrossProxyService {
     private static final String ONLINE_KEY_PREFIX = "blv:online:";
     private static final String PROXIES_SET = "blv:proxies";
     private static final String PLIST_KEY_PREFIX = "blv:plist:";
+    private static final String HEARTBEAT_KEY_PREFIX = "blv:proxyhb:";
+    private static final int HEARTBEAT_TTL_SECONDS = 90;
+    private static final int HEARTBEAT_REFRESH_INTERVAL_SECONDS = 30;
     private static final String PLAYER_SERVER_SEP = "\u001E";
     private static final String PLAYER_SERVER_PAIR_SEP = ":";
 
@@ -47,6 +51,7 @@ public class CrossProxyService {
     private StatefulRedisConnection<String, String> pubConnection;
     private StatefulRedisPubSubConnection<String, String> subConnection;
     private Thread subscriberThread;
+    private ScheduledTask heartbeatTask;
 
     public CrossProxyService(BeaconLabsVelocity plugin, String proxyId, String sharedSecret, boolean enabled, boolean allowDoubleJoin) {
         this.plugin = plugin;
@@ -91,24 +96,46 @@ public class CrossProxyService {
         }
     }
 
-    /** Get which proxy this player is on (null if not on any proxy we know of). */
+    /** Get which proxy this player is on (null if not on any proxy we know of, or if that proxy is dead). */
     public String getPlayerProxy(UUID playerUuid) {
         if (!enabled || pubConnection == null) return null;
         try {
-            return pubConnection.sync().get(ONLINE_KEY_PREFIX + playerUuid.toString());
+            var sync = pubConnection.sync();
+            String pid = sync.get(ONLINE_KEY_PREFIX + playerUuid.toString());
+            if (pid == null || pid.isEmpty()) return null;
+            Long hb = sync.exists(HEARTBEAT_KEY_PREFIX + pid);
+            if (hb == null || hb == 0) {
+                sync.del(ONLINE_KEY_PREFIX + playerUuid.toString());
+                return null;
+            }
+            return pid;
         } catch (Exception e) {
             logger.debug("Failed to get online proxy for {}: {}", playerUuid, e.getMessage());
             return null;
         }
     }
 
-    /** Register this proxy in the set of connected proxies (for /plist, /proxies). */
+    /** Register this proxy in the set of connected proxies (for /plist, /proxies) and set heartbeat. */
     public void registerProxy() {
         if (!enabled || pubConnection == null) return;
         try {
-            pubConnection.sync().sadd(PROXIES_SET, proxyId);
+            var sync = pubConnection.sync();
+            sync.sadd(PROXIES_SET, proxyId);
+            refreshHeartbeat();
         } catch (Exception e) {
             logger.debug("Failed to register proxy: {}", e.getMessage());
+        }
+    }
+
+    /** Refresh this proxy's heartbeat so others consider it alive. Call periodically and from updatePlayerList. */
+    private void refreshHeartbeat() {
+        if (!enabled || pubConnection == null) return;
+        try {
+            var sync = pubConnection.sync();
+            sync.set(HEARTBEAT_KEY_PREFIX + proxyId, "1");
+            sync.expire(HEARTBEAT_KEY_PREFIX + proxyId, HEARTBEAT_TTL_SECONDS);
+        } catch (Exception e) {
+            logger.debug("Failed to refresh heartbeat: {}", e.getMessage());
         }
     }
 
@@ -116,8 +143,10 @@ public class CrossProxyService {
     public void unregisterProxy() {
         if (!enabled || pubConnection == null) return;
         try {
-            pubConnection.sync().srem(PROXIES_SET, proxyId);
-            pubConnection.sync().del(PLIST_KEY_PREFIX + proxyId);
+            var sync = pubConnection.sync();
+            sync.srem(PROXIES_SET, proxyId);
+            sync.del(PLIST_KEY_PREFIX + proxyId);
+            sync.del(HEARTBEAT_KEY_PREFIX + proxyId);
         } catch (Exception e) {
             logger.debug("Failed to unregister proxy: {}", e.getMessage());
         }
@@ -127,6 +156,7 @@ public class CrossProxyService {
     public void updatePlayerList() {
         if (!enabled || pubConnection == null) return;
         try {
+            refreshHeartbeat();
             java.util.List<String> entries = new java.util.ArrayList<>();
             for (com.velocitypowered.api.proxy.Player p : server.getAllPlayers()) {
                 String serverName = p.getCurrentServer().map(s -> s.getServerInfo().getName()).orElse("?");
@@ -139,11 +169,20 @@ public class CrossProxyService {
         }
     }
 
-    /** Get all registered proxy IDs. */
+    /** Get all proxy IDs that are currently alive (heartbeat present). Dead proxies are excluded. */
     public java.util.Set<String> getProxyIds() {
         if (!enabled || pubConnection == null) return java.util.Collections.emptySet();
         try {
-            return pubConnection.sync().smembers(PROXIES_SET);
+            var sync = pubConnection.sync();
+            java.util.Set<String> all = sync.smembers(PROXIES_SET);
+            java.util.Set<String> live = new java.util.HashSet<>();
+            for (String id : all) {
+                Long hb = sync.exists(HEARTBEAT_KEY_PREFIX + id);
+                if (hb != null && hb > 0) {
+                    live.add(id);
+                }
+            }
+            return live;
         } catch (Exception e) {
             logger.debug("Failed to get proxy IDs: {}", e.getMessage());
             return java.util.Collections.emptySet();
@@ -243,6 +282,9 @@ public class CrossProxyService {
 
             registerProxy();
             updatePlayerList();
+            heartbeatTask = server.getScheduler().buildTask(plugin, this::refreshHeartbeat)
+                    .repeat(HEARTBEAT_REFRESH_INTERVAL_SECONDS, TimeUnit.SECONDS)
+                    .schedule();
             logger.info("Cross-proxy Redis connected (proxy-id: {}). Kick/ban/send and duplicate-session prevention are active.", proxyId);
         } catch (Exception e) {
             logger.error("Failed to connect to Redis for cross-proxy. Cross-proxy features disabled.", e);
@@ -251,6 +293,10 @@ public class CrossProxyService {
     }
 
     public void shutdown() {
+        if (heartbeatTask != null) {
+            heartbeatTask.cancel();
+            heartbeatTask = null;
+        }
         unregisterProxy();
         if (subscriberThread != null && subscriberThread.isAlive()) {
             subscriberThread.interrupt();
