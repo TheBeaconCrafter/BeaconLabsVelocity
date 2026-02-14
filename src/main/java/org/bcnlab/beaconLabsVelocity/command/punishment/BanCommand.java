@@ -110,6 +110,7 @@ public class BanCommand implements SimpleCommand {
                 if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
                     String rawKick = config.getMessage("ban-screen").replace("{reason}", reason).replace("{duration}", DurationUtils.formatDuration(duration));
                     plugin.getCrossProxyService().publishKick(offlineUuid, rawKick);
+                    plugin.getCrossProxyService().publishKickByName(targetName, rawKick); // in case they're on another proxy
                 }
             } else {
                 // Create a new offline ban entry
@@ -131,6 +132,7 @@ public class BanCommand implements SimpleCommand {
                 if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
                     String rawKick = config.getMessage("ban-screen").replace("{reason}", reason).replace("{duration}", DurationUtils.formatDuration(duration));
                     plugin.getCrossProxyService().publishKick(generatedUuid, rawKick);
+                    plugin.getCrossProxyService().publishKickByName(targetName, rawKick); // in case they're on another proxy
                 }
             }
         }        // Broadcast to notified players

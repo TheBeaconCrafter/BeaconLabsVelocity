@@ -11,9 +11,14 @@ public final class CrossProxyMessage {
 
     public enum Type {
         KICK,
+        KICK_BY_NAME,
         SENDALL,
         PLAYER_CONNECT,
-        SEND_PLAYER
+        SEND_PLAYER,
+        MUTE_APPLIED,
+        PRIVATE_MSG,
+        BROADCAST,
+        TEAM_CHAT
     }
 
     private final Type type;
@@ -22,14 +27,18 @@ public final class CrossProxyMessage {
     private final String uuid;
     private final String reason;
     private final String serverName;
+    private final String username;
+    private final String durationFormatted;
 
-    private CrossProxyMessage(Type type, String secret, String proxyId, String uuid, String reason, String serverName) {
+    private CrossProxyMessage(Type type, String secret, String proxyId, String uuid, String reason, String serverName, String username, String durationFormatted) {
         this.type = type;
         this.secret = secret;
         this.proxyId = proxyId;
         this.uuid = uuid;
         this.reason = reason;
         this.serverName = serverName;
+        this.username = username;
+        this.durationFormatted = durationFormatted;
     }
 
     public Type getType() { return type; }
@@ -38,10 +47,19 @@ public final class CrossProxyMessage {
     public String getUuid() { return uuid; }
     public String getReason() { return reason; }
     public String getServerName() { return serverName; }
+    /** For KICK_BY_NAME, the target player name. */
+    public String getUsername() { return username; }
+    /** For MUTE_APPLIED, the formatted duration string. */
+    public String getDurationFormatted() { return durationFormatted; }
 
     /** Build outbound KICK message (uuid, reason, secret, proxyId). */
     public static String kick(UUID uuid, String reason, String secret, String proxyId) {
         return "KICK" + SEP + uuid.toString() + SEP + (reason != null ? reason : "") + SEP + secret + SEP + proxyId;
+    }
+
+    /** Build outbound KICK_BY_NAME message (for players on another proxy). */
+    public static String kickByName(String username, String reason, String secret, String proxyId) {
+        return "KICK_BY_NAME" + SEP + (username != null ? username : "") + SEP + (reason != null ? reason : "") + SEP + secret + SEP + proxyId;
     }
 
     /** Build outbound SENDALL message. */
@@ -59,6 +77,26 @@ public final class CrossProxyMessage {
         return "SEND_PLAYER" + SEP + uuid.toString() + SEP + serverName + SEP + secret + SEP + proxyId;
     }
 
+    /** Build outbound MUTE_APPLIED message (notify player on another proxy they were muted). */
+    public static String muteApplied(UUID uuid, String reason, String durationFormatted, String secret, String proxyId) {
+        return "MUTE_APPLIED" + SEP + uuid.toString() + SEP + (reason != null ? reason : "") + SEP + (durationFormatted != null ? durationFormatted : "") + SEP + secret + SEP + proxyId;
+    }
+
+    /** Build outbound PRIVATE_MSG (target username, preformatted recipient message legacy string). */
+    public static String privateMsg(String targetUsername, String recipientMessageLegacy, String secret, String proxyId) {
+        return "PRIVATE_MSG" + SEP + (targetUsername != null ? targetUsername : "") + SEP + (recipientMessageLegacy != null ? recipientMessageLegacy : "") + SEP + secret + SEP + proxyId;
+    }
+
+    /** Build outbound BROADCAST (message legacy string). */
+    public static String broadcast(String messageLegacy, String secret, String proxyId) {
+        return "BROADCAST" + SEP + (messageLegacy != null ? messageLegacy : "") + SEP + secret + SEP + proxyId;
+    }
+
+    /** Build outbound TEAM_CHAT (formatted message legacy string). */
+    public static String teamChat(String messageLegacy, String secret, String proxyId) {
+        return "TEAM_CHAT" + SEP + (messageLegacy != null ? messageLegacy : "") + SEP + secret + SEP + proxyId;
+    }
+
     /**
      * Parse an incoming message. Returns null if invalid or unknown type.
      * Reason field may contain SEP; we reassemble it from middle parts for KICK.
@@ -70,16 +108,37 @@ public final class CrossProxyMessage {
             String typeStr = parts[0];
             if ("KICK".equals(typeStr) && parts.length >= 5) {
                 String reason = parts.length == 5 ? parts[2] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 2, parts.length - 2));
-                return new CrossProxyMessage(Type.KICK, parts[parts.length - 2], parts[parts.length - 1], parts[1], reason, null);
+                return new CrossProxyMessage(Type.KICK, parts[parts.length - 2], parts.length > 4 ? parts[parts.length - 1] : null, parts[1], reason, null, null, null);
+            }
+            if ("KICK_BY_NAME".equals(typeStr) && parts.length >= 5) {
+                String reason = parts.length == 5 ? parts[2] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 2, parts.length - 2));
+                return new CrossProxyMessage(Type.KICK_BY_NAME, parts[parts.length - 2], parts.length > 4 ? parts[parts.length - 1] : null, null, reason, null, parts[1], null);
             }
             if ("SENDALL".equals(typeStr) && parts.length >= 4) {
-                return new CrossProxyMessage(Type.SENDALL, parts[2], parts.length > 3 ? parts[3] : null, null, null, parts[1]);
+                return new CrossProxyMessage(Type.SENDALL, parts[2], parts.length > 3 ? parts[3] : null, null, null, parts[1], null, null);
             }
             if ("PLAYER_CONNECT".equals(typeStr) && parts.length >= 4) {
-                return new CrossProxyMessage(Type.PLAYER_CONNECT, parts[3], parts[1], parts[2], null, null);
+                return new CrossProxyMessage(Type.PLAYER_CONNECT, parts[3], parts[1], parts[2], null, null, null, null);
             }
             if ("SEND_PLAYER".equals(typeStr) && parts.length >= 5) {
-                return new CrossProxyMessage(Type.SEND_PLAYER, parts[3], parts.length > 4 ? parts[4] : null, parts[1], null, parts[2]);
+                return new CrossProxyMessage(Type.SEND_PLAYER, parts[3], parts.length > 4 ? parts[4] : null, parts[1], null, parts[2], null, null);
+            }
+            if ("MUTE_APPLIED".equals(typeStr) && parts.length >= 6) {
+                String reason = parts.length == 6 ? parts[2] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 2, parts.length - 3));
+                String durationFormatted = parts[parts.length - 3];
+                return new CrossProxyMessage(Type.MUTE_APPLIED, parts[parts.length - 2], parts[parts.length - 1], parts[1], reason, null, null, durationFormatted);
+            }
+            if ("PRIVATE_MSG".equals(typeStr) && parts.length >= 5) {
+                String recipientMessageLegacy = parts.length == 5 ? parts[2] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 2, parts.length - 2));
+                return new CrossProxyMessage(Type.PRIVATE_MSG, parts[parts.length - 2], parts[parts.length - 1], null, recipientMessageLegacy, null, parts[1], null);
+            }
+            if ("BROADCAST".equals(typeStr) && parts.length >= 4) {
+                String messageLegacy = parts.length == 4 ? parts[1] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 1, parts.length - 2));
+                return new CrossProxyMessage(Type.BROADCAST, parts[parts.length - 2], parts[parts.length - 1], null, messageLegacy, null, null, null);
+            }
+            if ("TEAM_CHAT".equals(typeStr) && parts.length >= 4) {
+                String messageLegacy = parts.length == 4 ? parts[1] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 1, parts.length - 2));
+                return new CrossProxyMessage(Type.TEAM_CHAT, parts[parts.length - 2], parts[parts.length - 1], null, messageLegacy, null, null, null);
             }
         } catch (Exception ignored) { }
         return null;

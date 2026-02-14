@@ -183,6 +183,7 @@ public class BeaconLabsVelocity {
                     redisNode.node("reconnect-interval-ms").getInt(5000)
             );
             server.getEventManager().register(this, new CrossProxyLoginListener(this));
+            server.getEventManager().register(this, new CrossProxyDisconnectListener(this));
         }
         
         // Other Listeners

@@ -54,6 +54,14 @@ public class MessageService {
             this.luckPerms = null;
         }
     }    /**
+     * Format the incoming PM message as legacy string (for cross-proxy delivery).
+     */
+    public String formatIncomingMessageLegacy(Player sender, String message) {
+        String senderPrefix = getPlayerPrefix(sender);
+        return String.format(incomingFormat, senderPrefix, sender.getUsername(), message);
+    }
+
+    /**
      * Get a player's prefix from LuckPerms or empty if not available
      *
      * @param player The player to get the prefix for

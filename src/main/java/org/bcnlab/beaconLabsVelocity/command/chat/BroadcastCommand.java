@@ -19,17 +19,17 @@ public class BroadcastCommand implements SimpleCommand {
         if (invocation.arguments().length == 0) {
             invocation.source().sendMessage(Component.text("Usage: /broadcast <message>", NamedTextColor.RED));
             return;
-        }        String msg = String.join(" ", invocation.arguments());
-
+        }
+        String msg = String.join(" ", invocation.arguments());
         String customPrefixStr = "&4Broadcast &8» &f";
-        Component customPrefix = LegacyComponentSerializer.legacyAmpersand().deserialize(customPrefixStr);
-        
-        // Parse the message with legacy color codes (using &f for white as default color)
-        Component formattedMsg = LegacyComponentSerializer.legacyAmpersand().deserialize(msg);
-        Component fullMsg = customPrefix.append(formattedMsg);
+        String fullMsgLegacy = customPrefixStr + msg;
+        Component fullMsg = LegacyComponentSerializer.legacyAmpersand().deserialize(fullMsgLegacy);
 
-        plugin.getServer().getAllPlayers().forEach(player -> player.sendMessage(fullMsg));
-
+        if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            plugin.getCrossProxyService().publishBroadcast(fullMsgLegacy);
+        } else {
+            plugin.getServer().getAllPlayers().forEach(player -> player.sendMessage(fullMsg));
+        }
         if (!(invocation.source() instanceof Player)) {
             invocation.source().sendMessage(fullMsg);
         }

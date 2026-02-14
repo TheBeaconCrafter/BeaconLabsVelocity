@@ -100,7 +100,11 @@ public class InfoCommand implements SimpleCommand {
             
             // Send connection info
             sendConnectionInfo(src, target);
-            
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                src.sendMessage(Component.text("Proxy: ", NamedTextColor.YELLOW)
+                        .append(Component.text(plugin.getCrossProxyService().getProxyId(), NamedTextColor.AQUA)));
+            }
+
             // Separator for punishment section
             src.sendMessage(Component.empty());
             src.sendMessage(Component.text("» PUNISHMENT STATUS", NamedTextColor.RED)
@@ -132,9 +136,19 @@ public class InfoCommand implements SimpleCommand {
             }
             
             if (offlineUuid != null) {
-                // Found an offline player in the database (either punishment or player_stats)
-                src.sendMessage(Component.text("⚠ Player is currently offline.", NamedTextColor.GOLD)); // Changed color as they are found
-                
+                String onlineProxyId = (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled())
+                        ? plugin.getCrossProxyService().getPlayerProxy(offlineUuid) : null;
+
+                if (onlineProxyId != null) {
+                    src.sendMessage(Component.text("● Online on proxy: ", NamedTextColor.GREEN)
+                            .append(Component.text(onlineProxyId, NamedTextColor.AQUA).decorate(TextDecoration.BOLD)));
+                } else {
+                    src.sendMessage(Component.text("⚠ Player is currently offline.", NamedTextColor.GOLD));
+                    if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                        src.sendMessage(Component.text("(Player may be online on another proxy.)", NamedTextColor.GRAY));
+                    }
+                }
+
                 // Show offline player profile
                 src.sendMessage(Component.text("» PROFILE", NamedTextColor.AQUA)
                     .decorate(TextDecoration.BOLD));
@@ -244,6 +258,14 @@ public class InfoCommand implements SimpleCommand {
                     }
                 }
                 
+                if (onlineProxyId != null) {
+                    src.sendMessage(Component.empty());
+                    src.sendMessage(Component.text("» CONNECTION", NamedTextColor.GREEN)
+                            .decorate(TextDecoration.BOLD));
+                    src.sendMessage(Component.text("Proxy: ", NamedTextColor.YELLOW)
+                            .append(Component.text(onlineProxyId, NamedTextColor.AQUA)));
+                }
+
                 // Separator for punishment section
                 src.sendMessage(Component.empty());
                 src.sendMessage(Component.text("» PUNISHMENT STATUS", NamedTextColor.RED)

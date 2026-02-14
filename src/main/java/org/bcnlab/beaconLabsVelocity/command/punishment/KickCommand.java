@@ -11,6 +11,7 @@ import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -46,33 +47,49 @@ public class KickCommand implements SimpleCommand {
             src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("self-punish"))));
             return;
         }
-        Player target = server.getPlayer(targetName).orElse(null);
-        if (target == null) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand()
-                    .deserialize(config.getMessage("player-not-found").replace("{player}", targetName))));
-            return;
-        }
         String reason = config.getMessage("default-reason");
         if (args.length > 1) {
             reason = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
         }
-        // Record kick punishment (duration 0)
+        String kickScreenMsg = config.getMessage("kick-screen").replace("{reason}", reason);
+
+        Player target = server.getPlayer(targetName).orElse(null);
+        if (target == null) {
+            // Not on this proxy: try cross-proxy kick-by-name so the other proxy kicks them
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                plugin.getCrossProxyService().publishKickByName(targetName, kickScreenMsg);
+                UUID offlineUuid = service.getPlayerUUID(targetName);
+                if (offlineUuid != null) {
+                    service.punish(offlineUuid, targetName,
+                            (src instanceof Player) ? ((Player) src).getUniqueId() : null,
+                            (src instanceof Player) ? ((Player) src).getUsername() : "Console",
+                            "kick", 0L, reason);
+                }
+                String successMsg = config.getMessage("kick-success")
+                        .replace("{player}", targetName)
+                        .replace("{reason}", reason);
+                src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand()
+                        .deserialize(successMsg + " (on another proxy)")));
+            } else {
+                src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand()
+                        .deserialize(config.getMessage("player-not-found").replace("{player}", targetName))));
+            }
+            return;
+        }
+
+        // Player is on this proxy
         service.punish(target.getUniqueId(), target.getUsername(),
                 (src instanceof Player) ? ((Player) src).getUniqueId() : null,
                 (src instanceof Player) ? ((Player) src).getUsername() : "Console",
-                "kick", 0L, reason);        // Notify executor
+                "kick", 0L, reason);
         String successMsg = config.getMessage("kick-success")
                 .replace("{player}", target.getUsername())
                 .replace("{reason}", reason);
         src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(successMsg)));
-        
-        // Kick target with kick-screen message
-        String kickScreenMsg = config.getMessage("kick-screen")
-                .replace("{reason}", reason);
+
         Component kickComp = LegacyComponentSerializer.legacyAmpersand().deserialize(kickScreenMsg);
         target.disconnect(kickComp);
 
-        // Notify other proxies to kick this player if they have them
         if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
             plugin.getCrossProxyService().publishKick(target.getUniqueId(), kickScreenMsg);
         }

@@ -46,22 +46,19 @@ public class TeamChatCommand implements SimpleCommand {
 
         // Combine arguments into message
         String message = String.join(" ", args);
-
-        // Get sender's prefix from MessageService
         String senderPrefix = messageService.getPlayerPrefix(sender);
+        String messageLegacy = String.format(teamChatFormat, senderPrefix, sender.getUsername(), message);
 
-        // Format the team chat message
-        Component formattedMessage = LegacyComponentSerializer.legacyAmpersand()
-                .deserialize(String.format(teamChatFormat, senderPrefix, sender.getUsername(), message));
-
-        // Send the message to all players with the team chat permission
-        for (Player player : plugin.getServer().getAllPlayers()) {
-            if (player.hasPermission("beaconlabs.teamchat")) {
-                player.sendMessage(formattedMessage);
+        if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            plugin.getCrossProxyService().publishTeamChat(messageLegacy);
+        } else {
+            Component formattedMessage = LegacyComponentSerializer.legacyAmpersand().deserialize(messageLegacy);
+            for (Player player : plugin.getServer().getAllPlayers()) {
+                if (player.hasPermission("beaconlabs.teamchat")) {
+                    player.sendMessage(formattedMessage);
+                }
             }
         }
-        
-        // Log the team chat message
         plugin.getLogger().info("[TeamChat] {}: {}", sender.getUsername(), message);
     }
 

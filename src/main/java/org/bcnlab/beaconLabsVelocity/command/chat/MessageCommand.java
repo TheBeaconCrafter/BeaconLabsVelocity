@@ -47,22 +47,29 @@ public class MessageCommand implements SimpleCommand {
             return;
         }
 
-        // Find recipient
-        String recipientName = args[0];
-        Optional<Player> optRecipient = plugin.getServer().getPlayer(recipientName);
-
-        if (!optRecipient.isPresent()) {
-            sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + recipientName + "' not found or offline.", NamedTextColor.RED)));
-            return;
-        }
-
         // Combine remaining arguments into message
         String[] messageArgs = new String[args.length - 1];
         System.arraycopy(args, 1, messageArgs, 0, args.length - 1);
         String message = String.join(" ", messageArgs);
+        String recipientName = args[0];
 
-        // Send the message
-        messageService.sendPrivateMessage(sender, optRecipient.get(), message);
+        Optional<Player> optRecipient = plugin.getServer().getPlayer(recipientName);
+        if (optRecipient.isPresent()) {
+            messageService.sendPrivateMessage(sender, optRecipient.get(), message);
+            return;
+        }
+
+        // Not on this proxy: try cross-proxy /msg
+        if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            String recipientMessageLegacy = messageService.formatIncomingMessageLegacy(sender, message);
+            plugin.getCrossProxyService().publishPrivateMsg(recipientName, recipientMessageLegacy);
+            Component senderMsg = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()
+                    .deserialize(String.format("&8[&7You &8-> %s&7%s&8]: &f%s", "", recipientName, message));
+            sender.sendMessage(senderMsg);
+            sender.sendMessage(plugin.getPrefix().append(Component.text("Message sent to " + recipientName + " (cross-proxy).", NamedTextColor.GRAY)));
+        } else {
+            sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + recipientName + "' not found or offline.", NamedTextColor.RED)));
+        }
     }
 
     @Override

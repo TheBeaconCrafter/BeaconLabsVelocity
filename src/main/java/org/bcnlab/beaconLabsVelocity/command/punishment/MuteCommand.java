@@ -8,6 +8,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
+import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
 import org.bcnlab.beaconLabsVelocity.util.DurationUtils;
 
@@ -47,16 +48,43 @@ public class MuteCommand implements SimpleCommand {
             src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("self-punish"))));
             return;
         }
-        Player target = server.getPlayer(targetName).orElse(null);
-        if (target == null) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("player-not-found").replace("{player}", targetName))));
-            return;
-        }
         long duration = DurationUtils.parseDuration(args[1]);
         String reason = config.getMessage("default-reason");
         if (args.length > 2) {
             reason = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
         }
+
+        Player target = server.getPlayer(targetName).orElse(null);
+        if (target == null) {
+            // Player not on this proxy: try to resolve UUID from DB (cross-proxy mute)
+            UUID offlineUuid = service.getPlayerUUID(targetName);
+            String canonicalName = targetName;
+            if (offlineUuid == null && plugin.getPlayerStatsService() != null) {
+                PlayerStatsService.PlayerData data = plugin.getPlayerStatsService().getPlayerDataByName(targetName);
+                if (data != null) {
+                    offlineUuid = data.getPlayerId();
+                    canonicalName = data.getPlayerName();
+                }
+            }
+            if (offlineUuid != null) {
+                service.punish(offlineUuid, canonicalName,
+                        (src instanceof Player) ? ((Player) src).getUniqueId() : null,
+                        src instanceof Player ? ((Player) src).getUsername() : "Console",
+                        "mute", duration, reason);
+                String msg = config.getMessage("mute-success")
+                        .replace("{player}", canonicalName)
+                        .replace("{duration}", DurationUtils.formatDuration(duration))
+                        .replace("{reason}", reason);
+                src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(msg + (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled() ? " (on another proxy)" : ""))));
+                if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                    plugin.getCrossProxyService().publishMuteApplied(offlineUuid, reason, DurationUtils.formatDuration(duration));
+                }
+            } else {
+                src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("player-not-found").replace("{player}", targetName))));
+            }
+            return;
+        }
+
         service.punish(target.getUniqueId(), target.getUsername(),
                 (src instanceof Player) ? ((Player) src).getUniqueId() : null,
                 src instanceof Player ? ((Player) src).getUsername() : "Console",
@@ -65,7 +93,10 @@ public class MuteCommand implements SimpleCommand {
                 .replace("{player}", target.getUsername())
                 .replace("{duration}", DurationUtils.formatDuration(duration))
                 .replace("{reason}", reason);
-        src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(msg));
+        src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(msg)));
+        if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            plugin.getCrossProxyService().publishMuteApplied(target.getUniqueId(), reason, DurationUtils.formatDuration(duration));
+        }
     }
 
     @Override

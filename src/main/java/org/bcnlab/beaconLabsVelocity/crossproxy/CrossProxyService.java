@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 public class CrossProxyService {
 
     private static final String CHANNEL = "blv:crossproxy";
+    private static final String ONLINE_KEY_PREFIX = "blv:online:";
 
     private final BeaconLabsVelocity plugin;
     private final ProxyServer server;
@@ -60,6 +61,37 @@ public class CrossProxyService {
     /** When true, duplicate sessions are allowed (player can be on two proxies at once). */
     public boolean isAllowDoubleJoin() {
         return allowDoubleJoin;
+    }
+
+    /** Record that this player is on this proxy (for /info cross-proxy). */
+    public void setPlayerProxy(UUID playerUuid, String onProxyId) {
+        if (!enabled || pubConnection == null || onProxyId == null) return;
+        try {
+            pubConnection.sync().set(ONLINE_KEY_PREFIX + playerUuid.toString(), onProxyId);
+        } catch (Exception e) {
+            logger.debug("Failed to set online proxy for {}: {}", playerUuid, e.getMessage());
+        }
+    }
+
+    /** Remove player from online proxy map (on disconnect). */
+    public void removePlayerProxy(UUID playerUuid) {
+        if (!enabled || pubConnection == null) return;
+        try {
+            pubConnection.sync().del(ONLINE_KEY_PREFIX + playerUuid.toString());
+        } catch (Exception e) {
+            logger.debug("Failed to remove online proxy for {}: {}", playerUuid, e.getMessage());
+        }
+    }
+
+    /** Get which proxy this player is on (null if not on any proxy we know of). */
+    public String getPlayerProxy(UUID playerUuid) {
+        if (!enabled || pubConnection == null) return null;
+        try {
+            return pubConnection.sync().get(ONLINE_KEY_PREFIX + playerUuid.toString());
+        } catch (Exception e) {
+            logger.debug("Failed to get online proxy for {}: {}", playerUuid, e.getMessage());
+            return null;
+        }
     }
 
     /** Call after config is loaded. Connects and subscribes if enabled and config valid. */
@@ -149,6 +181,9 @@ public class CrossProxyService {
                     case KICK:
                         handleKick(msg);
                         break;
+                    case KICK_BY_NAME:
+                        handleKickByName(msg);
+                        break;
                     case SENDALL:
                         handleSendAll(msg);
                         break;
@@ -157,6 +192,18 @@ public class CrossProxyService {
                         break;
                     case SEND_PLAYER:
                         handleSendPlayer(msg);
+                        break;
+                    case MUTE_APPLIED:
+                        handleMuteApplied(msg);
+                        break;
+                    case PRIVATE_MSG:
+                        handlePrivateMsg(msg);
+                        break;
+                    case BROADCAST:
+                        handleBroadcast(msg);
+                        break;
+                    case TEAM_CHAT:
+                        handleTeamChat(msg);
                         break;
                     default:
                         break;
@@ -177,6 +224,18 @@ public class CrossProxyService {
                     : Component.text("Kicked from the network.");
             player.disconnect(reason);
             logger.debug("Kicked player {} on cross-proxy request.", player.getUsername());
+        });
+    }
+
+    private void handleKickByName(CrossProxyMessage msg) {
+        String name = msg.getUsername();
+        if (name == null || name.isEmpty()) return;
+        server.getPlayer(name).ifPresent(player -> {
+            Component reason = msg.getReason() != null && !msg.getReason().isEmpty()
+                    ? LegacyComponentSerializer.legacyAmpersand().deserialize(msg.getReason())
+                    : Component.text("Kicked from the network.");
+            player.disconnect(reason);
+            logger.debug("Kicked player {} on cross-proxy kick-by-name.", player.getUsername());
         });
     }
 
@@ -210,6 +269,43 @@ public class CrossProxyService {
                 player.createConnectionRequest(target.get()).connectWithIndication());
     }
 
+    private void handleMuteApplied(CrossProxyMessage msg) {
+        UUID uuid = msg.getUuidAsUUID();
+        if (uuid == null) return;
+        server.getPlayer(uuid).ifPresent(player -> {
+            String reason = msg.getReason() != null && !msg.getReason().isEmpty() ? msg.getReason() : "No reason specified";
+            String duration = msg.getDurationFormatted() != null && !msg.getDurationFormatted().isEmpty() ? msg.getDurationFormatted() : "Permanent";
+            Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(
+                    "&c&lYou have been muted. &7Duration: &f" + duration + " &7| Reason: &f" + reason);
+            player.sendMessage(plugin.getPrefix().append(comp));
+        });
+    }
+
+    private void handlePrivateMsg(CrossProxyMessage msg) {
+        String targetUsername = msg.getUsername();
+        if (targetUsername == null || targetUsername.isEmpty()) return;
+        String legacy = msg.getReason();
+        if (legacy == null) return;
+        server.getPlayer(targetUsername).ifPresent(player ->
+                player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(legacy)));
+    }
+
+    private void handleBroadcast(CrossProxyMessage msg) {
+        String legacy = msg.getReason();
+        if (legacy == null) return;
+        Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
+        server.getAllPlayers().forEach(p -> p.sendMessage(comp));
+    }
+
+    private void handleTeamChat(CrossProxyMessage msg) {
+        String legacy = msg.getReason();
+        if (legacy == null) return;
+        Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
+        server.getAllPlayers().stream()
+                .filter(p -> p.hasPermission("beaconlabs.teamchat"))
+                .forEach(p -> p.sendMessage(comp));
+    }
+
     private void publish(String message) {
         if (!enabled || pubConnection == null) return;
         try {
@@ -223,6 +319,11 @@ public class CrossProxyService {
         publish(CrossProxyMessage.kick(uuid, reason, sharedSecret, proxyId));
     }
 
+    /** Ask other proxies to kick a player by name (used when player is not on this proxy). */
+    public void publishKickByName(String username, String reason) {
+        publish(CrossProxyMessage.kickByName(username, reason, sharedSecret, proxyId));
+    }
+
     public void publishSendAll(String serverName) {
         publish(CrossProxyMessage.sendAll(serverName, sharedSecret, proxyId));
     }
@@ -233,5 +334,21 @@ public class CrossProxyService {
 
     public void publishSendPlayer(UUID uuid, String serverName) {
         publish(CrossProxyMessage.sendPlayer(uuid, serverName, sharedSecret, proxyId));
+    }
+
+    public void publishMuteApplied(UUID uuid, String reason, String durationFormatted) {
+        publish(CrossProxyMessage.muteApplied(uuid, reason, durationFormatted, sharedSecret, proxyId));
+    }
+
+    public void publishPrivateMsg(String targetUsername, String recipientMessageLegacy) {
+        publish(CrossProxyMessage.privateMsg(targetUsername, recipientMessageLegacy, sharedSecret, proxyId));
+    }
+
+    public void publishBroadcast(String messageLegacy) {
+        publish(CrossProxyMessage.broadcast(messageLegacy, sharedSecret, proxyId));
+    }
+
+    public void publishTeamChat(String messageLegacy) {
+        publish(CrossProxyMessage.teamChat(messageLegacy, sharedSecret, proxyId));
     }
 }
