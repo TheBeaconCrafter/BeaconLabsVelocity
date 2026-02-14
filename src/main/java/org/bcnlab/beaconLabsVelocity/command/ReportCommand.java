@@ -7,6 +7,7 @@ import com.velocitypowered.api.proxy.ServerConnection;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.service.ReportService;
 
@@ -79,11 +80,12 @@ public class ReportCommand implements SimpleCommand {
             return;
         }
         
-        // Check if the target player exists/is online
+        // Check if the target player exists/is online (this proxy or another when cross-proxy)
         Optional<Player> targetOptional = plugin.getServer().getPlayer(targetName);
-        
-        // If the target isn't online, warn the player but still allow the report
-        if (targetOptional.isEmpty()) {
+        boolean targetOnNetwork = targetOptional.isPresent()
+            || (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()
+                && plugin.getCrossProxyService().getPlayerCurrentServer(targetName) != null);
+        if (!targetOnNetwork) {
             player.sendMessage(plugin.getPrefix().append(
                 Component.text("Warning: ", NamedTextColor.YELLOW, TextDecoration.BOLD)
                     .append(Component.text("The player you're reporting is not online. Your report will still be submitted.", NamedTextColor.YELLOW, TextDecoration.ITALIC))
@@ -112,10 +114,16 @@ public class ReportCommand implements SimpleCommand {
             .map(server -> server.getName())
             .orElse("Unknown");
             
-        // Get UUID for reported player or generate a placeholder for offline players
-        String targetUuid = targetOptional
-            .map(target -> target.getUniqueId().toString())
-            .orElse("offline:" + targetName);
+        // Get UUID for reported player (local, cross-proxy online, or placeholder for offline)
+        String targetUuid;
+        if (targetOptional.isPresent()) {
+            targetUuid = targetOptional.get().getUniqueId().toString();
+        } else if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            java.util.UUID crossUuid = plugin.getCrossProxyService().getPlayerUuidByName(targetName);
+            targetUuid = crossUuid != null ? crossUuid.toString() : "offline:" + targetName;
+        } else {
+            targetUuid = "offline:" + targetName;
+        }
         
         // Submit the report
         reportService.createReport(
@@ -133,8 +141,12 @@ public class ReportCommand implements SimpleCommand {
                         .append(Component.text("#" + reportId, NamedTextColor.GOLD, TextDecoration.BOLD))
                 ));
                 
-                // Notify online staff
-                notifyStaff(targetName, player.getUsername(), reason, serverName, reportId);
+                // Notify online staff on this proxy and publish to other proxies
+                Component notification = buildReportNotification(targetName, player.getUsername(), reason, serverName, reportId);
+                notifyStaff(notification);
+                if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                    plugin.getCrossProxyService().publishReportNotify(LegacyComponentSerializer.legacyAmpersand().serialize(notification));
+                }
                 
                 // Add cooldown
                 addCooldown(player.getUniqueId().toString());
@@ -189,17 +201,8 @@ public class ReportCommand implements SimpleCommand {
         cooldowns.add(new ReportCooldown(playerUuid, cooldownSeconds));
     }
     
-    /**
-     * Notify online staff about a new report
-     * 
-     * @param reportedName The reported player's name
-     * @param reporterName The reporting player's name
-     * @param reason The reason for the report
-     * @param serverName The server where the report was made
-     * @param reportId The report ID
-     */
-    private void notifyStaff(String reportedName, String reporterName, String reason, String serverName, int reportId) {
-        Component notification = Component.text("【REPORT】", NamedTextColor.RED, TextDecoration.BOLD)
+    private static Component buildReportNotification(String reportedName, String reporterName, String reason, String serverName, int reportId) {
+        return Component.text("【REPORT】", NamedTextColor.RED, TextDecoration.BOLD)
             .append(Component.text(" New player report #" + reportId + ":", NamedTextColor.GOLD))
             .append(Component.newline())
             .append(Component.text("  Reported: ", NamedTextColor.YELLOW))
@@ -213,8 +216,10 @@ public class ReportCommand implements SimpleCommand {
             .append(Component.newline())
             .append(Component.text("  Reason: ", NamedTextColor.YELLOW))
             .append(Component.text(reason, NamedTextColor.WHITE));
-        
-        // Send to all staff with the reports.notify permission
+    }
+
+    /** Notify local staff with reports.notify permission. */
+    private void notifyStaff(Component notification) {
         for (Player staffMember : plugin.getServer().getAllPlayers()) {
             if (staffMember.hasPermission("beaconlabs.reports.notify")) {
                 staffMember.sendMessage(notification);
@@ -226,13 +231,16 @@ public class ReportCommand implements SimpleCommand {
     public List<String> suggest(Invocation invocation) {
         String[] args = invocation.arguments();
         
-        // For the first argument, suggest online players
         if (args.length == 1) {
             String partialName = args[0].toLowerCase();
-            return plugin.getServer().getAllPlayers().stream()
-                .map(Player::getUsername)
+            java.util.Collection<String> names = (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled())
+                ? plugin.getCrossProxyService().getOnlinePlayerNames()
+                : plugin.getServer().getAllPlayers().stream().map(Player::getUsername).collect(Collectors.toList());
+            String selfName = invocation.source() instanceof Player ? ((Player) invocation.source()).getUsername() : null;
+            final String self = selfName;
+            return names.stream()
                 .filter(name -> name.toLowerCase().startsWith(partialName))
-                .filter(name -> !name.equalsIgnoreCase(((Player) invocation.source()).getUsername()))  // Exclude self
+                .filter(name -> self == null || !name.equalsIgnoreCase(self))
                 .collect(Collectors.toList());
         }
         

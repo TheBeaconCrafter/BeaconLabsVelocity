@@ -57,8 +57,10 @@ public class ClearPunishmentCommand implements SimpleCommand {
             targetUUID = onlinePlayer.getUniqueId();
             playerName = onlinePlayer.getUsername(); // Use correct case
         } else {
-            // Try to get UUID for offline player
             targetUUID = service.getPlayerUUID(playerName);
+            if (targetUUID == null && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                targetUUID = plugin.getCrossProxyService().getPlayerUuidByName(playerName);
+            }
             if (targetUUID == null) {
                 src.sendMessage(plugin.getPrefix().append(
                     LegacyComponentSerializer.legacyAmpersand().deserialize(
@@ -86,8 +88,15 @@ public class ClearPunishmentCommand implements SimpleCommand {
     public List<String> suggest(Invocation invocation) {
         String[] args = invocation.arguments();
         if (args.length == 1) {
+            String prefix = args[0].toLowerCase();
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                return plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                    .filter(name -> name.toLowerCase().startsWith(prefix))
+                    .collect(Collectors.toList());
+            }
             return server.getAllPlayers().stream()
                     .map(Player::getUsername)
+                    .filter(name -> name.toLowerCase().startsWith(prefix))
                     .collect(Collectors.toList());
         }
         return List.of();

@@ -8,6 +8,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
@@ -107,6 +108,11 @@ public class ChatFilterListener {
         server.getAllPlayers().stream()
                 .filter(player -> player.hasPermission("beaconlabs.chatfilter.alert"))
                 .forEach(player -> player.sendMessage(notification));
+
+        if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            plugin.getCrossProxyService().publishBadWordAlert(
+                playerName, message, LegacyComponentSerializer.legacyAmpersand().serialize(notification));
+        }
     }
 
     private String findBadWord(String message) {

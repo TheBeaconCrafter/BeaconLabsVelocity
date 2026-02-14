@@ -84,8 +84,13 @@ public class SendCommand implements SimpleCommand {
         }
 
         if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
-            java.util.UUID uuid = plugin.getPunishmentService() != null ? plugin.getPunishmentService().getPlayerUUID(target) : null;
-            if (uuid != null && plugin.getCrossProxyService().getPlayerProxy(uuid) != null) {
+            java.util.UUID uuid = plugin.getCrossProxyService().getPlayerUuidByName(target);
+            if (uuid == null && plugin.getPunishmentService() != null) {
+                uuid = plugin.getPunishmentService().getPlayerUUID(target);
+                if (uuid != null && plugin.getCrossProxyService().getPlayerProxy(uuid) == null)
+                    uuid = null; // not on any proxy
+            }
+            if (uuid != null) {
                 plugin.getCrossProxyService().publishSendPlayer(uuid, serverName);
                 source.sendMessage(plugin.getPrefix().append(
                         Component.text("Sent " + target + " to " + serverName + " (cross-proxy).", NamedTextColor.GREEN)));

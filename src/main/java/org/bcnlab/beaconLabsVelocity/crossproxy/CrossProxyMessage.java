@@ -24,7 +24,9 @@ public final class CrossProxyMessage {
         MAINTENANCE_SET,
         WHITELIST_SET,
         JOINME_TO_PLAYER,
-        JOINME_BROADCAST
+        JOINME_BROADCAST,
+        REPORT_NOTIFY,
+        BADWORD_ALERT
     }
 
     private final Type type;
@@ -133,6 +135,16 @@ public final class CrossProxyMessage {
         return "JOINME_BROADCAST" + SEP + (senderUsername != null ? senderUsername : "") + SEP + (serverName != null ? serverName : "") + SEP + secret + SEP + proxyId;
     }
 
+    /** Build outbound REPORT_NOTIFY (notification legacy string so each proxy can display to local staff). */
+    public static String reportNotify(String notificationLegacy, String secret, String proxyId) {
+        return "REPORT_NOTIFY" + SEP + (notificationLegacy != null ? notificationLegacy : "") + SEP + secret + SEP + proxyId;
+    }
+
+    /** Build outbound BADWORD_ALERT (playerName, message/badWord, notification legacy for admins). */
+    public static String badWordAlert(String playerName, String messageContent, String notificationLegacy, String secret, String proxyId) {
+        return "BADWORD_ALERT" + SEP + (playerName != null ? playerName : "") + SEP + (messageContent != null ? messageContent : "") + SEP + (notificationLegacy != null ? notificationLegacy : "") + SEP + secret + SEP + proxyId;
+    }
+
     /**
      * Parse an incoming message. Returns null if invalid or unknown type.
      * Reason field may contain SEP; we reassemble it from middle parts for KICK.
@@ -193,6 +205,14 @@ public final class CrossProxyMessage {
             }
             if ("JOINME_BROADCAST".equals(typeStr) && parts.length >= 5) {
                 return new CrossProxyMessage(Type.JOINME_BROADCAST, parts[3], parts[4], null, parts[2], parts[1], null, null); // reason=serverName(parts[2]), serverName=senderUsername(parts[1])
+            }
+            if ("REPORT_NOTIFY".equals(typeStr) && parts.length >= 4) {
+                String notificationLegacy = parts.length == 4 ? parts[1] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 1, parts.length - 2));
+                return new CrossProxyMessage(Type.REPORT_NOTIFY, parts[parts.length - 2], parts[parts.length - 1], null, notificationLegacy, null, null, null);
+            }
+            if ("BADWORD_ALERT".equals(typeStr) && parts.length >= 6) {
+                String notificationLegacy = parts.length == 6 ? parts[3] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 3, parts.length - 2));
+                return new CrossProxyMessage(Type.BADWORD_ALERT, parts[parts.length - 2], parts[parts.length - 1], null, notificationLegacy, null, parts[1], null); // username=playerName, reason=messageContent
             }
         } catch (Exception ignored) { }
         return null;

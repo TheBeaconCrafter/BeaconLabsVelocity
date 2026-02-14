@@ -68,15 +68,15 @@ public class IpsCommand implements SimpleCommand {
         Optional<Player> optionalTarget = server.getPlayer(targetName);
         UUID targetUuid;
         
-        // Get UUID from online player or database
+        // Get UUID from online player, cross-proxy plist, or database
         if (optionalTarget.isPresent()) {
             targetUuid = optionalTarget.get().getUniqueId();
         } else {
-            // Try to get UUID from punishment service
             targetUuid = punishmentService.getPlayerUUID(targetName);
-            
+            if (targetUuid == null && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(targetName);
+            }
             if (targetUuid == null) {
-                // Player not found at all
                 src.sendMessage(plugin.getPrefix().append(
                     Component.text("Player not found: " + targetName, NamedTextColor.RED)));
                 return;
@@ -287,9 +287,15 @@ public class IpsCommand implements SimpleCommand {
     public List<String> suggest(Invocation invocation) {
         String[] args = invocation.arguments();
         if (args.length == 1) {
+            String prefix = args[0].toLowerCase();
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                return plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                    .filter(name -> name.toLowerCase().startsWith(prefix))
+                    .collect(Collectors.toList());
+            }
             return server.getAllPlayers().stream()
                 .map(Player::getUsername)
-                .filter(name -> name.toLowerCase().startsWith(args[0].toLowerCase()))
+                .filter(name -> name.toLowerCase().startsWith(prefix))
                 .collect(Collectors.toList());
         }
         return List.of();

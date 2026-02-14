@@ -123,14 +123,14 @@ public class CrossProxyService {
         }
     }
 
-    /** Update the player list for this proxy (call on join, leave, server switch). */
+    /** Update the player list for this proxy (call on join, leave, server switch). Format per entry: uuid:username:server for cross-proxy UUID lookup. */
     public void updatePlayerList() {
         if (!enabled || pubConnection == null) return;
         try {
             java.util.List<String> entries = new java.util.ArrayList<>();
             for (com.velocitypowered.api.proxy.Player p : server.getAllPlayers()) {
                 String serverName = p.getCurrentServer().map(s -> s.getServerInfo().getName()).orElse("?");
-                entries.add(p.getUsername() + PLAYER_SERVER_PAIR_SEP + serverName);
+                entries.add(p.getUniqueId().toString() + PLAYER_SERVER_PAIR_SEP + p.getUsername() + PLAYER_SERVER_PAIR_SEP + serverName);
             }
             String value = String.join(PLAYER_SERVER_SEP, entries);
             pubConnection.sync().set(PLIST_KEY_PREFIX + proxyId, value);
@@ -150,7 +150,7 @@ public class CrossProxyService {
         }
     }
 
-    /** Get player list for a proxy: list of (playerName, serverName). */
+    /** Get player list for a proxy: list of (playerName, serverName). Supports format "uuid:username:server" or legacy "username:server". */
     public java.util.List<java.util.Map.Entry<String, String>> getPlayerListForProxy(String proxyIdKey) {
         if (!enabled || pubConnection == null) return java.util.Collections.emptyList();
         try {
@@ -158,9 +158,11 @@ public class CrossProxyService {
             if (raw == null || raw.isEmpty()) return java.util.Collections.emptyList();
             java.util.List<java.util.Map.Entry<String, String>> out = new java.util.ArrayList<>();
             for (String entry : raw.split(PLAYER_SERVER_SEP, -1)) {
-                int idx = entry.indexOf(PLAYER_SERVER_PAIR_SEP);
-                if (idx > 0) {
-                    out.add(new java.util.AbstractMap.SimpleEntry<>(entry.substring(0, idx), entry.substring(idx + 1)));
+                String[] parts = entry.split(PLAYER_SERVER_PAIR_SEP, 3);
+                if (parts.length >= 3) {
+                    out.add(new java.util.AbstractMap.SimpleEntry<>(parts[1], parts[2]));
+                } else if (parts.length == 2) {
+                    out.add(new java.util.AbstractMap.SimpleEntry<>(parts[0], parts[1]));
                 }
             }
             return out;
@@ -168,6 +170,29 @@ public class CrossProxyService {
             logger.debug("Failed to get player list for {}: {}", proxyIdKey, e.getMessage());
             return java.util.Collections.emptyList();
         }
+    }
+
+    /** Get UUID of an online player by name (case-insensitive) from any proxy's plist. Returns null if not found. */
+    public UUID getPlayerUuidByName(String playerName) {
+        if (playerName == null || playerName.isEmpty() || !enabled || pubConnection == null) return null;
+        String lower = playerName.toLowerCase();
+        try {
+            for (String pid : getProxyIds()) {
+                String raw = pubConnection.sync().get(PLIST_KEY_PREFIX + pid);
+                if (raw == null || raw.isEmpty()) continue;
+                for (String entry : raw.split(PLAYER_SERVER_SEP, -1)) {
+                    String[] parts = entry.split(PLAYER_SERVER_PAIR_SEP, 3);
+                    if (parts.length >= 3 && parts[1].equalsIgnoreCase(lower)) {
+                        try {
+                            return UUID.fromString(parts[0]);
+                        } catch (IllegalArgumentException ignored) { }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("getPlayerUuidByName failed: {}", e.getMessage());
+        }
+        return null;
     }
 
     /** Call after config is loaded. Connects and subscribes if enabled and config valid. */
@@ -301,6 +326,12 @@ public class CrossProxyService {
                         break;
                     case JOINME_BROADCAST:
                         handleJoinMeBroadcast(msg);
+                        break;
+                    case REPORT_NOTIFY:
+                        handleReportNotify(msg);
+                        break;
+                    case BADWORD_ALERT:
+                        handleBadWordAlert(msg);
                         break;
                     default:
                         break;
@@ -591,6 +622,26 @@ public class CrossProxyService {
         server.getAllPlayers().forEach(p -> p.sendMessage(joinMe));
     }
 
+    private void handleReportNotify(CrossProxyMessage msg) {
+        if (msg.getProxyId() != null && msg.getProxyId().equals(proxyId)) return; // originator already notified local staff
+        String legacy = msg.getReason();
+        if (legacy == null || legacy.isEmpty()) return;
+        Component notification = LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
+        server.getAllPlayers().stream()
+                .filter(p -> p.hasPermission("beaconlabs.reports.notify"))
+                .forEach(p -> p.sendMessage(notification));
+    }
+
+    private void handleBadWordAlert(CrossProxyMessage msg) {
+        if (msg.getProxyId() != null && msg.getProxyId().equals(proxyId)) return; // originator already notified local admins
+        String legacy = msg.getReason();
+        if (legacy == null || legacy.isEmpty()) return;
+        Component notification = LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
+        server.getAllPlayers().stream()
+                .filter(p -> p.hasPermission("beaconlabs.chatfilter.alert"))
+                .forEach(p -> p.sendMessage(notification));
+    }
+
     private static Component buildJoinMeComponent(String senderUsername, String serverName) {
         Component border = Component.text("▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬", NamedTextColor.GOLD, TextDecoration.BOLD);
         Component header = Component.text("  ✦ JOIN ME INVITATION ✦  ", NamedTextColor.YELLOW, TextDecoration.BOLD);
@@ -614,5 +665,13 @@ public class CrossProxyService {
 
     public void publishJoinMeBroadcast(String senderUsername, String serverName) {
         publish(CrossProxyMessage.joinMeBroadcast(senderUsername, serverName, sharedSecret, proxyId));
+    }
+
+    public void publishReportNotify(String notificationLegacy) {
+        publish(CrossProxyMessage.reportNotify(notificationLegacy, sharedSecret, proxyId));
+    }
+
+    public void publishBadWordAlert(String playerName, String messageContent, String notificationLegacy) {
+        publish(CrossProxyMessage.badWordAlert(playerName, messageContent, notificationLegacy, sharedSecret, proxyId));
     }
 }
