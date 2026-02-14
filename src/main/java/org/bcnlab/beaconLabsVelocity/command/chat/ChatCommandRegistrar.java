@@ -28,7 +28,7 @@ public class ChatCommandRegistrar {
     }    public void registerAll() {
         // ChatReport command
         commandManager.register("chatreport", new ChatReportCommand(
-            new FileChatLogger(plugin.getDataDirectory().toString()), plugin, server));
+            plugin.getFileChatLogger(), plugin, server));
         
         // Broadcast command with aliases
         BroadcastCommand broadcastCommand = new BroadcastCommand(plugin);

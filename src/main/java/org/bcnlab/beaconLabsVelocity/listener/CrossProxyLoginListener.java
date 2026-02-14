@@ -20,6 +20,7 @@ public class CrossProxyLoginListener {
     public void onPostLogin(PostLoginEvent event) {
         if (plugin.getCrossProxyService() == null || !plugin.getCrossProxyService().isEnabled()) return;
         plugin.getCrossProxyService().setPlayerProxy(event.getPlayer().getUniqueId(), plugin.getCrossProxyService().getProxyId());
+        plugin.getCrossProxyService().updatePlayerList();
         if (plugin.getCrossProxyService().isAllowDoubleJoin()) return; // don't notify other proxies; allow double-join
         plugin.getCrossProxyService().publishPlayerConnect(event.getPlayer().getUniqueId());
     }

@@ -44,26 +44,32 @@ public class ReplyCommand implements SimpleCommand {
             return;
         }
 
-        // Get the last message sender
-        Optional<Player> optRecipient = messageService.getLastMessageSender(sender);
-
-        if (!optRecipient.isPresent()) {
-            sender.sendMessage(plugin.getPrefix().append(Component.text("You have no one to reply to.", NamedTextColor.RED)));
-            return;
-        }
-
-        // Check if the recipient is still online
-        Player recipient = optRecipient.get();
-        if (!recipient.isActive()) {
-            sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + recipient.getUsername() + "' is no longer online.", NamedTextColor.RED)));
-            return;
-        }
-
-        // Combine arguments into message
         String message = String.join(" ", args);
 
-        // Send the message
-        messageService.sendPrivateMessage(sender, recipient, message);
+        // Try local last sender first
+        Optional<Player> optRecipient = messageService.getLastMessageSender(sender);
+        if (optRecipient.isPresent()) {
+            Player recipient = optRecipient.get();
+            if (!recipient.isActive()) {
+                sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + recipient.getUsername() + "' is no longer online.", NamedTextColor.RED)));
+                return;
+            }
+            messageService.sendPrivateMessage(sender, recipient, message);
+            return;
+        }
+
+        // Cross-proxy: last message was from a player on another proxy
+        String lastSenderUsername = messageService.getLastSenderUsername(sender.getUniqueId());
+        if (lastSenderUsername != null && !lastSenderUsername.isEmpty() && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            String recipientMessageLegacy = messageService.formatIncomingMessageLegacy(sender, message);
+            plugin.getCrossProxyService().publishPrivateMsg(lastSenderUsername, sender.getUniqueId().toString(), sender.getUsername(), recipientMessageLegacy);
+            Component senderMsg = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()
+                    .deserialize(String.format("&8[&7You &8-> %s&7%s&8]: &f%s", "", lastSenderUsername, message));
+            sender.sendMessage(senderMsg);
+            return;
+        }
+
+        sender.sendMessage(plugin.getPrefix().append(Component.text("You have no one to reply to.", NamedTextColor.RED)));
     }
 
     @Override

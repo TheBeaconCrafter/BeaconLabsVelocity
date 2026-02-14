@@ -10,6 +10,10 @@ import org.bcnlab.beaconLabsVelocity.util.DurationUtils;
 import org.bcnlab.beaconLabsVelocity.util.DiscordWebhook;
 import org.slf4j.Logger;
 
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -93,7 +97,36 @@ public class PunishmentService {
         } catch (Exception e) {
             logger.error("Failed to get UUID for username: " + username, e);
         }
-        return null; // Not found
+        // Fallback: Mojang API (for offline/other-proxy players never in punishments DB)
+        return fetchUUIDFromMojang(username);
+    }
+
+    private UUID fetchUUIDFromMojang(String username) {
+        if (username == null || username.isEmpty()) return null;
+        try {
+            URL url = new URL("https://api.mojang.com/users/profiles/minecraft/" + username);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            if (conn.getResponseCode() != 200) return null;
+            try (InputStreamReader reader = new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8)) {
+                String raw = new java.util.Scanner(reader).useDelimiter("\\A").next();
+                int idStart = raw.indexOf("\"id\":\"");
+                if (idStart == -1) return null;
+                idStart += 6;
+                int idEnd = raw.indexOf("\"", idStart);
+                if (idEnd == -1) return null;
+                String uuidStr = raw.substring(idStart, idEnd);
+                return UUID.fromString(uuidStr.replaceFirst(
+                    "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{12})",
+                    "$1-$2-$3-$4-$5"));
+            }
+        } catch (Exception e) {
+            logger.debug("Mojang lookup failed for {}: {}", username, e.getMessage());
+            return null;
+        }
     }
 
     private void expireOld() {

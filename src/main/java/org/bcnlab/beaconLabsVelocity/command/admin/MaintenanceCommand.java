@@ -5,6 +5,7 @@ import com.velocitypowered.api.command.SimpleCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.service.MaintenanceService;
 
@@ -71,26 +72,35 @@ public class MaintenanceCommand implements SimpleCommand {
             return;
         }
         
-        // Toggle maintenance mode
-        boolean success = maintenanceService.toggleMaintenance(enable);
-        
+        // Success message (build first so we can use for cross-proxy broadcast)
+        Component resultMessage = Component.text()
+            .append(plugin.getPrefix())
+            .append(Component.text("Maintenance mode "))
+            .append(enable ?
+                Component.text("enabled", NamedTextColor.RED, TextDecoration.BOLD) :
+                Component.text("disabled", NamedTextColor.GREEN, TextDecoration.BOLD))
+            .build();
+        String broadcastLegacy = LegacyComponentSerializer.legacyAmpersand().serialize(resultMessage);
+
+        // Toggle: when enabling, countdown runs first then state changes; when disabling, immediate
+        Runnable publishWhenEnabled = (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled())
+            ? () -> plugin.getCrossProxyService().publishMaintenanceSet(true, broadcastLegacy)
+            : null;
+        boolean success = maintenanceService.toggleMaintenance(enable, enable ? publishWhenEnabled : null);
+
         if (!success) {
             src.sendMessage(plugin.getPrefix().append(
                 Component.text("Maintenance mode toggle is on cooldown. Please wait.", NamedTextColor.RED)
             ));
             return;
         }
-        
-        // Success message
-        Component resultMessage = Component.text()
-            .append(plugin.getPrefix())
-            .append(Component.text("Maintenance mode "))
-            .append(enable ? 
-                Component.text("enabled", NamedTextColor.RED, TextDecoration.BOLD) : 
-                Component.text("disabled", NamedTextColor.GREEN, TextDecoration.BOLD))
-            .build();
-            
+
         src.sendMessage(resultMessage);
+
+        // Cross-proxy: when disabling, broadcast immediately; when enabling, publish is done after countdown via callback
+        if (!enable && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            plugin.getCrossProxyService().publishMaintenanceSet(false, broadcastLegacy);
+        }
     }
     
     @Override

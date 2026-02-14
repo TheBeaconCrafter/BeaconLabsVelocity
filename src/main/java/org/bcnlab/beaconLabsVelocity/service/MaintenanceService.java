@@ -214,64 +214,62 @@ public class MaintenanceService {
         }
     }
       /**
-     * Toggle maintenance mode
-     * 
+     * Toggle maintenance mode. When enabling, shows 10-second title countdown first, then sets state and kicks.
+     *
      * @param enable Whether to enable or disable maintenance mode
-     * @return true if the maintenance mode was changed, false if on cooldown
+     * @param whenEnabledAfterCountdown Optional; called when maintenance is actually turned on after the 10s countdown (only when enable is true)
+     * @return true if the toggle was accepted, false if on cooldown
      */
-    public boolean toggleMaintenance(boolean enable) {
-        // Check if cooldown is active
+    public boolean toggleMaintenance(boolean enable, Runnable whenEnabledAfterCountdown) {
         if (cooldownActive.get()) {
             logger.info("Maintenance toggle rejected: cooldown is active");
             return false;
         }
-        
-        // If we're already in the requested state, no change needed
         if (maintenanceMode.get() == enable) {
             logger.info("Maintenance toggle: already in requested state (" + enable + ")");
             return true;
         }
-                
-        // Set cooldown if enabling maintenance
+
         if (enable) {
-            startCooldown();
+            startCooldown(() -> {
+                maintenanceMode.set(true);
+                saveMaintenanceState(true);
+                kickPlayersWithoutPermission();
+                cooldownActive.set(false);
+                if (whenEnabledAfterCountdown != null) {
+                    whenEnabledAfterCountdown.run();
+                }
+            });
+            return true;
         }
-        
-        // Update state
-        maintenanceMode.set(enable);
-        
-        // Save to config
-        saveMaintenanceState(enable);
-        
-        // If enabling, kick players without permission
-        if (enable) {
-            kickPlayersWithoutPermission();
-        }
-        
+
+        maintenanceMode.set(false);
+        saveMaintenanceState(false);
+        cooldownActive.set(false);
         return true;
     }
-    
+
     /**
-     * Start the maintenance cooldown period
+     * Start the maintenance cooldown period: show titles and countdown, then run the given task after 10 seconds.
      */
-    private void startCooldown() {
+    private void startCooldown(Runnable afterCountdown) {
         cooldownActive.set(true);
-        
-        // Send warning titles to all players
+
         server.getAllPlayers().forEach(this::sendMaintenanceWarning);
-        
-        // Schedule task to disable cooldown after 10 seconds
-        server.getScheduler().buildTask(plugin, () -> {
-            cooldownActive.set(false);
-        }).delay(10, TimeUnit.SECONDS).schedule();
-        
-        // Schedule countdown announcements
+
         for (int i = 10; i > 0; i--) {
             final int seconds = i;
-            server.getScheduler().buildTask(plugin, () -> {
-                sendCountdownNotification(seconds);
-            }).delay(10 - i, TimeUnit.SECONDS).schedule();
+            server.getScheduler().buildTask(plugin, () -> sendCountdownNotification(seconds))
+                    .delay(10 - i, TimeUnit.SECONDS).schedule();
         }
+
+        server.getScheduler().buildTask(plugin, () -> {
+            if (afterCountdown != null) {
+                afterCountdown.run();
+            } else {
+                cooldownActive.set(false);
+            }
+        }).delay(10, TimeUnit.SECONDS).schedule();
     }
     
     /**
@@ -318,6 +316,34 @@ public class MaintenanceService {
         });
     }
     
+    /**
+     * Set maintenance mode from a remote proxy (cross-proxy sync). No countdown; use for immediate set or after countdown.
+     */
+    public void setMaintenanceFromRemote(boolean enable) {
+        if (maintenanceMode.get() == enable) return;
+        maintenanceMode.set(enable);
+        saveMaintenanceState(enable);
+        if (enable) {
+            kickPlayersWithoutPermission();
+        }
+    }
+
+    /**
+     * Run the same 10-second title countdown as local enable, then set maintenance and kick (for remote proxy).
+     */
+    public void runRemoteMaintenanceCountdown(Runnable afterCountdown) {
+        server.getAllPlayers().forEach(this::sendMaintenanceWarning);
+        for (int i = 10; i > 0; i--) {
+            final int seconds = i;
+            server.getScheduler().buildTask(plugin, () -> sendCountdownNotification(seconds))
+                    .delay(10 - i, TimeUnit.SECONDS).schedule();
+        }
+        server.getScheduler().buildTask(plugin, () -> {
+            setMaintenanceFromRemote(true);
+            if (afterCountdown != null) afterCountdown.run();
+        }).delay(10, TimeUnit.SECONDS).schedule();
+    }
+
     /**
      * Check if a player can join during maintenance
      */

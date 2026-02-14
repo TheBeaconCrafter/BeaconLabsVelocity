@@ -22,8 +22,10 @@ public class MessageService {
     private final Logger logger;
     private Object luckPerms; // Using Object type to avoid compilation issues
     
-    // Store the last conversation partner for each player
+    // Store the last conversation partner for each player (local only)
     private final Map<UUID, UUID> lastMessageRecipients = new ConcurrentHashMap<>();
+    // When last message was from another proxy: recipient -> that sender's username (for /r)
+    private final Map<UUID, String> lastSenderUsernameByRecipient = new ConcurrentHashMap<>();
       // Format for messages with brackets around player sections
     private final String outgoingFormat = "&8[&7You &8-> %s&7%s&8]: &f%s";  // Args: prefix, name, message
     private final String incomingFormat = "&8[%s&7%s &8-> &7You&8]: &f%s"; // Args: prefix, name, message
@@ -138,19 +140,32 @@ public class MessageService {
     }
 
     /**
-     * Get the player who last sent a message to the given player
+     * Get the player who last sent a message to the given player (local proxy only).
      *
      * @param player The player to check
      * @return Optional containing the last player who messaged them, or empty if none
      */
     public Optional<Player> getLastMessageSender(Player player) {
         UUID lastSenderId = lastMessageRecipients.get(player.getUniqueId());
-        
         if (lastSenderId != null) {
             return server.getPlayer(lastSenderId);
         }
-        
         return Optional.empty();
+    }
+
+    /**
+     * Store the last message sender for /r when the sender was on another proxy.
+     */
+    public void setLastMessageSenderForReply(UUID recipientUuid, UUID senderUuid, String senderUsername) {
+        if (recipientUuid == null || senderUsername == null || senderUsername.isEmpty()) return;
+        lastSenderUsernameByRecipient.put(recipientUuid, senderUsername);
+    }
+
+    /**
+     * Get the username of the last player who messaged this player from another proxy (for /r).
+     */
+    public String getLastSenderUsername(UUID recipientUuid) {
+        return recipientUuid == null ? null : lastSenderUsernameByRecipient.get(recipientUuid);
     }
     
     /**
@@ -160,5 +175,6 @@ public class MessageService {
      */
     public void clearPlayerData(UUID playerUuid) {
         lastMessageRecipients.remove(playerUuid);
+        lastSenderUsernameByRecipient.remove(playerUuid);
     }
 }

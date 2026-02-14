@@ -18,7 +18,10 @@ public final class CrossProxyMessage {
         MUTE_APPLIED,
         PRIVATE_MSG,
         BROADCAST,
-        TEAM_CHAT
+        TEAM_CHAT,
+        CHATREPORT_RESULT,
+        CHATREPORT_REQUEST,
+        MAINTENANCE_SET
     }
 
     private final Type type;
@@ -82,9 +85,9 @@ public final class CrossProxyMessage {
         return "MUTE_APPLIED" + SEP + uuid.toString() + SEP + (reason != null ? reason : "") + SEP + (durationFormatted != null ? durationFormatted : "") + SEP + secret + SEP + proxyId;
     }
 
-    /** Build outbound PRIVATE_MSG (target username, preformatted recipient message legacy string). */
-    public static String privateMsg(String targetUsername, String recipientMessageLegacy, String secret, String proxyId) {
-        return "PRIVATE_MSG" + SEP + (targetUsername != null ? targetUsername : "") + SEP + (recipientMessageLegacy != null ? recipientMessageLegacy : "") + SEP + secret + SEP + proxyId;
+    /** Build outbound PRIVATE_MSG (target username, sender uuid, sender username, preformatted recipient message legacy string). */
+    public static String privateMsg(String targetUsername, String senderUuid, String senderUsername, String recipientMessageLegacy, String secret, String proxyId) {
+        return "PRIVATE_MSG" + SEP + (targetUsername != null ? targetUsername : "") + SEP + (senderUuid != null ? senderUuid : "") + SEP + (senderUsername != null ? senderUsername : "") + SEP + (recipientMessageLegacy != null ? recipientMessageLegacy : "") + SEP + secret + SEP + proxyId;
     }
 
     /** Build outbound BROADCAST (message legacy string). */
@@ -95,6 +98,21 @@ public final class CrossProxyMessage {
     /** Build outbound TEAM_CHAT (formatted message legacy string). */
     public static String teamChat(String messageLegacy, String secret, String proxyId) {
         return "TEAM_CHAT" + SEP + (messageLegacy != null ? messageLegacy : "") + SEP + secret + SEP + proxyId;
+    }
+
+    /** Build outbound CHATREPORT_RESULT (reporter, target, link). */
+    public static String chatReportResult(String reporterName, String targetName, String pasteLink, String secret, String proxyId) {
+        return "CHATREPORT_RESULT" + SEP + (reporterName != null ? reporterName : "") + SEP + (targetName != null ? targetName : "") + SEP + (pasteLink != null ? pasteLink : "") + SEP + secret + SEP + proxyId;
+    }
+
+    /** Build outbound CHATREPORT_REQUEST (target uuid, target username, reporter username). */
+    public static String chatReportRequest(String targetUuid, String targetUsername, String reporterUsername, String secret, String proxyId) {
+        return "CHATREPORT_REQUEST" + SEP + (targetUuid != null ? targetUuid : "") + SEP + (targetUsername != null ? targetUsername : "") + SEP + (reporterUsername != null ? reporterUsername : "") + SEP + secret + SEP + proxyId;
+    }
+
+    /** Build outbound MAINTENANCE_SET (enabled "true"/"false", broadcast message legacy). */
+    public static String maintenanceSet(boolean enabled, String broadcastMessageLegacy, String secret, String proxyId) {
+        return "MAINTENANCE_SET" + SEP + (enabled ? "true" : "false") + SEP + (broadcastMessageLegacy != null ? broadcastMessageLegacy : "") + SEP + secret + SEP + proxyId;
     }
 
     /**
@@ -128,9 +146,9 @@ public final class CrossProxyMessage {
                 String durationFormatted = parts[parts.length - 3];
                 return new CrossProxyMessage(Type.MUTE_APPLIED, parts[parts.length - 2], parts[parts.length - 1], parts[1], reason, null, null, durationFormatted);
             }
-            if ("PRIVATE_MSG".equals(typeStr) && parts.length >= 5) {
-                String recipientMessageLegacy = parts.length == 5 ? parts[2] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 2, parts.length - 2));
-                return new CrossProxyMessage(Type.PRIVATE_MSG, parts[parts.length - 2], parts[parts.length - 1], null, recipientMessageLegacy, null, parts[1], null);
+            if ("PRIVATE_MSG".equals(typeStr) && parts.length >= 7) {
+                String recipientMessageLegacy = parts.length == 7 ? parts[4] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 4, parts.length - 2));
+                return new CrossProxyMessage(Type.PRIVATE_MSG, parts[parts.length - 2], parts[parts.length - 1], parts[2], recipientMessageLegacy, parts[3], parts[1], null); // uuid=senderUuid, serverName=senderUsername, username=targetUsername
             }
             if ("BROADCAST".equals(typeStr) && parts.length >= 4) {
                 String messageLegacy = parts.length == 4 ? parts[1] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 1, parts.length - 2));
@@ -139,6 +157,15 @@ public final class CrossProxyMessage {
             if ("TEAM_CHAT".equals(typeStr) && parts.length >= 4) {
                 String messageLegacy = parts.length == 4 ? parts[1] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 1, parts.length - 2));
                 return new CrossProxyMessage(Type.TEAM_CHAT, parts[parts.length - 2], parts[parts.length - 1], null, messageLegacy, null, null, null);
+            }
+            if ("CHATREPORT_RESULT".equals(typeStr) && parts.length >= 6) {
+                return new CrossProxyMessage(Type.CHATREPORT_RESULT, parts[4], parts[5], null, parts[3], parts[2], parts[1], null); // reason=link, serverName=target, username=reporter
+            }
+            if ("CHATREPORT_REQUEST".equals(typeStr) && parts.length >= 6) {
+                return new CrossProxyMessage(Type.CHATREPORT_REQUEST, parts[4], parts[5], parts[1], null, parts[2], parts[3], null); // uuid=targetUuid, serverName=targetUsername, username=reporterUsername
+            }
+            if ("MAINTENANCE_SET".equals(typeStr) && parts.length >= 5) {
+                return new CrossProxyMessage(Type.MAINTENANCE_SET, parts[3], parts[4], null, parts.length > 2 ? parts[2] : "", parts[1], null, null); // reason=broadcastMessage, serverName=enabled "true"/"false"
             }
         } catch (Exception ignored) { }
         return null;

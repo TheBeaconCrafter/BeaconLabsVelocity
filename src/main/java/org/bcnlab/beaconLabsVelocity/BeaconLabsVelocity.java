@@ -17,6 +17,9 @@ import org.bcnlab.beaconLabsVelocity.command.punishment.PunishmentCommandRegistr
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
 import org.bcnlab.beaconLabsVelocity.listener.*;
+import org.bcnlab.beaconLabsVelocity.command.chat.ChatReportCommand;
+
+import java.util.UUID;
 import org.bcnlab.beaconLabsVelocity.service.MaintenanceService;
 import org.bcnlab.beaconLabsVelocity.service.MessageService;
 import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
@@ -62,6 +65,7 @@ public class BeaconLabsVelocity {
     private ReportService reportService;
     private ServerGuardService serverGuardService;
     private org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService crossProxyService;
+    private FileChatLogger fileChatLogger;
     @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
         // Commands are now registered in onProxyInitialization
@@ -184,11 +188,13 @@ public class BeaconLabsVelocity {
             );
             server.getEventManager().register(this, new CrossProxyLoginListener(this));
             server.getEventManager().register(this, new CrossProxyDisconnectListener(this));
+            server.getEventManager().register(this, new CrossProxyServerSwitchListener(this));
         }
         
         // Other Listeners
         server.getEventManager().register(this, new ChatFilterListener(this, server));
-        server.getEventManager().register(this, new FileChatLogger(getDataDirectory().toString()));
+        fileChatLogger = new FileChatLogger(getDataDirectory().toString());
+        server.getEventManager().register(this, fileChatLogger);
         server.getEventManager().register(this, new PingListener(this, server));// Other Commands
 
         // Register server commands
@@ -298,5 +304,24 @@ public class BeaconLabsVelocity {
 
     public org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService getCrossProxyService() {
         return crossProxyService;
+    }
+
+    public FileChatLogger getFileChatLogger() {
+        return fileChatLogger;
+    }
+
+    /**
+     * Perform a chat report for a player on this proxy (read log, upload, publish result).
+     * Used when another proxy requests a report via CHATREPORT_REQUEST.
+     */
+    public void performChatReportForPlayer(UUID targetUuid, String targetName, String reporterName) {
+        if (fileChatLogger == null || crossProxyService == null || !crossProxyService.isEnabled()) return;
+        try {
+            String chatLog = fileChatLogger.readChatLog(targetUuid);
+            String pasteLink = ChatReportCommand.uploadToPastebinWithFallback(chatLog);
+            crossProxyService.publishChatReportResult(reporterName != null ? reporterName : "Unknown", targetName != null ? targetName : "Unknown", pasteLink);
+        } catch (Exception e) {
+            logger.warn("Failed to perform cross-proxy chat report for {}: {}", targetName, e.getMessage());
+        }
     }
 }

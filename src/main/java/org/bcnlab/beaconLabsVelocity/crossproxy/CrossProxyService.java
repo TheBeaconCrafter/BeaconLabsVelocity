@@ -8,6 +8,8 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.sync.RedisPubSubCommands;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.slf4j.Logger;
@@ -26,6 +28,10 @@ public class CrossProxyService {
 
     private static final String CHANNEL = "blv:crossproxy";
     private static final String ONLINE_KEY_PREFIX = "blv:online:";
+    private static final String PROXIES_SET = "blv:proxies";
+    private static final String PLIST_KEY_PREFIX = "blv:plist:";
+    private static final String PLAYER_SERVER_SEP = "\u001E";
+    private static final String PLAYER_SERVER_PAIR_SEP = ":";
 
     private final BeaconLabsVelocity plugin;
     private final ProxyServer server;
@@ -94,6 +100,74 @@ public class CrossProxyService {
         }
     }
 
+    /** Register this proxy in the set of connected proxies (for /plist, /proxies). */
+    public void registerProxy() {
+        if (!enabled || pubConnection == null) return;
+        try {
+            pubConnection.sync().sadd(PROXIES_SET, proxyId);
+        } catch (Exception e) {
+            logger.debug("Failed to register proxy: {}", e.getMessage());
+        }
+    }
+
+    /** Unregister this proxy on shutdown. */
+    public void unregisterProxy() {
+        if (!enabled || pubConnection == null) return;
+        try {
+            pubConnection.sync().srem(PROXIES_SET, proxyId);
+            pubConnection.sync().del(PLIST_KEY_PREFIX + proxyId);
+        } catch (Exception e) {
+            logger.debug("Failed to unregister proxy: {}", e.getMessage());
+        }
+    }
+
+    /** Update the player list for this proxy (call on join, leave, server switch). */
+    public void updatePlayerList() {
+        if (!enabled || pubConnection == null) return;
+        try {
+            java.util.List<String> entries = new java.util.ArrayList<>();
+            for (com.velocitypowered.api.proxy.Player p : server.getAllPlayers()) {
+                String serverName = p.getCurrentServer().map(s -> s.getServerInfo().getName()).orElse("?");
+                entries.add(p.getUsername() + PLAYER_SERVER_PAIR_SEP + serverName);
+            }
+            String value = String.join(PLAYER_SERVER_SEP, entries);
+            pubConnection.sync().set(PLIST_KEY_PREFIX + proxyId, value);
+        } catch (Exception e) {
+            logger.debug("Failed to update player list: {}", e.getMessage());
+        }
+    }
+
+    /** Get all registered proxy IDs. */
+    public java.util.Set<String> getProxyIds() {
+        if (!enabled || pubConnection == null) return java.util.Collections.emptySet();
+        try {
+            return pubConnection.sync().smembers(PROXIES_SET);
+        } catch (Exception e) {
+            logger.debug("Failed to get proxy IDs: {}", e.getMessage());
+            return java.util.Collections.emptySet();
+        }
+    }
+
+    /** Get player list for a proxy: list of (playerName, serverName). */
+    public java.util.List<java.util.Map.Entry<String, String>> getPlayerListForProxy(String proxyIdKey) {
+        if (!enabled || pubConnection == null) return java.util.Collections.emptyList();
+        try {
+            String raw = pubConnection.sync().get(PLIST_KEY_PREFIX + proxyIdKey);
+            if (raw == null || raw.isEmpty()) return java.util.Collections.emptyList();
+            java.util.List<java.util.Map.Entry<String, String>> out = new java.util.ArrayList<>();
+            for (String entry : raw.split(PLAYER_SERVER_SEP, -1)) {
+                int idx = entry.indexOf(PLAYER_SERVER_PAIR_SEP);
+                if (idx > 0) {
+                    out.add(new java.util.AbstractMap.SimpleEntry<>(entry.substring(0, idx), entry.substring(idx + 1)));
+                }
+            }
+            return out;
+        } catch (Exception e) {
+            logger.debug("Failed to get player list for {}: {}", proxyIdKey, e.getMessage());
+            return java.util.Collections.emptyList();
+        }
+    }
+
     /** Call after config is loaded. Connects and subscribes if enabled and config valid. */
     public void start(String host, int port, String password, int connectTimeoutMs, int reconnectIntervalMs) {
         if (!enabled) return;
@@ -140,6 +214,8 @@ public class CrossProxyService {
             subscriberThread.setDaemon(true);
             subscriberThread.start();
 
+            registerProxy();
+            updatePlayerList();
             logger.info("Cross-proxy Redis connected (proxy-id: {}). Kick/ban/send and duplicate-session prevention are active.", proxyId);
         } catch (Exception e) {
             logger.error("Failed to connect to Redis for cross-proxy. Cross-proxy features disabled.", e);
@@ -148,6 +224,7 @@ public class CrossProxyService {
     }
 
     public void shutdown() {
+        unregisterProxy();
         if (subscriberThread != null && subscriberThread.isAlive()) {
             subscriberThread.interrupt();
             subscriberThread = null;
@@ -204,6 +281,15 @@ public class CrossProxyService {
                         break;
                     case TEAM_CHAT:
                         handleTeamChat(msg);
+                        break;
+                    case CHATREPORT_RESULT:
+                        handleChatReportResult(msg);
+                        break;
+                    case CHATREPORT_REQUEST:
+                        handleChatReportRequest(msg);
+                        break;
+                    case MAINTENANCE_SET:
+                        handleMaintenanceSet(msg);
                         break;
                     default:
                         break;
@@ -286,8 +372,12 @@ public class CrossProxyService {
         if (targetUsername == null || targetUsername.isEmpty()) return;
         String legacy = msg.getReason();
         if (legacy == null) return;
-        server.getPlayer(targetUsername).ifPresent(player ->
-                player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(legacy)));
+        server.getPlayer(targetUsername).ifPresent(player -> {
+            player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(legacy));
+            if (plugin.getMessageService() != null && msg.getUuidAsUUID() != null && msg.getServerName() != null && !msg.getServerName().isEmpty()) {
+                plugin.getMessageService().setLastMessageSenderForReply(player.getUniqueId(), msg.getUuidAsUUID(), msg.getServerName());
+            }
+        });
     }
 
     private void handleBroadcast(CrossProxyMessage msg) {
@@ -304,6 +394,30 @@ public class CrossProxyService {
         server.getAllPlayers().stream()
                 .filter(p -> p.hasPermission("beaconlabs.teamchat"))
                 .forEach(p -> p.sendMessage(comp));
+    }
+
+    private void handleChatReportResult(CrossProxyMessage msg) {
+        String reporterName = msg.getUsername();
+        String targetName = msg.getServerName();
+        String pasteLink = msg.getReason();
+        if (pasteLink == null || pasteLink.isEmpty()) return;
+        Component linkMessage = Component.text()
+                .append(plugin.getPrefix())
+                .append(Component.text("Chat log for ", NamedTextColor.WHITE))
+                .append(Component.text(targetName != null ? targetName : "?", NamedTextColor.GOLD))
+                .append(Component.text(" (reported by ", NamedTextColor.WHITE))
+                .append(Component.text(reporterName != null ? reporterName : "?", NamedTextColor.GRAY))
+                .append(Component.text(") has been uploaded. ", NamedTextColor.WHITE))
+                .append(Component.text("[Click here to view]", NamedTextColor.BLUE)
+                        .clickEvent(ClickEvent.openUrl(pasteLink)))
+                .build();
+        // Only skip reporter when this proxy did the report (avoid duplicate for reporter); when report came from another proxy, reporter must get the link here
+        final boolean skipReporter = (msg.getProxyId() != null && msg.getProxyId().equals(proxyId))
+                && reporterName != null && !reporterName.isEmpty();
+        server.getAllPlayers().stream()
+                .filter(p -> p.hasPermission("beaconlabs.chat.chatreport"))
+                .filter(p -> !skipReporter || !reporterName.equalsIgnoreCase(p.getUsername()))
+                .forEach(p -> p.sendMessage(linkMessage));
     }
 
     private void publish(String message) {
@@ -340,8 +454,8 @@ public class CrossProxyService {
         publish(CrossProxyMessage.muteApplied(uuid, reason, durationFormatted, sharedSecret, proxyId));
     }
 
-    public void publishPrivateMsg(String targetUsername, String recipientMessageLegacy) {
-        publish(CrossProxyMessage.privateMsg(targetUsername, recipientMessageLegacy, sharedSecret, proxyId));
+    public void publishPrivateMsg(String targetUsername, String senderUuid, String senderUsername, String recipientMessageLegacy) {
+        publish(CrossProxyMessage.privateMsg(targetUsername, senderUuid != null ? senderUuid : "", senderUsername, recipientMessageLegacy, sharedSecret, proxyId));
     }
 
     public void publishBroadcast(String messageLegacy) {
@@ -350,5 +464,55 @@ public class CrossProxyService {
 
     public void publishTeamChat(String messageLegacy) {
         publish(CrossProxyMessage.teamChat(messageLegacy, sharedSecret, proxyId));
+    }
+
+    public void publishChatReportResult(String reporterName, String targetName, String pasteLink) {
+        publish(CrossProxyMessage.chatReportResult(reporterName, targetName, pasteLink, sharedSecret, proxyId));
+    }
+
+    public void publishChatReportRequest(UUID targetUuid, String targetUsername, String reporterUsername) {
+        publish(CrossProxyMessage.chatReportRequest(targetUuid != null ? targetUuid.toString() : "", targetUsername, reporterUsername, sharedSecret, proxyId));
+    }
+
+    private void handleChatReportRequest(CrossProxyMessage msg) {
+        UUID targetUuid = msg.getUuidAsUUID();
+        if (targetUuid == null) return;
+        if (!server.getPlayer(targetUuid).isPresent()) return; // player not on this proxy
+        String targetUsername = msg.getServerName();
+        String reporterUsername = msg.getUsername();
+        if (targetUsername == null) targetUsername = "Unknown";
+        if (reporterUsername == null) reporterUsername = "Unknown";
+        plugin.performChatReportForPlayer(targetUuid, targetUsername, reporterUsername);
+    }
+
+    private void handleMaintenanceSet(CrossProxyMessage msg) {
+        boolean enable = "true".equalsIgnoreCase(msg.getServerName());
+        String broadcastLegacy = msg.getReason();
+        boolean isOriginator = msg.getProxyId() != null && msg.getProxyId().equals(proxyId);
+
+        if (plugin.getMaintenanceService() == null) return;
+
+        if (enable) {
+            if (isOriginator) {
+                // We ran the command; state was already set after our countdown. Do not broadcast (sender already got the message).
+                return;
+            }
+            // Remote: show same 10-second title countdown, then set maintenance and kick
+            if (broadcastLegacy != null && !broadcastLegacy.isEmpty()) {
+                Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(broadcastLegacy);
+                server.getAllPlayers().forEach(p -> p.sendMessage(comp));
+            }
+            plugin.getMaintenanceService().runRemoteMaintenanceCountdown(null);
+        } else {
+            plugin.getMaintenanceService().setMaintenanceFromRemote(false);
+            if (!isOriginator && broadcastLegacy != null && !broadcastLegacy.isEmpty()) {
+                Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(broadcastLegacy);
+                server.getAllPlayers().forEach(p -> p.sendMessage(comp));
+            }
+        }
+    }
+
+    public void publishMaintenanceSet(boolean enabled, String broadcastMessageLegacy) {
+        publish(CrossProxyMessage.maintenanceSet(enabled, broadcastMessageLegacy, sharedSecret, proxyId));
     }
 }

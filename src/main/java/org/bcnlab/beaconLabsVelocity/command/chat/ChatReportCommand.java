@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 public class ChatReportCommand implements SimpleCommand {
 
     private static final String PASTEBIN_URL = "https://paste.md-5.net/documents";
+    private static final String HSTSH_URL = "https://hst.sh/documents";
     private final FileChatLogger chatLogger;
     private final BeaconLabsVelocity plugin;
     private final ProxyServer proxy;
@@ -61,6 +62,19 @@ public class ChatReportCommand implements SimpleCommand {
             return;
         }
 
+        boolean targetOnThisProxy = proxy.getPlayer(playerId).isPresent();
+        if (!targetOnThisProxy && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()
+                && plugin.getCrossProxyService().getPlayerProxy(playerId) != null) {
+            String reporterName = sender instanceof Player ? ((Player) sender).getUsername() : "Console";
+            plugin.getCrossProxyService().publishChatReportRequest(playerId, targetName, reporterName);
+            sender.sendMessage(plugin.getPrefix().append(Component.text("Requesting chat log from the proxy where " + targetName + " is connected. You will receive the link when it's ready.", NamedTextColor.YELLOW)));
+            return;
+        }
+        if (!targetOnThisProxy) {
+            sender.sendMessage(plugin.getPrefix().append(Component.text("Player " + targetName + " is not online on the network.")));
+            return;
+        }
+
         String chatLog;
         try {
             chatLog = chatLogger.readChatLog(playerId);
@@ -72,7 +86,7 @@ public class ChatReportCommand implements SimpleCommand {
 
         String pasteLink;
         try {
-            pasteLink = uploadToPastebin(chatLog);
+            pasteLink = uploadToPastebinWithFallback(chatLog);
         } catch (IOException e) {
             e.printStackTrace();
             sender.sendMessage(plugin.getPrefix().append(Component.text("Failed to upload chat logs.")));
@@ -93,23 +107,80 @@ public class ChatReportCommand implements SimpleCommand {
                 .build();
 
         sender.sendMessage(linkMessage);
+
+        if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            String reporterName = sender instanceof Player ? ((Player) sender).getUsername() : "Console";
+            plugin.getCrossProxyService().publishChatReportResult(reporterName, targetName, pasteLink);
+        }
     }
 
-    private String uploadToPastebin(String content) throws IOException {
+    /** Tries paste.md-5 first, then hst.sh on failure. Public for cross-proxy report from plugin. */
+    public static String uploadToPastebinWithFallback(String content) throws IOException {
+        try {
+            return uploadToPasteMd5(content);
+        } catch (IOException e) {
+            try {
+                return uploadToHstSh(content);
+            } catch (IOException e2) {
+                e.addSuppressed(e2);
+                throw e;
+            }
+        }
+    }
+
+    private static String uploadToPasteMd5(String content) throws IOException {
         URL url = new URL(PASTEBIN_URL);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("POST");
         connection.setDoOutput(true);
         connection.setRequestProperty("Content-Type", "text/plain");
+        connection.setConnectTimeout(10000);
+        connection.setReadTimeout(10000);
 
         try (OutputStream outputStream = connection.getOutputStream()) {
-            outputStream.write(content.getBytes());
+            outputStream.write(content.getBytes(StandardCharsets.UTF_8));
             outputStream.flush();
         }
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
-            String key = reader.readLine();
-            return "https://paste.md-5.net/" + key.split("\"")[3];
+        int code = connection.getResponseCode();
+        if (code < 200 || code >= 300) {
+            throw new IOException("paste.md-5 returned " + code);
+        }
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+            String line = reader.readLine();
+            if (line == null) throw new IOException("Empty response from paste.md-5");
+            JsonObject json = JsonParser.parseString(line).getAsJsonObject();
+            String key = json.has("key") ? json.get("key").getAsString() : line;
+            return "https://paste.md-5.net/" + key;
+        }
+    }
+
+    private static String uploadToHstSh(String content) throws IOException {
+        URL url = new URL(HSTSH_URL);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setDoOutput(true);
+        connection.setRequestProperty("Content-Type", "text/plain");
+        connection.setConnectTimeout(10000);
+        connection.setReadTimeout(10000);
+
+        try (OutputStream outputStream = connection.getOutputStream()) {
+            outputStream.write(content.getBytes(StandardCharsets.UTF_8));
+            outputStream.flush();
+        }
+
+        int code = connection.getResponseCode();
+        if (code < 200 || code >= 300) {
+            throw new IOException("hst.sh returned " + code);
+        }
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+            String line = reader.readLine();
+            if (line == null) throw new IOException("Empty response from hst.sh");
+            JsonObject json = JsonParser.parseString(line).getAsJsonObject();
+            String key = json.get("key").getAsString();
+            return "https://hst.sh/" + key;
         }
     }
 

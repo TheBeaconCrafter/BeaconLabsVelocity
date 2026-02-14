@@ -37,6 +37,8 @@ public class AdminCommandRegistrar {
         commandManager.register("proxysend", sendCommand);
         commandManager.register("psend", sendCommand);
         // Info
+        commandManager.register("plist", new PlistCommand(plugin, server));
+        commandManager.register("proxies", new ProxiesCommand(plugin));
         commandManager.register("info", new InfoCommand(server, service, plugin, config));
         // IP history command - only register if PlayerStatsService is available
         if (plugin.getPlayerStatsService() != null) {

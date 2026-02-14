@@ -20,5 +20,6 @@ public class CrossProxyDisconnectListener {
     public void onDisconnect(DisconnectEvent event) {
         if (plugin.getCrossProxyService() == null || !plugin.getCrossProxyService().isEnabled()) return;
         plugin.getCrossProxyService().removePlayerProxy(event.getPlayer().getUniqueId());
+        plugin.getCrossProxyService().updatePlayerList();
     }
 }
