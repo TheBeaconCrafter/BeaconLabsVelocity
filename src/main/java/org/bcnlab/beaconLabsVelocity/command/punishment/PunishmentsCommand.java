@@ -47,10 +47,16 @@ public class PunishmentsCommand implements SimpleCommand {
         }
         String targetName = args[0];
         
-        // Use PunishmentService to get UUID; when cross-proxy, also resolve by name from plist (online on another proxy)
+        // Resolve UUID: online (this proxy), punishments DB, Mojang, cross-proxy plist (online elsewhere), then player_stats (anyone who has ever joined)
         UUID targetUUID = service.getPlayerUUID(targetName);
         if (targetUUID == null && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
             targetUUID = plugin.getCrossProxyService().getPlayerUuidByName(targetName);
+        }
+        if (targetUUID == null && plugin.getPlayerStatsService() != null) {
+            var data = plugin.getPlayerStatsService().getPlayerDataByName(targetName);
+            if (data != null) {
+                targetUUID = data.getPlayerId();
+            }
         }
         if (targetUUID == null) {
             String notFoundMsg = config.getMessage("player-not-found");
