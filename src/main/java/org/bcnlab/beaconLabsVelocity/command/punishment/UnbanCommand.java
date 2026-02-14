@@ -96,10 +96,15 @@ public class UnbanCommand implements SimpleCommand {
     public List<String> suggest(Invocation invocation) {
         String[] args = invocation.arguments();
         if (args.length == 1) {
-            // Suggest online players
+            String prefix = args[0].toLowerCase();
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                return plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                    .filter(name -> name.toLowerCase().startsWith(prefix))
+                    .collect(Collectors.toList());
+            }
             return server.getAllPlayers().stream()
                     .map(Player::getUsername)
-                    .filter(name -> name.toLowerCase().startsWith(args[0].toLowerCase()))
+                    .filter(name -> name.toLowerCase().startsWith(prefix))
                     .collect(Collectors.toList());
         }
         return List.of();

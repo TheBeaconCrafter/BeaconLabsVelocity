@@ -88,6 +88,11 @@ public class PingCommand implements SimpleCommand {
         
         if (args.length == 1 && (!(source instanceof Player) || source.hasPermission("beaconlabs.command.ping.others"))) {
             String partialName = args[0].toLowerCase();
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                return plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                    .filter(name -> name.toLowerCase().startsWith(partialName))
+                    .collect(Collectors.toList());
+            }
             return server.getAllPlayers().stream()
                     .map(Player::getUsername)
                     .filter(name -> name.toLowerCase().startsWith(partialName))

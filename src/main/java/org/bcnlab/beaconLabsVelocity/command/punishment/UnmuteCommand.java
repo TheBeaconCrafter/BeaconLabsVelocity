@@ -64,7 +64,16 @@ public class UnmuteCommand implements SimpleCommand {
     public List<String> suggest(Invocation invocation) {
         String[] args = invocation.arguments();
         if (args.length == 1) {
-            return server.getAllPlayers().stream().map(Player::getUsername).toList();
+            String prefix = args[0].toLowerCase();
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                return plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                    .filter(name -> name.toLowerCase().startsWith(prefix))
+                    .collect(java.util.stream.Collectors.toList());
+            }
+            return server.getAllPlayers().stream()
+                    .map(com.velocitypowered.api.proxy.Player::getUsername)
+                    .filter(name -> name.toLowerCase().startsWith(prefix))
+                    .collect(java.util.stream.Collectors.toList());
         }
         return List.of();
     }

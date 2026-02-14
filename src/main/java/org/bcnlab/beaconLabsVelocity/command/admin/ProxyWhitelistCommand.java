@@ -313,11 +313,14 @@ public class ProxyWhitelistCommand implements SimpleCommand {
         
         // Second arg suggestions for add command
         if (args.length == 2 && args[0].equalsIgnoreCase("add")) {
-            // Suggest online players who aren't already whitelisted
-            List<String> onlinePlayers = plugin.getServer().getAllPlayers().stream()
-                .map(Player::getUsername)
-                .collect(Collectors.toList());
-            
+            java.util.Collection<String> onlinePlayers;
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                onlinePlayers = plugin.getCrossProxyService().getOnlinePlayerNames();
+            } else {
+                onlinePlayers = plugin.getServer().getAllPlayers().stream()
+                    .map(Player::getUsername)
+                    .collect(Collectors.toList());
+            }
             try {
                 List<String> whitelistedPlayers = whitelistService.getWhitelistedPlayers().get();
                 return onlinePlayers.stream()

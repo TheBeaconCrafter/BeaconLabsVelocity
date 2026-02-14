@@ -9,24 +9,20 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
-import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService.IpHistoryEntry;
 import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService.PlayerPlaytimeEntry;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Command to check player playtime and IP history
+ * Command to check player playtime
  * Usage: /playtime [player]
  * Aliases: /pt
  * Permissions:
  * - beaconlabs.command.playtime - View your own playtime
  * - beaconlabs.command.playtime.others - View others' playtime
- * - beaconlabs.command.playtime.ip - View IP history (admin only)
  * - beaconlabs.command.playtime.top - View top playtime list
  */
 public class PlaytimeCommand implements SimpleCommand {
@@ -34,7 +30,6 @@ public class PlaytimeCommand implements SimpleCommand {
     private final BeaconLabsVelocity plugin;
     private final ProxyServer server;
     private final PlayerStatsService playerStatsService;
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     
     public PlaytimeCommand(BeaconLabsVelocity plugin, ProxyServer server, PlayerStatsService playerStatsService) {
         this.plugin = plugin;
@@ -98,39 +93,23 @@ public class PlaytimeCommand implements SimpleCommand {
         Optional<Player> targetOptional = server.getPlayer(targetName);
         
         if (targetOptional.isPresent()) {
-            // Target is online
             Player target = targetOptional.get();
             showPlayerPlaytime(source, target.getUniqueId(), target.getUsername());
-            
-            // Show IP history if allowed
-            if (source.hasPermission("beaconlabs.command.playtime.ip")) {
-                showPlayerIpHistory(source, target.getUniqueId(), target.getUsername());
-            }
         } else {
-            // Try to get info for offline player
-            // First try to get UUID from online players with similar names
-            UUID offlineUuid = server.getAllPlayers().stream()
-                    .filter(p -> p.getUsername().equalsIgnoreCase(targetName))
-                    .map(Player::getUniqueId)
-                    .findFirst()
-                    .orElse(null);
-                    
-            // If not found, check other services
-            if (offlineUuid == null) {
-                source.sendMessage(plugin.getPrefix().append(
-                    Component.text("Try using /info command for more details about " + targetName, NamedTextColor.YELLOW)
-                ));
-                return;
+            // Resolve UUID: cross-proxy (online elsewhere) first, then DB lookups
+            UUID offlineUuid = null;
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                offlineUuid = plugin.getCrossProxyService().getPlayerUuidByName(targetName);
             }
-            
-            // If we have a UUID, show the playtime
+            if (offlineUuid == null && plugin.getPlayerStatsService() != null) {
+                var data = plugin.getPlayerStatsService().getPlayerDataByName(targetName);
+                if (data != null) offlineUuid = data.getPlayerId();
+            }
+            if (offlineUuid == null && plugin.getPunishmentService() != null) {
+                offlineUuid = plugin.getPunishmentService().getPlayerUUID(targetName);
+            }
             if (offlineUuid != null) {
                 showPlayerPlaytime(source, offlineUuid, targetName);
-                
-                // Show IP history if allowed
-                if (source.hasPermission("beaconlabs.command.playtime.ip")) {
-                    showPlayerIpHistory(source, offlineUuid, targetName);
-                }
             } else {
                 source.sendMessage(plugin.getPrefix().append(
                     Component.text("Player not found: " + targetName, NamedTextColor.RED)
@@ -152,39 +131,6 @@ public class PlaytimeCommand implements SimpleCommand {
             .append(Component.text(formattedPlaytime, NamedTextColor.GREEN))
             .build()
         );
-    }
-    
-    /**
-     * Show a player's IP history (admin only)
-     */
-    private void showPlayerIpHistory(CommandSource source, UUID playerId, String playerName) {
-        List<IpHistoryEntry> ipHistory = playerStatsService.getPlayerIpHistory(playerId);
-        
-        if (ipHistory.isEmpty()) {
-            source.sendMessage(Component.text()
-                .append(plugin.getPrefix())
-                .append(Component.text("No IP history found for " + playerName, NamedTextColor.RED))
-                .build()
-            );
-            return;
-        }
-        
-        source.sendMessage(Component.text()
-            .append(plugin.getPrefix())
-            .append(Component.text(playerName + "'s Recent IPs:", NamedTextColor.YELLOW).decorate(TextDecoration.BOLD))
-            .build()
-        );
-        
-        for (IpHistoryEntry entry : ipHistory) {
-            source.sendMessage(Component.text()
-                .append(Component.text(" • ", NamedTextColor.GOLD))
-                .append(Component.text(entry.getIpAddress(), NamedTextColor.WHITE))
-                .append(Component.text(" (", NamedTextColor.GRAY))
-                .append(Component.text(dateFormat.format(new Date(entry.getTimestamp())), NamedTextColor.AQUA))
-                .append(Component.text(")", NamedTextColor.GRAY))
-                .build()
-            );
-        }
     }
     
     /**
@@ -236,15 +182,21 @@ public class PlaytimeCommand implements SimpleCommand {
         CommandSource source = invocation.source();
         
         if (args.length == 1) {
-            // Suggest online players and special subcommands
-            List<String> suggestions = server.getAllPlayers().stream()
-                    .map(Player::getUsername)
+            String prefix = args[0].toLowerCase();
+            List<String> suggestions;
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                suggestions = plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                    .filter(name -> name.toLowerCase().startsWith(prefix))
                     .collect(Collectors.toList());
-            
-            if (source.hasPermission("beaconlabs.command.playtime.top")) {
+            } else {
+                suggestions = server.getAllPlayers().stream()
+                    .map(Player::getUsername)
+                    .filter(name -> name.toLowerCase().startsWith(prefix))
+                    .collect(Collectors.toList());
+            }
+            if (source.hasPermission("beaconlabs.command.playtime.top") && "top".startsWith(prefix)) {
                 suggestions.add("top");
             }
-            
             return suggestions;
         }
         

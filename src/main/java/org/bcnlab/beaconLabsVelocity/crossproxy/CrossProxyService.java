@@ -34,6 +34,7 @@ public class CrossProxyService {
     private static final String PROXIES_SET = "blv:proxies";
     private static final String PLIST_KEY_PREFIX = "blv:plist:";
     private static final String HEARTBEAT_KEY_PREFIX = "blv:proxyhb:";
+    private static final String PREFIX_HASH_KEY = "blv:prefixes";
     private static final int HEARTBEAT_TTL_SECONDS = 90;
     private static final int HEARTBEAT_REFRESH_INTERVAL_SECONDS = 30;
     private static final String PLAYER_SERVER_SEP = "\u001E";
@@ -131,9 +132,7 @@ public class CrossProxyService {
     private void refreshHeartbeat() {
         if (!enabled || pubConnection == null) return;
         try {
-            var sync = pubConnection.sync();
-            sync.set(HEARTBEAT_KEY_PREFIX + proxyId, "1");
-            sync.expire(HEARTBEAT_KEY_PREFIX + proxyId, HEARTBEAT_TTL_SECONDS);
+            pubConnection.sync().setex(HEARTBEAT_KEY_PREFIX + proxyId, HEARTBEAT_TTL_SECONDS, "1");
         } catch (Exception e) {
             logger.debug("Failed to refresh heartbeat: {}", e.getMessage());
         }
@@ -152,24 +151,75 @@ public class CrossProxyService {
         }
     }
 
-    /** Update the player list for this proxy (call on join, leave, server switch). Format per entry: uuid:username:server for cross-proxy UUID lookup. */
+    /** Update the player list for this proxy (call on join, leave, server switch). Format per entry: uuid:username:server for cross-proxy UUID lookup. Also syncs LuckPerms prefixes. */
     public void updatePlayerList() {
         if (!enabled || pubConnection == null) return;
         try {
             refreshHeartbeat();
+            var sync = pubConnection.sync();
             java.util.List<String> entries = new java.util.ArrayList<>();
             for (com.velocitypowered.api.proxy.Player p : server.getAllPlayers()) {
                 String serverName = p.getCurrentServer().map(s -> s.getServerInfo().getName()).orElse("?");
                 entries.add(p.getUniqueId().toString() + PLAYER_SERVER_PAIR_SEP + p.getUsername() + PLAYER_SERVER_PAIR_SEP + serverName);
+                try {
+                    String prefix = getPlayerLuckPermsPrefix(p.getUniqueId());
+                    if (prefix != null && !prefix.isEmpty()) {
+                        sync.hset(PREFIX_HASH_KEY, p.getUsername().toLowerCase(), prefix);
+                    } else {
+                        sync.hdel(PREFIX_HASH_KEY, p.getUsername().toLowerCase());
+                    }
+                } catch (Exception ignored) {
+                    // Don't let prefix sync failure block plist update
+                }
             }
             String value = String.join(PLAYER_SERVER_SEP, entries);
-            pubConnection.sync().set(PLIST_KEY_PREFIX + proxyId, value);
+            sync.set(PLIST_KEY_PREFIX + proxyId, value);
         } catch (Exception e) {
             logger.debug("Failed to update player list: {}", e.getMessage());
         }
     }
 
-    /** Get all proxy IDs that are currently alive (heartbeat present). Dead proxies are excluded. */
+    /** Get a player's LuckPerms prefix via reflection (returns empty string if unavailable). */
+    private String getPlayerLuckPermsPrefix(UUID playerUuid) {
+        try {
+            Class<?> providerClass = Class.forName("net.luckperms.api.LuckPermsProvider");
+            Object lp = providerClass.getMethod("get").invoke(null);
+            Object userManager = lp.getClass().getMethod("getUserManager").invoke(lp);
+            Object user = userManager.getClass().getMethod("getUser", UUID.class).invoke(userManager, playerUuid);
+            if (user == null) return "";
+            Object cachedData = user.getClass().getMethod("getCachedData").invoke(user);
+            Object metaData = cachedData.getClass().getMethod("getMetaData").invoke(cachedData);
+            String prefix = (String) metaData.getClass().getMethod("getPrefix").invoke(metaData);
+            return prefix != null ? prefix : "";
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** Get a player's prefix from Redis (works for players on any proxy). Returns empty string if none stored. */
+    public String getPlayerPrefix(String playerName) {
+        if (playerName == null || playerName.isEmpty() || !enabled || pubConnection == null) return "";
+        try {
+            String prefix = pubConnection.sync().hget(PREFIX_HASH_KEY, playerName.toLowerCase());
+            return prefix != null ? prefix : "";
+        } catch (Exception e) {
+            logger.debug("Failed to get prefix for {}: {}", playerName, e.getMessage());
+            return "";
+        }
+    }
+
+    /** Remove a player's prefix from the shared Redis hash (call on disconnect). */
+    public void removePlayerPrefix(String playerName) {
+        if (playerName == null || playerName.isEmpty() || !enabled || pubConnection == null) return;
+        try {
+            pubConnection.sync().hdel(PREFIX_HASH_KEY, playerName.toLowerCase());
+        } catch (Exception e) {
+            logger.debug("Failed to remove prefix for {}: {}", playerName, e.getMessage());
+        }
+    }
+
+    /** Get all proxy IDs that are currently alive (heartbeat present). Dead proxies are excluded.
+     *  The current proxy is always included so we always show our own plist. */
     public java.util.Set<String> getProxyIds() {
         if (!enabled || pubConnection == null) return java.util.Collections.emptySet();
         try {
@@ -177,6 +227,10 @@ public class CrossProxyService {
             java.util.Set<String> all = sync.smembers(PROXIES_SET);
             java.util.Set<String> live = new java.util.HashSet<>();
             for (String id : all) {
+                if (id.equals(proxyId)) {
+                    live.add(id);
+                    continue;
+                }
                 Long hb = sync.exists(HEARTBEAT_KEY_PREFIX + id);
                 if (hb != null && hb > 0) {
                     live.add(id);

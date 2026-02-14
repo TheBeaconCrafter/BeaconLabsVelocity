@@ -754,6 +754,11 @@ public class ReportsCommand implements SimpleCommand {
             case "player":
                 if (args.length == 2) {
                     String partialName = args[1].toLowerCase();
+                    if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                        return plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                            .filter(name -> name.toLowerCase().startsWith(partialName))
+                            .collect(Collectors.toList());
+                    }
                     return plugin.getServer().getAllPlayers().stream()
                         .map(Player::getUsername)
                         .filter(name -> name.toLowerCase().startsWith(partialName))

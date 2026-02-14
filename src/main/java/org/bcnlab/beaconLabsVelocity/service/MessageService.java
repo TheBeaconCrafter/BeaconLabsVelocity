@@ -101,6 +101,24 @@ public class MessageService {
     }
 
     /**
+     * Get any player's prefix by name (works cross-proxy via Redis).
+     * Tries local LuckPerms first, then falls back to the Redis prefix hash.
+     */
+    public String getPlayerPrefixByName(String playerName) {
+        // Try local player first
+        Optional<Player> local = server.getPlayer(playerName);
+        if (local.isPresent()) {
+            return getPlayerPrefix(local.get());
+        }
+        // Fall back to Redis
+        if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            String prefix = plugin.getCrossProxyService().getPlayerPrefix(playerName);
+            if (!prefix.isEmpty()) return prefix + " ";
+        }
+        return "";
+    }
+
+    /**
      * Send a private message from one player to another
      *
      * @param sender The sending player

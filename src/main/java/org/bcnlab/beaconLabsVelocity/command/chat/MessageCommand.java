@@ -63,8 +63,11 @@ public class MessageCommand implements SimpleCommand {
         if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
             String recipientMessageLegacy = messageService.formatIncomingMessageLegacy(sender, message);
             plugin.getCrossProxyService().publishPrivateMsg(recipientName, sender.getUniqueId().toString(), sender.getUsername(), recipientMessageLegacy);
+            // Get the recipient's prefix from Redis for the outgoing display
+            String recipientPrefix = plugin.getCrossProxyService().getPlayerPrefix(recipientName);
+            if (!recipientPrefix.isEmpty()) recipientPrefix = recipientPrefix + " ";
             Component senderMsg = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()
-                    .deserialize(String.format("&8[&7You &8-> %s&7%s&8]: &f%s", "", recipientName, message));
+                    .deserialize(String.format("&8[&7You &8-> %s&7%s&8]: &f%s", recipientPrefix, recipientName, message));
             sender.sendMessage(senderMsg);
         } else {
             sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + recipientName + "' not found or offline.", NamedTextColor.RED)));
