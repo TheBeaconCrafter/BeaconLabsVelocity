@@ -154,6 +154,9 @@
                                 <includes>
                                     <include>com.zaxxer:HikariCP</include>
                                     <include>org.mariadb.jdbc:mariadb-java-client</include>
+                                    <include>io.lettuce:lettuce-core</include>
+                                    <include>org.reactivestreams:reactive-streams</include>
+                                    <include>io.projectreactor:reactor-core</include>
                                 </includes>
                             </artifactSet>
                             <filters>
@@ -176,6 +179,18 @@
                                     <pattern>org.mariadb.jdbc</pattern>
                                     <shadedPattern>org.bcnlab.beaconLabsVelocity.lib.mariadb</shadedPattern>
                                 </relocation>
+                                <relocation>
+                                    <pattern>io.lettuce</pattern>
+                                    <shadedPattern>org.bcnlab.beaconLabsVelocity.lib.lettuce</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.reactivestreams</pattern>
+                                    <shadedPattern>org.bcnlab.beaconLabsVelocity.lib.reactivestreams</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>reactor</pattern>
+                                    <shadedPattern>org.bcnlab.beaconLabsVelocity.lib.reactor</shadedPattern>
+                                </relocation>
                             </relocations>
                         </configuration>
                     </execution>
@@ -193,6 +208,10 @@
             </plugin>
         </plugins>
     </reporting>    <repositories>
+        <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
         <repository>
             <id>papermc-repo</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
@@ -237,6 +256,12 @@
             <artifactId>api</artifactId>
             <version>5.4</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+            <version>6.4.1.RELEASE</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 </project>

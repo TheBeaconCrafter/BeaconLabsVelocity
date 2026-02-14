@@ -71,6 +71,11 @@ public class KickCommand implements SimpleCommand {
                 .replace("{reason}", reason);
         Component kickComp = LegacyComponentSerializer.legacyAmpersand().deserialize(kickScreenMsg);
         target.disconnect(kickComp);
+
+        // Notify other proxies to kick this player if they have them
+        if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            plugin.getCrossProxyService().publishKick(target.getUniqueId(), kickScreenMsg);
+        }
     }
 
     @Override

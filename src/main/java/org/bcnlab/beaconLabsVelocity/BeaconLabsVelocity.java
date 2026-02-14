@@ -61,6 +61,7 @@ public class BeaconLabsVelocity {
     private WhitelistService whitelistService;
     private ReportService reportService;
     private ServerGuardService serverGuardService;
+    private org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService crossProxyService;
     @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
         // Commands are now registered in onProxyInitialization
@@ -165,6 +166,24 @@ public class BeaconLabsVelocity {
         serverGuardService = new ServerGuardService(this, server, logger);
         server.getEventManager().register(this, new ServerGuardListener(this, serverGuardService));
         logger.info("Server guard system has been enabled.");
+
+        // Cross-proxy (Redis)
+        ConfigurationNode redisNode = config != null ? config.node("redis") : null;
+        boolean redisEnabled = redisNode != null && redisNode.node("enabled").getBoolean(false);
+        String proxyId = redisNode != null ? redisNode.node("proxy-id").getString("na") : "na";
+        String sharedSecret = redisNode != null ? redisNode.node("shared-secret").getString("") : "";
+        boolean allowDoubleJoin = redisNode != null && redisNode.node("allow-double-join").getBoolean(false);
+        crossProxyService = new org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService(this, proxyId, sharedSecret, redisEnabled, allowDoubleJoin);
+        if (redisEnabled) {
+            crossProxyService.start(
+                    redisNode.node("host").getString("localhost"),
+                    redisNode.node("port").getInt(6379),
+                    redisNode.node("password").getString(""),
+                    redisNode.node("connect-timeout-ms").getInt(5000),
+                    redisNode.node("reconnect-interval-ms").getInt(5000)
+            );
+            server.getEventManager().register(this, new CrossProxyLoginListener(this));
+        }
         
         // Other Listeners
         server.getEventManager().register(this, new ChatFilterListener(this, server));
@@ -196,7 +215,9 @@ public class BeaconLabsVelocity {
 
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
-        // Disconnect DatabaseManager
+        if (crossProxyService != null) {
+            crossProxyService.shutdown();
+        }
         if (databaseManager != null) {
             databaseManager.disconnect();
         }
@@ -268,5 +289,13 @@ public class BeaconLabsVelocity {
 
     public ServerGuardService getServerGuardService() {
         return serverGuardService;
+    }
+
+    public PunishmentService getPunishmentService() {
+        return punishmentService;
+    }
+
+    public org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService getCrossProxyService() {
+        return crossProxyService;
     }
 }

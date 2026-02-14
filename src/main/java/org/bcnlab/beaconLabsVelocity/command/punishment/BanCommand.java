@@ -83,7 +83,11 @@ public class BanCommand implements SimpleCommand {
                     LegacyComponentSerializer.legacyAmpersand().deserialize(rawKick)
             );
             target.disconnect(kickComp);
-            
+
+            // Notify other proxies to kick this player if they have them
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                plugin.getCrossProxyService().publishKick(target.getUniqueId(), rawKick);
+            }
         } else {
             // Player is offline - try to look up UUID in database
             UUID offlineUuid = service.getPlayerUUID(targetName);
@@ -103,7 +107,10 @@ public class BanCommand implements SimpleCommand {
                         .replace("{duration}", DurationUtils.formatDuration(duration))
                         .replace("{reason}", reason) + " (Offline player)";
                 src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(successMsg)));
-                
+                if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                    String rawKick = config.getMessage("ban-screen").replace("{reason}", reason).replace("{duration}", DurationUtils.formatDuration(duration));
+                    plugin.getCrossProxyService().publishKick(offlineUuid, rawKick);
+                }
             } else {
                 // Create a new offline ban entry
                 UUID generatedUuid = UUID.nameUUIDFromBytes(("offlineplayer:" + targetName.toLowerCase()).getBytes());
@@ -121,6 +128,10 @@ public class BanCommand implements SimpleCommand {
                         .replace("{duration}", DurationUtils.formatDuration(duration))
                         .replace("{reason}", reason) + " (New offline player)";
                 src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(successMsg)));
+                if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                    String rawKick = config.getMessage("ban-screen").replace("{reason}", reason).replace("{duration}", DurationUtils.formatDuration(duration));
+                    plugin.getCrossProxyService().publishKick(generatedUuid, rawKick);
+                }
             }
         }        // Broadcast to notified players
         String rawBroadcast = config.getMessage("ban-broadcast");

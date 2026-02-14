@@ -31,6 +31,10 @@ public class AdminCommandRegistrar {
     }    public void registerAll() {
         // GoTo command
         commandManager.register("goto", new GoToCommand(plugin, server));
+        // Send / proxysend (cross-proxy when Redis enabled)
+        SendCommand sendCommand = new SendCommand(plugin, server);
+        commandManager.register("send", sendCommand);
+        commandManager.register("proxysend", sendCommand);
         // Info
         commandManager.register("info", new InfoCommand(server, service, plugin, config));
         // IP history command - only register if PlayerStatsService is available

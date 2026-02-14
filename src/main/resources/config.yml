@@ -55,3 +55,16 @@ joinme:
   permissions:
     use: "beaconlabs.command.joinme" # Permission to use the command
     bypass-cooldown: "beaconlabs.command.joinme.bypass" # Permission to bypass the cooldown
+
+# Cross-Proxy (Redis) - Optional. When enabled, kick/ban/send work across multiple Velocity proxies.
+# All proxies must use the same Redis instance and the same shared-secret.
+redis:
+  enabled: false
+  host: "localhost"
+  port: 6379
+  password: ""                    # Redis AUTH password (leave empty if Redis has no password)
+  shared-secret: ""               # Required when enabled. Same secret on every proxy; used to verify messages.
+  proxy-id: "na"                  # Unique per proxy, e.g. "na" and "eu"
+  allow-double-join: false        # If true, players can be connected to two proxies at once (no duplicate-session kick).
+  connect-timeout-ms: 5000
+  reconnect-interval-ms: 5000
