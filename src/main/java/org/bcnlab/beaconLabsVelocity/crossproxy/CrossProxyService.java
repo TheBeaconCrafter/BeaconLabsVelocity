@@ -634,9 +634,11 @@ public class CrossProxyService {
 
     private void handleBadWordAlert(CrossProxyMessage msg) {
         if (msg.getProxyId() != null && msg.getProxyId().equals(proxyId)) return; // originator already notified local admins
-        String legacy = msg.getReason();
-        if (legacy == null || legacy.isEmpty()) return;
-        Component notification = LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
+        String playerName = msg.getUsername();
+        String message = msg.getReason();
+        String badWord = msg.getServerName();
+        if (playerName == null && message == null && badWord == null) return;
+        Component notification = org.bcnlab.beaconLabsVelocity.listener.ChatFilterListener.buildBadWordAlertComponent(playerName, message, badWord);
         server.getAllPlayers().stream()
                 .filter(p -> p.hasPermission("beaconlabs.chatfilter.alert"))
                 .forEach(p -> p.sendMessage(notification));
@@ -671,7 +673,7 @@ public class CrossProxyService {
         publish(CrossProxyMessage.reportNotify(notificationLegacy, sharedSecret, proxyId));
     }
 
-    public void publishBadWordAlert(String playerName, String messageContent, String notificationLegacy) {
-        publish(CrossProxyMessage.badWordAlert(playerName, messageContent, notificationLegacy, sharedSecret, proxyId));
+    public void publishBadWordAlert(String playerName, String messageContent, String badWord) {
+        publish(CrossProxyMessage.badWordAlert(playerName, messageContent, badWord, sharedSecret, proxyId));
     }
 }

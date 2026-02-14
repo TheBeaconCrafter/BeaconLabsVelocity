@@ -140,9 +140,9 @@ public final class CrossProxyMessage {
         return "REPORT_NOTIFY" + SEP + (notificationLegacy != null ? notificationLegacy : "") + SEP + secret + SEP + proxyId;
     }
 
-    /** Build outbound BADWORD_ALERT (playerName, message/badWord, notification legacy for admins). */
-    public static String badWordAlert(String playerName, String messageContent, String notificationLegacy, String secret, String proxyId) {
-        return "BADWORD_ALERT" + SEP + (playerName != null ? playerName : "") + SEP + (messageContent != null ? messageContent : "") + SEP + (notificationLegacy != null ? notificationLegacy : "") + SEP + secret + SEP + proxyId;
+    /** Build outbound BADWORD_ALERT (playerName, message, badWord) so each proxy can build the notification with click actions. */
+    public static String badWordAlert(String playerName, String messageContent, String badWord, String secret, String proxyId) {
+        return "BADWORD_ALERT" + SEP + (playerName != null ? playerName : "") + SEP + (messageContent != null ? messageContent : "") + SEP + (badWord != null ? badWord : "") + SEP + secret + SEP + proxyId;
     }
 
     /**
@@ -211,8 +211,9 @@ public final class CrossProxyMessage {
                 return new CrossProxyMessage(Type.REPORT_NOTIFY, parts[parts.length - 2], parts[parts.length - 1], null, notificationLegacy, null, null, null);
             }
             if ("BADWORD_ALERT".equals(typeStr) && parts.length >= 6) {
-                String notificationLegacy = parts.length == 6 ? parts[3] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 3, parts.length - 2));
-                return new CrossProxyMessage(Type.BADWORD_ALERT, parts[parts.length - 2], parts[parts.length - 1], null, notificationLegacy, null, parts[1], null); // username=playerName, reason=messageContent
+                String messageContent = parts.length == 6 ? parts[2] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 2, parts.length - 3));
+                String badWord = parts[parts.length - 3];
+                return new CrossProxyMessage(Type.BADWORD_ALERT, parts[parts.length - 2], parts[parts.length - 1], null, messageContent, badWord, parts[1], null); // username=playerName, reason=message, serverName=badWord
             }
         } catch (Exception ignored) { }
         return null;

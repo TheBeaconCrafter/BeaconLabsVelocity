@@ -58,9 +58,12 @@ public class KickCommand implements SimpleCommand {
             // Not on this proxy: try cross-proxy kick-by-name so the other proxy kicks them
             if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
                 plugin.getCrossProxyService().publishKickByName(targetName, kickScreenMsg);
-                UUID offlineUuid = service.getPlayerUUID(targetName);
-                if (offlineUuid != null) {
-                    service.punish(offlineUuid, targetName,
+                UUID targetUuid = service.getPlayerUUID(targetName);
+                if (targetUuid == null) {
+                    targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(targetName);
+                }
+                if (targetUuid != null) {
+                    service.punish(targetUuid, targetName,
                             (src instanceof Player) ? ((Player) src).getUniqueId() : null,
                             (src instanceof Player) ? ((Player) src).getUsername() : "Console",
                             "kick", 0L, reason);

@@ -8,7 +8,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
@@ -63,55 +62,55 @@ public class ChatFilterListener {
         return badWords.stream().anyMatch(badWord -> lowerCaseMessage.contains(badWord.toLowerCase()));
     }
 
-    private void notifyAdmins(String playerName, String message) {
-        String badWord = findBadWord(message);
-        if (badWord == null) return;
-
-        // Split the message into parts: before and after the bad word. Else it will be cut off or scrambled
+    /**
+     * Builds the bad-word alert component with click actions (Chatreport, Warn). Shared so cross-proxy
+     * handlers can show the same interactive notification.
+     */
+    public static Component buildBadWordAlertComponent(String playerName, String message, String badWord) {
+        if (playerName == null) playerName = "";
+        if (message == null) message = "";
+        if (badWord == null) badWord = "";
         String[] parts = message.split("(?i)" + Pattern.quote(badWord), 2);
         String beforeBadWord = parts[0];
         String afterBadWord = parts.length > 1 ? parts[1] : "";
 
-        Component notification = Component.text("")
+        return Component.text("")
                 .append(Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", NamedTextColor.GRAY))
                 .append(Component.newline())
-
                 .append(Component.text("[ALERT] ", NamedTextColor.RED).style(Style.style(TextDecoration.BOLD)))
                 .append(Component.text("Player ", NamedTextColor.YELLOW))
                 .append(Component.text(playerName, NamedTextColor.GREEN))
                 .append(Component.text(" used a bad word: ", NamedTextColor.YELLOW))
-
                 .append(Component.text(beforeBadWord, NamedTextColor.WHITE))
-                            .append(Component.text( badWord, NamedTextColor.RED))
-                            .append(Component.text(afterBadWord, NamedTextColor.WHITE))
-                            .append(Component.newline())
+                .append(Component.text(badWord, NamedTextColor.RED))
+                .append(Component.text(afterBadWord, NamedTextColor.WHITE))
+                .append(Component.newline())
+                .append(Component.text("[Chatreport]", NamedTextColor.AQUA)
+                        .style(Style.style(TextDecoration.UNDERLINED)
+                                .clickEvent(ClickEvent.runCommand("/chatreport " + playerName))
+                                .hoverEvent(HoverEvent.showText(Component.text("Click to gather a chat report!")))))
+                .append(Component.text(" | ", NamedTextColor.GRAY))
+                .append(Component.text("[Warn]", NamedTextColor.RED)
+                        .style(Style.style(TextDecoration.UNDERLINED)
+                                .clickEvent(ClickEvent.suggestCommand("/warn " + playerName + " "))
+                                .hoverEvent(HoverEvent.showText(Component.text("Click to warn the player!")))))
+                .append(Component.newline())
+                .append(Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", NamedTextColor.GRAY))
+                .append(Component.newline());
+    }
 
-                            // Chatreport button (runs directly)
-                            .append(Component.text("[Chatreport]", NamedTextColor.AQUA)
-                                    .style(Style.style(TextDecoration.UNDERLINED)
-                                            .clickEvent(ClickEvent.runCommand("/chatreport " + playerName))
-                                            .hoverEvent(HoverEvent.showText(Component.text("Click to gather a chat report!")))))
+    private void notifyAdmins(String playerName, String message) {
+        String badWord = findBadWord(message);
+        if (badWord == null) return;
 
-                            .append(Component.text(" | ", NamedTextColor.GRAY))
-
-                            // Warn button (inserts in chat)
-                            .append(Component.text("[Warn]", NamedTextColor.RED)
-                                    .style(Style.style(TextDecoration.UNDERLINED)
-                                            .clickEvent(ClickEvent.suggestCommand("/warn " + playerName + " "))
-                                            .hoverEvent(HoverEvent.showText(Component.text("Click to warn the player!")))))
-
-                            .append(Component.newline())
-
-                            .append(Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", NamedTextColor.GRAY))
-                            .append(Component.newline());
+        Component notification = buildBadWordAlertComponent(playerName, message, badWord);
 
         server.getAllPlayers().stream()
                 .filter(player -> player.hasPermission("beaconlabs.chatfilter.alert"))
                 .forEach(player -> player.sendMessage(notification));
 
         if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
-            plugin.getCrossProxyService().publishBadWordAlert(
-                playerName, message, LegacyComponentSerializer.legacyAmpersand().serialize(notification));
+            plugin.getCrossProxyService().publishBadWordAlert(playerName, message, badWord);
         }
     }
 
