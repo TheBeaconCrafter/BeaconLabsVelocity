@@ -56,6 +56,16 @@ joinme:
     use: "beaconlabs.command.joinme" # Permission to use the command
     bypass-cooldown: "beaconlabs.command.joinme.bypass" # Permission to bypass the cooldown
 
+# Feather client - custom server list background (optional).
+# When set, Feather clients will see this image behind your server in their server list.
+# Image: PNG only, recommended 909x102 px, max 1009x202 px, max 512 KB. Place file in plugins/BeaconLabsVelocity/feather/
+feather:
+  enabled: false
+  server-list-background: ""   # e.g. "server-background.png" or leave empty to disable
+  channel: "feather:server_api"
+  message-id-request: 6   # C2SRequestServerBackground (client -> server)
+  message-id-response: 10 # S2CServerBackground (server -> client)
+
 # Cross-Proxy (Redis) - Optional. When enabled, kick/ban/send work across multiple Velocity proxies.
 # All proxies must use the same Redis instance and the same shared-secret.
 redis:

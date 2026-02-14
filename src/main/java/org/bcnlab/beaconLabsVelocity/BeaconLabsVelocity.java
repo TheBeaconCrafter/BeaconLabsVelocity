@@ -66,6 +66,7 @@ public class BeaconLabsVelocity {
     private ServerGuardService serverGuardService;
     private org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService crossProxyService;
     private FileChatLogger fileChatLogger;
+    private volatile boolean featherDebug = false;
     @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
         // Commands are now registered in onProxyInitialization
@@ -195,7 +196,18 @@ public class BeaconLabsVelocity {
         server.getEventManager().register(this, new ChatFilterListener(this, server));
         fileChatLogger = new FileChatLogger(getDataDirectory().toString());
         server.getEventManager().register(this, fileChatLogger);
-        server.getEventManager().register(this, new PingListener(this, server));// Other Commands
+        server.getEventManager().register(this, new PingListener(this, server));
+
+        // Feather client server list background (optional)
+        org.spongepowered.configurate.ConfigurationNode featherNode = config != null ? config.node("feather") : null;
+        if (featherNode != null && featherNode.node("enabled").getBoolean(false)) {
+            org.bcnlab.beaconLabsVelocity.feather.FeatherBackgroundListener featherListener =
+                    new org.bcnlab.beaconLabsVelocity.feather.FeatherBackgroundListener(this, logger);
+            featherListener.loadImage();
+            server.getChannelRegistrar().register(featherListener.getChannelId());
+            server.getEventManager().register(this, featherListener);
+            logger.info("Feather server list background enabled (use /featherdebug on in console to log traffic).");
+        }
 
         // Register server commands
         new org.bcnlab.beaconLabsVelocity.command.server.ServerCommandRegistrar(
@@ -308,6 +320,15 @@ public class BeaconLabsVelocity {
 
     public FileChatLogger getFileChatLogger() {
         return fileChatLogger;
+    }
+
+    /** Feather debug: when true, FeatherBackgroundListener logs all plugin messages on the Feather channel to console. */
+    public boolean isFeatherDebug() {
+        return featherDebug;
+    }
+
+    public void setFeatherDebug(boolean featherDebug) {
+        this.featherDebug = featherDebug;
     }
 
     /**

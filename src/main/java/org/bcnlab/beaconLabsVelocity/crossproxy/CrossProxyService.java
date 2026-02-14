@@ -381,7 +381,10 @@ public class CrossProxyService {
 
             registerProxy();
             updatePlayerList();
-            heartbeatTask = server.getScheduler().buildTask(plugin, this::refreshHeartbeat)
+            heartbeatTask = server.getScheduler().buildTask(plugin, () -> {
+                refreshHeartbeat();
+                updatePlayerList(); // Keep plist key alive (TTL 120s); otherwise plist shows 0 after ~2 mins of no join/leave/switch
+            })
                     .repeat(HEARTBEAT_REFRESH_INTERVAL_SECONDS, TimeUnit.SECONDS)
                     .schedule();
             logger.info("Cross-proxy Redis connected (proxy-id: {}). Kick/ban/send and duplicate-session prevention are active.", proxyId);
