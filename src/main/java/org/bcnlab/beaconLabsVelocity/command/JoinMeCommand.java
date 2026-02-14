@@ -10,6 +10,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 
 import java.util.HashMap;
@@ -97,24 +98,34 @@ public class JoinMeCommand implements SimpleCommand {
             String targetName = args[0];
             Optional<Player> targetPlayer = server.getPlayer(targetName);
             
-            if (targetPlayer.isEmpty()) {
+            if (targetPlayer.isPresent()) {
+                sendJoinMeMessage(player, serverName, targetPlayer.get());
+                player.sendMessage(plugin.getPrefix().append(
+                    Component.text("Sent a join request to ", NamedTextColor.GREEN))
+                    .append(Component.text(targetName, NamedTextColor.YELLOW))
+                );
+            } else if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()
+                    && plugin.getCrossProxyService().getPlayerCurrentServer(targetName) != null) {
+                Component message = createJoinMeMessage(player, serverName);
+                String legacy = LegacyComponentSerializer.legacyAmpersand().serialize(message);
+                plugin.getCrossProxyService().publishJoinMeToPlayer(targetName, legacy);
+                player.sendMessage(plugin.getPrefix().append(
+                    Component.text("Sent a join request to ", NamedTextColor.GREEN))
+                    .append(Component.text(targetName, NamedTextColor.YELLOW))
+                );
+            } else {
                 player.sendMessage(plugin.getPrefix().append(
                     Component.text("Player " + targetName + " is not online.", NamedTextColor.RED)
                 ));
                 return;
             }
-            
-            // Send joinme to specific player
-            sendJoinMeMessage(player, serverName, targetPlayer.get());
-            
-            player.sendMessage(plugin.getPrefix().append(
-                Component.text("Sent a join request to ", NamedTextColor.GREEN))
-                .append(Component.text(targetName, NamedTextColor.YELLOW))
-            );
         } else {
-            // Broadcast joinme to all players
+            // Broadcast joinme to all players (local + other proxies)
             broadcastJoinMe(player, serverName);
-            
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                Component message = createJoinMeMessage(player, serverName);
+                plugin.getCrossProxyService().publishJoinMeBroadcast(LegacyComponentSerializer.legacyAmpersand().serialize(message));
+            }
             player.sendMessage(plugin.getPrefix().append(
                 Component.text("Broadcast join request to all players.", NamedTextColor.GREEN)
             ));
@@ -247,16 +258,18 @@ public class JoinMeCommand implements SimpleCommand {
     @Override
     public List<String> suggest(Invocation invocation) {
         String[] args = invocation.arguments();
-        
-        // Suggest online player names for the first argument
         if (args.length == 1) {
             String input = args[0].toLowerCase();
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                return plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                    .filter(name -> name.toLowerCase().startsWith(input))
+                    .collect(Collectors.toList());
+            }
             return server.getAllPlayers().stream()
                 .map(Player::getUsername)
                 .filter(name -> name.toLowerCase().startsWith(input))
                 .collect(Collectors.toList());
         }
-        
         return List.of();
     }
       @Override

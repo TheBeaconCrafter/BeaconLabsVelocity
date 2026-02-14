@@ -291,6 +291,15 @@ public class CrossProxyService {
                     case MAINTENANCE_SET:
                         handleMaintenanceSet(msg);
                         break;
+                    case WHITELIST_SET:
+                        handleWhitelistSet(msg);
+                        break;
+                    case JOINME_TO_PLAYER:
+                        handleJoinMeToPlayer(msg);
+                        break;
+                    case JOINME_BROADCAST:
+                        handleJoinMeBroadcast(msg);
+                        break;
                     default:
                         break;
                 }
@@ -514,5 +523,77 @@ public class CrossProxyService {
 
     public void publishMaintenanceSet(boolean enabled, String broadcastMessageLegacy) {
         publish(CrossProxyMessage.maintenanceSet(enabled, broadcastMessageLegacy, sharedSecret, proxyId));
+    }
+
+    private void handleWhitelistSet(CrossProxyMessage msg) {
+        if (msg.getProxyId() != null && msg.getProxyId().equals(proxyId)) return; // we are the originator
+        if (plugin.getWhitelistService() == null) return;
+        boolean enable = "true".equalsIgnoreCase(msg.getServerName());
+        plugin.getWhitelistService().setWhitelistEnabledFromRemote(enable);
+    }
+
+    public void publishWhitelistSet(boolean enabled) {
+        publish(CrossProxyMessage.whitelistSet(enabled, sharedSecret, proxyId));
+    }
+
+    /** Server name the player is on, or null if not found on any proxy. */
+    public String getPlayerCurrentServer(String playerName) {
+        if (playerName == null || playerName.isEmpty() || !enabled || pubConnection == null) return null;
+        String lower = playerName.toLowerCase();
+        for (String pid : getProxyIds()) {
+            for (java.util.Map.Entry<String, String> e : getPlayerListForProxy(pid)) {
+                if (e.getKey() != null && e.getKey().toLowerCase().equals(lower)) return e.getValue();
+            }
+        }
+        return null;
+    }
+
+    /** All online player names across proxies (for suggestions etc.). */
+    public java.util.Set<String> getOnlinePlayerNames() {
+        java.util.Set<String> names = new java.util.LinkedHashSet<>();
+        for (com.velocitypowered.api.proxy.Player p : server.getAllPlayers()) {
+            names.add(p.getUsername());
+        }
+        if (!enabled || pubConnection == null) return names;
+        for (String pid : getProxyIds()) {
+            for (java.util.Map.Entry<String, String> e : getPlayerListForProxy(pid)) {
+                if (e.getKey() != null && !e.getKey().isEmpty()) names.add(e.getKey());
+            }
+        }
+        return names;
+    }
+
+    /** Total online player count across all proxies. */
+    public int getTotalPlayerCount() {
+        if (!enabled || pubConnection == null) return server.getPlayerCount();
+        int total = 0;
+        for (String pid : getProxyIds()) {
+            total += getPlayerListForProxy(pid).size();
+        }
+        return total;
+    }
+
+    private void handleJoinMeToPlayer(CrossProxyMessage msg) {
+        String targetUsername = msg.getUsername();
+        String messageLegacy = msg.getReason();
+        if (targetUsername == null || targetUsername.isEmpty() || messageLegacy == null) return;
+        server.getPlayer(targetUsername).ifPresent(player ->
+                player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(messageLegacy)));
+    }
+
+    private void handleJoinMeBroadcast(CrossProxyMessage msg) {
+        if (msg.getProxyId() != null && msg.getProxyId().equals(proxyId)) return; // originator already sent to local players
+        String messageLegacy = msg.getReason();
+        if (messageLegacy == null) return;
+        Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(messageLegacy);
+        server.getAllPlayers().forEach(p -> p.sendMessage(comp));
+    }
+
+    public void publishJoinMeToPlayer(String targetUsername, String messageLegacy) {
+        publish(CrossProxyMessage.joinMeToPlayer(targetUsername, messageLegacy, sharedSecret, proxyId));
+    }
+
+    public void publishJoinMeBroadcast(String messageLegacy) {
+        publish(CrossProxyMessage.joinMeBroadcast(messageLegacy, sharedSecret, proxyId));
     }
 }

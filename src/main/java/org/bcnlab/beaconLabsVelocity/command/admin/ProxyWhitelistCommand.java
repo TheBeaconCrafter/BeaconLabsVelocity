@@ -113,6 +113,10 @@ public class ProxyWhitelistCommand implements SimpleCommand {
                 kickNonWhitelistedPlayers(source);
             }
             
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                plugin.getCrossProxyService().publishWhitelistSet(enabled);
+            }
+            
             // Log the action
             String sourceName = source instanceof Player ? ((Player) source).getUsername() : "Console";
             plugin.getLogger().info("Whitelist {} by {}", status, sourceName);

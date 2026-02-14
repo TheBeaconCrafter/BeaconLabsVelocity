@@ -83,10 +83,7 @@ public class MaintenanceCommand implements SimpleCommand {
         String broadcastLegacy = LegacyComponentSerializer.legacyAmpersand().serialize(resultMessage);
 
         // Toggle: when enabling, countdown runs first then state changes; when disabling, immediate
-        Runnable publishWhenEnabled = (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled())
-            ? () -> plugin.getCrossProxyService().publishMaintenanceSet(true, broadcastLegacy)
-            : null;
-        boolean success = maintenanceService.toggleMaintenance(enable, enable ? publishWhenEnabled : null);
+        boolean success = maintenanceService.toggleMaintenance(enable, null);
 
         if (!success) {
             src.sendMessage(plugin.getPrefix().append(
@@ -97,9 +94,9 @@ public class MaintenanceCommand implements SimpleCommand {
 
         src.sendMessage(resultMessage);
 
-        // Cross-proxy: when disabling, broadcast immediately; when enabling, publish is done after countdown via callback
-        if (!enable && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
-            plugin.getCrossProxyService().publishMaintenanceSet(false, broadcastLegacy);
+        // Cross-proxy: publish immediately so all proxies start countdown / state change at the same time
+        if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            plugin.getCrossProxyService().publishMaintenanceSet(enable, broadcastLegacy);
         }
     }
     

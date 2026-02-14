@@ -52,22 +52,31 @@ public class GoToCommand implements SimpleCommand {
         
         String target = args[0];
         
-        // First check if target is a player
+        // First check if target is a player (on this proxy)
         Optional<Player> targetPlayer = server.getPlayer(target);
         if (targetPlayer.isPresent()) {
             Player targetP = targetPlayer.get();
-            // Cannot teleport to yourself
             if (player.equals(targetP)) {
                 source.sendMessage(plugin.getPrefix().append(Component.text("You cannot teleport to yourself.", NamedTextColor.RED)));
                 return;
             }
-            
-            // Get the server the target player is on
             targetP.getCurrentServer().ifPresent(serverConnection -> {
                 RegisteredServer targetServer = serverConnection.getServer();
                 teleportToServer(player, targetServer, "Player " + targetP.getUsername());
             });
             return;
+        }
+
+        // Target may be on another proxy: resolve server from cross-proxy plist
+        if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            String targetServerName = plugin.getCrossProxyService().getPlayerCurrentServer(target);
+            if (targetServerName != null) {
+                Optional<RegisteredServer> rs = server.getServer(targetServerName);
+                if (rs.isPresent()) {
+                    teleportToServer(player, rs.get(), "Player " + target);
+                    return;
+                }
+            }
         }
         
         // If not a player, try to find a server with that name
@@ -120,13 +129,16 @@ public class GoToCommand implements SimpleCommand {
         if (args.length == 1) {
             String partialName = args[0].toLowerCase();
             List<String> suggestions = new java.util.ArrayList<>();
-            
-            // Add player names
-            suggestions.addAll(server.getAllPlayers().stream()
-                    .map(Player::getUsername)
-                    .filter(name -> name.toLowerCase().startsWith(partialName))
-                    .collect(Collectors.toList()));
-            
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                suggestions.addAll(plugin.getCrossProxyService().getOnlinePlayerNames().stream()
+                        .filter(name -> name.toLowerCase().startsWith(partialName))
+                        .collect(Collectors.toList()));
+            } else {
+                suggestions.addAll(server.getAllPlayers().stream()
+                        .map(Player::getUsername)
+                        .filter(name -> name.toLowerCase().startsWith(partialName))
+                        .collect(Collectors.toList()));
+            }
             // Add server names
             suggestions.addAll(server.getAllServers().stream()
                     .map(s -> s.getServerInfo().getName())

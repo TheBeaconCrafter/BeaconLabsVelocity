@@ -21,7 +21,10 @@ public final class CrossProxyMessage {
         TEAM_CHAT,
         CHATREPORT_RESULT,
         CHATREPORT_REQUEST,
-        MAINTENANCE_SET
+        MAINTENANCE_SET,
+        WHITELIST_SET,
+        JOINME_TO_PLAYER,
+        JOINME_BROADCAST
     }
 
     private final Type type;
@@ -115,6 +118,21 @@ public final class CrossProxyMessage {
         return "MAINTENANCE_SET" + SEP + (enabled ? "true" : "false") + SEP + (broadcastMessageLegacy != null ? broadcastMessageLegacy : "") + SEP + secret + SEP + proxyId;
     }
 
+    /** Build outbound WHITELIST_SET (enabled "true"/"false"). */
+    public static String whitelistSet(boolean enabled, String secret, String proxyId) {
+        return "WHITELIST_SET" + SEP + (enabled ? "true" : "false") + SEP + secret + SEP + proxyId;
+    }
+
+    /** Build outbound JOINME_TO_PLAYER (target username, message legacy). */
+    public static String joinMeToPlayer(String targetUsername, String messageLegacy, String secret, String proxyId) {
+        return "JOINME_TO_PLAYER" + SEP + (targetUsername != null ? targetUsername : "") + SEP + (messageLegacy != null ? messageLegacy : "") + SEP + secret + SEP + proxyId;
+    }
+
+    /** Build outbound JOINME_BROADCAST (message legacy). */
+    public static String joinMeBroadcast(String messageLegacy, String secret, String proxyId) {
+        return "JOINME_BROADCAST" + SEP + (messageLegacy != null ? messageLegacy : "") + SEP + secret + SEP + proxyId;
+    }
+
     /**
      * Parse an incoming message. Returns null if invalid or unknown type.
      * Reason field may contain SEP; we reassemble it from middle parts for KICK.
@@ -166,6 +184,17 @@ public final class CrossProxyMessage {
             }
             if ("MAINTENANCE_SET".equals(typeStr) && parts.length >= 5) {
                 return new CrossProxyMessage(Type.MAINTENANCE_SET, parts[3], parts[4], null, parts.length > 2 ? parts[2] : "", parts[1], null, null); // reason=broadcastMessage, serverName=enabled "true"/"false"
+            }
+            if ("WHITELIST_SET".equals(typeStr) && parts.length >= 4) {
+                return new CrossProxyMessage(Type.WHITELIST_SET, parts[2], parts[3], null, null, parts[1], null, null); // serverName=enabled "true"/"false"
+            }
+            if ("JOINME_TO_PLAYER".equals(typeStr) && parts.length >= 5) {
+                String msgLegacy = parts.length == 5 ? parts[2] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 2, parts.length - 2));
+                return new CrossProxyMessage(Type.JOINME_TO_PLAYER, parts[parts.length - 2], parts[parts.length - 1], null, msgLegacy, null, parts[1], null); // username=target, reason=messageLegacy
+            }
+            if ("JOINME_BROADCAST".equals(typeStr) && parts.length >= 4) {
+                String msgLegacy = parts.length == 4 ? parts[1] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 1, parts.length - 2));
+                return new CrossProxyMessage(Type.JOINME_BROADCAST, parts[parts.length - 2], parts[parts.length - 1], null, msgLegacy, null, null, null);
             }
         } catch (Exception ignored) { }
         return null;

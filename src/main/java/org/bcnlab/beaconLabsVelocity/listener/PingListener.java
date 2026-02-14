@@ -47,7 +47,10 @@ public class PingListener {
         int versionProtocol = config.node("motd", "version-protocol").getInt(769);
 
         pingBuilder.maximumPlayers(maxPlayers);
-        pingBuilder.onlinePlayers(server.getPlayerCount());
+        int playerCount = (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled())
+            ? plugin.getCrossProxyService().getTotalPlayerCount()
+            : server.getPlayerCount();
+        pingBuilder.onlinePlayers(playerCount);
         pingBuilder.version(new ServerPing.Version(versionProtocol, versionName));
 
         event.setPing(pingBuilder.build());

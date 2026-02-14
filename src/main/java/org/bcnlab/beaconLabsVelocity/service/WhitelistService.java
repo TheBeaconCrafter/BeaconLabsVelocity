@@ -407,6 +407,18 @@ public class WhitelistService {
     }
     
     /**
+     * Set whitelist state from another proxy (cross-proxy sync). Saves state and kicks non-whitelisted if enabling.
+     */
+    public void setWhitelistEnabledFromRemote(boolean enabled) {
+        if (whitelistEnabled.get() == enabled) return;
+        whitelistEnabled.set(enabled);
+        saveWhitelistState(enabled);
+        if (enabled) {
+            kickNonWhitelistedPlayers();
+        }
+    }
+
+    /**
      * Check if whitelist is enabled
      * 
      * @return True if whitelist is enabled, false otherwise
