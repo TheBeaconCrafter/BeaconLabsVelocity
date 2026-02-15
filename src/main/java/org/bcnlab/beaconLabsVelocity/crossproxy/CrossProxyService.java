@@ -39,6 +39,7 @@ public class CrossProxyService {
     private static final String HEARTBEAT_KEY_PREFIX = "blv:proxyhb:";
     private static final String PROXY_HOST_KEY_PREFIX = "blv:proxyhost:";
     private static final String TRANSFER_PENDING_KEY_PREFIX = "blv:transfer:";
+    private static final String STAFF_KEY_PREFIX = "blv:staff:";
     private static final String PREFIX_HASH_KEY = "blv:prefixes";
     private static final int HEARTBEAT_TTL_SECONDS = 90;
     /** TTL for pending transfer (player reconnected to backend after cross-proxy transfer). */
@@ -205,22 +206,27 @@ public class CrossProxyService {
             var sync = pubConnection.sync();
             sync.srem(PROXIES_SET, proxyId);
             sync.del(PLIST_KEY_PREFIX + proxyId);
+            sync.del(STAFF_KEY_PREFIX + proxyId);
             sync.del(HEARTBEAT_KEY_PREFIX + proxyId);
         } catch (Exception e) {
             logger.debug("Failed to unregister proxy: {}", e.getMessage());
         }
     }
 
-    /** Update the player list for this proxy (call on join, leave, server switch). Format per entry: uuid:username:server for cross-proxy UUID lookup. Also syncs LuckPerms prefixes. */
+    /** Update the player list for this proxy (call on join, leave, server switch). Format per entry: uuid:username:server for cross-proxy UUID lookup. Also syncs LuckPerms prefixes and staff set for /staff cross-proxy. */
     public void updatePlayerList() {
         if (!enabled || pubConnection == null) return;
         try {
             refreshHeartbeat();
             var sync = pubConnection.sync();
             java.util.List<String> entries = new java.util.ArrayList<>();
+            java.util.Set<String> staffNames = new java.util.HashSet<>();
             for (com.velocitypowered.api.proxy.Player p : server.getAllPlayers()) {
                 String serverName = p.getCurrentServer().map(s -> s.getServerInfo().getName()).orElse("?");
                 entries.add(p.getUniqueId().toString() + PLAYER_SERVER_PAIR_SEP + p.getUsername() + PLAYER_SERVER_PAIR_SEP + serverName);
+                if (p.hasPermission("beaconlabs.visual.staff")) {
+                    staffNames.add(p.getUsername().toLowerCase());
+                }
                 try {
                     String prefix = getPlayerLuckPermsPrefix(p.getUniqueId());
                     if (prefix != null && !prefix.isEmpty()) {
@@ -234,6 +240,8 @@ public class CrossProxyService {
             }
             String value = String.join(PLAYER_SERVER_SEP, entries);
             sync.setex(PLIST_KEY_PREFIX + proxyId, PLIST_TTL_SECONDS, value);
+            String staffValue = String.join(PLAYER_SERVER_SEP, staffNames);
+            sync.setex(STAFF_KEY_PREFIX + proxyId, PLIST_TTL_SECONDS, staffValue);
         } catch (Exception e) {
             logger.debug("Failed to update player list: {}", e.getMessage());
         }
@@ -364,6 +372,27 @@ public class CrossProxyService {
             return out;
         } catch (Exception e) {
             logger.debug("Failed to get player list for {}: {}", proxyIdKey, e.getMessage());
+            return java.util.Collections.emptyList();
+        }
+    }
+
+    /** Get staff list for a proxy: list of (username, serverName) for players with beaconlabs.visual.staff. For /staff cross-proxy. */
+    public java.util.List<java.util.Map.Entry<String, String>> getStaffListForProxy(String proxyIdKey) {
+        if (!enabled || pubConnection == null) return java.util.Collections.emptyList();
+        try {
+            String staffRaw = pubConnection.sync().get(STAFF_KEY_PREFIX + proxyIdKey);
+            if (staffRaw == null || staffRaw.isEmpty()) return java.util.Collections.emptyList();
+            java.util.Set<String> staffLower = new java.util.HashSet<>(java.util.Arrays.asList(staffRaw.split(PLAYER_SERVER_SEP, -1)));
+            java.util.List<java.util.Map.Entry<String, String>> plist = getPlayerListForProxy(proxyIdKey);
+            java.util.List<java.util.Map.Entry<String, String>> out = new java.util.ArrayList<>();
+            for (java.util.Map.Entry<String, String> e : plist) {
+                if (e.getKey() != null && staffLower.contains(e.getKey().toLowerCase())) {
+                    out.add(e);
+                }
+            }
+            return out;
+        } catch (Exception e) {
+            logger.debug("Failed to get staff list for {}: {}", proxyIdKey, e.getMessage());
             return java.util.Collections.emptyList();
         }
     }
