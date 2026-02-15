@@ -18,7 +18,7 @@
 
 ## Installation
 
-1. Download the latest `beaconlabsvelocity-*.jar` from [Releases](https://github.com/bcnlab/BeaconLabsVelocity/releases) (or build from source).
+1. Download the latest `beaconlabsvelocity-*.jar` from [Releases](https://github.com/TheBeaconCrafter/BeaconLabsVelocity/releases) (or build from source).
 2. Place the JAR in your Velocity proxy’s `plugins/` folder.
 3. Start the proxy once to generate `plugins/BeaconLabsVelocity/config.yml`.
 4. Edit `config.yml` (and optionally `punishments.yml`, `badwords.yml`, `servers.yml` in the same folder).
