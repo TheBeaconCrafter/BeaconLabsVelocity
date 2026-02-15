@@ -17,6 +17,7 @@ import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -406,6 +407,7 @@ public final class FeatherIntegration {
     public void onPostLogin(PostLoginEvent event) {
         if (!available || metaService == null) return;
         updateDiscordActivity(event.getPlayer());
+        scheduleRefreshAllDiscordActivities();
     }
 
     @Subscribe(order = PostOrder.NORMAL)
@@ -418,6 +420,21 @@ public final class FeatherIntegration {
     public void onDisconnect(DisconnectEvent event) {
         if (!available || metaService == null) return;
         clearDiscordActivity(event.getPlayer());
+        scheduleRefreshAllDiscordActivities();
+    }
+
+    /** Schedules a refresh of Discord activity for all online players (so %players% / %max_players% stay current). */
+    private void scheduleRefreshAllDiscordActivities() {
+        plugin.getServer().getScheduler().buildTask(plugin, this::refreshAllDiscordActivities).delay(1, TimeUnit.SECONDS).schedule();
+    }
+
+    private void refreshAllDiscordActivities() {
+        if (!available || metaService == null) return;
+        ConfigurationNode discord = plugin.getConfig() != null ? plugin.getConfig().node("feather").node("discord") : null;
+        if (discord == null || !discord.node("enabled").getBoolean(false)) return;
+        for (Player p : plugin.getServer().getAllPlayers()) {
+            updateDiscordActivity(p);
+        }
     }
 
     /** Set Discord activity for a FeatherPlayer (from PlayerHelloEvent). API expects FeatherPlayer, not Velocity Player. */
@@ -425,11 +442,6 @@ public final class FeatherIntegration {
         if (metaService == null || plugin.getConfig() == null) return;
         ConfigurationNode discord = plugin.getConfig().node("feather").node("discord");
         if (discord == null || !discord.node("enabled").getBoolean(false)) return;
-        String image = discord.node("image").getString("");
-        String imageText = discord.node("image-text").getString("");
-        String state = discord.node("state").getString("");
-        String details = discord.node("details").getString("");
-        if (image.isEmpty() && imageText.isEmpty() && state.isEmpty() && details.isEmpty()) return;
         Object featherPlayer;
         try {
             Method getPlayer = event.getClass().getMethod("getPlayer");
@@ -438,6 +450,12 @@ public final class FeatherIntegration {
             return;
         }
         if (featherPlayer == null) return;
+        DiscordPlaceholders ctx = resolveDiscordPlaceholders(featherPlayer, null);
+        String image = resolvePlaceholders(discord.node("image").getString(""), ctx);
+        String imageText = resolvePlaceholders(discord.node("image-text").getString(""), ctx);
+        String state = resolvePlaceholders(discord.node("state").getString(""), ctx);
+        String details = resolvePlaceholders(discord.node("details").getString(""), ctx);
+        if (image.isEmpty() && imageText.isEmpty() && state.isEmpty() && details.isEmpty()) return;
         try {
             ClassLoader featherLoader = metaService.getClass().getClassLoader();
             Class<?> activityClass = null;
@@ -468,13 +486,89 @@ public final class FeatherIntegration {
         }
     }
 
+    /** Placeholder context for Discord Rich Presence. */
+    private static final class DiscordPlaceholders {
+        final int players;
+        final int maxPlayers;
+        final String serverName;
+        final String playerName;
+        final String dimension;
+
+        DiscordPlaceholders(int players, int maxPlayers, String serverName, String playerName, String dimension) {
+            this.players = players;
+            this.maxPlayers = maxPlayers;
+            this.serverName = serverName != null ? serverName : "";
+            this.playerName = playerName != null ? playerName : "";
+            this.dimension = dimension != null ? dimension : "?";
+        }
+    }
+
+    private static DiscordPlaceholders resolveDiscordPlaceholders(Object featherPlayer, Player velocityPlayer) {
+        int players = plugin.getServer().getPlayerCount();
+        int maxPlayers = plugin.getConfig() != null ? plugin.getConfig().node("motd", "max-players").getInt(100) : 100;
+        String serverName = "";
+        String playerName = "";
+        if (velocityPlayer != null) {
+            serverName = velocityPlayer.getCurrentServer().map(s -> s.getServerInfo().getName()).orElse("");
+            playerName = velocityPlayer.getUsername();
+        } else if (featherPlayer != null) {
+            try {
+                Method getName = featherPlayer.getClass().getMethod("getName");
+                Object n = getName.invoke(featherPlayer);
+                playerName = n != null ? n.toString() : "";
+                Method getUuid = featherPlayer.getClass().getMethod("getUniqueId");
+                Object u = getUuid.invoke(featherPlayer);
+                if (u instanceof UUID uuid) {
+                    velocityPlayer = plugin.getServer().getPlayer(uuid).orElse(null);
+                    if (velocityPlayer != null) {
+                        serverName = velocityPlayer.getCurrentServer().map(s -> s.getServerInfo().getName()).orElse("");
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        String dimension = resolveDimension(featherPlayer, velocityPlayer);
+        return new DiscordPlaceholders(players, maxPlayers, serverName, playerName, dimension);
+    }
+
+    /** Try to resolve dimension from FeatherPlayer (e.g. getDimension/getWorld). Proxy has no dimension; remains "?" if unavailable. */
+    private static String resolveDimension(Object featherPlayer, Player velocityPlayer) {
+        if (featherPlayer == null) return "?";
+        for (String methodName : new String[]{"getDimension", "getWorld", "getCurrentWorld", "getDimensionName"}) {
+            try {
+                Method m = featherPlayer.getClass().getMethod(methodName);
+                Object v = m.invoke(featherPlayer);
+                if (v != null) {
+                    String s = v instanceof String ? (String) v : v.toString();
+                    if (!s.isEmpty()) return s;
+                }
+            } catch (NoSuchMethodException | SecurityException ignored) {
+            } catch (Exception e) {
+                if (plugin != null && plugin.isFeatherDebug()) logger.debug("Feather dimension {}: {}", methodName, e.getMessage());
+            }
+        }
+        return "?";
+    }
+
+    /** Replace %placeholder% in template. Supported: %players%, %max_players%, %server%, %player%, %dimension%. */
+    private static String resolvePlaceholders(String template, DiscordPlaceholders ctx) {
+        if (template == null || template.isEmpty()) return template;
+        String s = template;
+        s = s.replace("%players%", String.valueOf(ctx.players));
+        s = s.replace("%max_players%", String.valueOf(ctx.maxPlayers));
+        s = s.replace("%server%", ctx.serverName);
+        s = s.replace("%player%", ctx.playerName);
+        s = s.replace("%dimension%", ctx.dimension);
+        return s;
+    }
+
     private void updateDiscordActivity(Player player) {
         ConfigurationNode discord = plugin.getConfig() != null ? plugin.getConfig().node("feather").node("discord") : null;
         if (discord == null) return;
-        String image = discord.node("image").getString("");
-        String imageText = discord.node("image-text").getString("");
-        String state = discord.node("state").getString("");
-        String details = discord.node("details").getString("");
+        DiscordPlaceholders ctx = resolveDiscordPlaceholders(null, player);
+        String image = resolvePlaceholders(discord.node("image").getString(""), ctx);
+        String imageText = resolvePlaceholders(discord.node("image-text").getString(""), ctx);
+        String state = resolvePlaceholders(discord.node("state").getString(""), ctx);
+        String details = resolvePlaceholders(discord.node("details").getString(""), ctx);
         if (image.isEmpty() && imageText.isEmpty() && state.isEmpty() && details.isEmpty()) return;
 
         try {

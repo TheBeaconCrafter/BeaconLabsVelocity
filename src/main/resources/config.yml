@@ -65,12 +65,14 @@ feather:
   # Place image in plugins/BeaconLabsVelocity/feather/ and set filename here (e.g. "server-background.png").
   server-list-background: ""
   # Discord Rich Presence: shown on players' Discord status when they're on your server.
+  # Placeholders (use in image-text, state, details): %players%, %max_players%, %server%, %player%, %dimension%
+  # Note: %dimension% may show "?" on proxy if the Feather client/API does not provide it.
   discord:
     enabled: false
     image: ""              # URL to image (e.g. "https://example.com/server-icon.png")
-    image-text: ""         # Text when hovering over the image (e.g. "My Server")
-    state: ""              # Small line (e.g. "Playing Survival")
-    details: ""            # Main line (e.g. "Join at play.example.com")
+    image-text: ""         # Hover text. Placeholders: %players%, %max_players%, %server%, %player%, %dimension%
+    state: ""              # Small line. E.g. "On %server% | %players%/%max_players%"
+    details: ""            # Main line. E.g. "%player% playing on BeaconLabs"
 
 # Cross-Proxy (Redis) - Optional. When enabled, all proxy features work across multiple Velocity proxies.
 # All proxies must use the same Redis instance and the same shared-secret.
