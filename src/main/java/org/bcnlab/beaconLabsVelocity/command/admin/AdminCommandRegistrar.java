@@ -38,6 +38,7 @@ public class AdminCommandRegistrar {
         commandManager.register("psend", sendCommand);
         // Info
         commandManager.register("plist", new PlistCommand(plugin, server));
+        commandManager.register("proxy", new ProxyCommand(plugin));
         commandManager.register("proxies", new ProxiesCommand(plugin));
         commandManager.register("featherdebug", new FeatherDebugCommand(plugin, server));
         commandManager.register("info", new InfoCommand(server, service, plugin, config));

@@ -70,8 +70,8 @@ public final class FeatherIntegration {
 
     /** Delays (seconds) to retry Discord RPC when PlayerHelloEvent may fire late (e.g. high latency). */
     private static final int[] DISCORD_RETRY_DELAYS = { 3, 8, 15 };
-    /** Delays (seconds) to retry obtaining MetaService / loading server list background (plugin load order). */
-    private static final int[] INIT_RETRY_DELAYS = { 2, 5, 10 };
+    /** Delays (seconds) to retry obtaining MetaService (slow proxies may load Feather after us; EU ~19s startup). */
+    private static final int[] INIT_RETRY_DELAYS = { 1, 2, 4, 8, 15, 30 };
 
     public static void init(BeaconLabsVelocity pl) {
         plugin = pl;
@@ -220,7 +220,9 @@ public final class FeatherIntegration {
                     subscribed++;
                 }
             }
-            if (subscribed == 0 && debug) {
+            if (subscribed > 0) {
+                logger.info("[Feather] PlayerHelloEvent subscribed ({} type(s)).", subscribed);
+            } else if (debug) {
                 logger.warn("[Feather debug] No PlayerHelloEvent type could be subscribed.");
             }
         } catch (Exception e) {

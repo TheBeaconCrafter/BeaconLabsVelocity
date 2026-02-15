@@ -177,8 +177,9 @@ public class BeaconLabsVelocity {
         boolean redisEnabled = redisNode != null && redisNode.node("enabled").getBoolean(false);
         String proxyId = redisNode != null ? redisNode.node("proxy-id").getString("na") : "na";
         String sharedSecret = redisNode != null ? redisNode.node("shared-secret").getString("") : "";
+        String publicHostname = redisNode != null ? redisNode.node("public-hostname").getString("") : "";
         boolean allowDoubleJoin = redisNode != null && redisNode.node("allow-double-join").getBoolean(false);
-        crossProxyService = new org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService(this, proxyId, sharedSecret, redisEnabled, allowDoubleJoin);
+        crossProxyService = new org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService(this, proxyId, sharedSecret, publicHostname, redisEnabled, allowDoubleJoin);
         if (redisEnabled) {
             crossProxyService.start(
                     redisNode.node("host").getString("localhost"),

@@ -151,6 +151,7 @@ Optional integration with the [Feather Server API (Velocity)](https://github.com
 When `redis.enabled` is true and Redis is configured, multiple Velocity proxies share state over Redis Pub/Sub (with a shared secret):
 
 - **Duplicate session** – By default, the same player cannot be online on two proxies at once; the second join can be kicked. Optional `allow-double-join` to allow it.
+- **Transfer** – `/proxies send` moves players to another proxy using 1.20.5+ transfer packets. Set `redis.public-hostname` (e.g. `na.example.com` or `127.0.0.1:25566`) on each proxy so hostnames are synced via Redis. **You must enable accept-transfers** (and player-info-forwarding as needed) in each proxy’s `velocity.toml`. After transfer, players are reconnected to the same backend server they were on.
 - **Perform actions across proxies** – All commands that interact with players on the proxy are compatible with cross proxy sync. Players on Proxy A can still /msg players on Proxy B, admin commands etc all of course work
 - **Player list** – `/plist` and `/info` can reflect players on all proxies; `/proxies` shows proxy list and counts.
 - **Team chat & reports** – Team chat and report notifications can be delivered to staff on all proxies.
@@ -195,7 +196,12 @@ All proxies must use the same Redis instance and the same `shared-secret`. Each 
 | `/goto <player>` | Go to player’s server | `beaconlabs.command.goto` |
 | `/send`, `/proxysend`, `/psend` | Send player(s) to server | `beaconlabs.command.send` |
 | `/plist` | Player list | `beaconlabs.command.plist` |
-| `/proxies [debug]` | Cross-proxy list / debug | `beaconlabs.command.proxies` / `.command.proxies.debug` |
+| `/proxy` | Show which proxy you are connected to | — |
+| `/proxy <proxyid>` | Transfer yourself to that proxy (current player only; 1.20.5+) | `beaconlabs.command.proxy.transfer` |
+| `/proxies` | List connected proxies | `beaconlabs.command.proxies` |
+| `/proxies send <player\|server:name\|proxy:id\|*> <proxy>` | Transfer players to another proxy (1.20.5+ transfer packets) | `beaconlabs.command.proxies.send` |
+| `/proxies info <proxy>` | Proxy details (hostname, player count) | `beaconlabs.command.proxies` |
+| `/proxies debug` | Cross-proxy debug output | `beaconlabs.command.proxies.debug` |
 | `/info <player>` | Player info | `beaconlabs.punish.info` |
 | `/ips <player>` | IP history | `beaconlabs.admin.ips` |
 | `/maintenance [on\|off]` | Maintenance mode | `beaconlabs.command.maintenance` |
@@ -231,7 +237,9 @@ All proxies must use the same Redis instance and the same `shared-secret`. Each 
 | `beaconlabs.command.goto` | Use /goto |
 | `beaconlabs.command.send` | Use /send |
 | `beaconlabs.command.plist` | Use /plist |
-| `beaconlabs.command.proxies` | Use /proxies |
+| `beaconlabs.command.proxy.transfer` | Use /proxy &lt;proxyid&gt; (transfer self to another proxy) |
+| `beaconlabs.command.proxies` | Use /proxies, /proxies info |
+| `beaconlabs.command.proxies.send` | Use /proxies send (transfer players to another proxy) |
 | `beaconlabs.command.proxies.debug` | Use /proxies debug |
 | `beaconlabs.command.maintenance` | Use /maintenance |
 | `beaconlabs.command.whitelist` | Use /proxywhitelist |

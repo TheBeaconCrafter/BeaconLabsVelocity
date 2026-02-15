@@ -14,9 +14,12 @@ import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import com.velocitypowered.api.proxy.Player;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.slf4j.Logger;
 
+import java.lang.reflect.Method;
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,8 +37,12 @@ public class CrossProxyService {
     private static final String PROXIES_SET = "blv:proxies";
     private static final String PLIST_KEY_PREFIX = "blv:plist:";
     private static final String HEARTBEAT_KEY_PREFIX = "blv:proxyhb:";
+    private static final String PROXY_HOST_KEY_PREFIX = "blv:proxyhost:";
+    private static final String TRANSFER_PENDING_KEY_PREFIX = "blv:transfer:";
     private static final String PREFIX_HASH_KEY = "blv:prefixes";
     private static final int HEARTBEAT_TTL_SECONDS = 90;
+    /** TTL for pending transfer (player reconnected to backend after cross-proxy transfer). */
+    private static final int TRANSFER_PENDING_TTL_SECONDS = 60;
     private static final int HEARTBEAT_REFRESH_INTERVAL_SECONDS = 20;
     /** TTL for plist key so dead proxies disappear; also used as fallback "live" signal when heartbeat is delayed (e.g. Redis replication). */
     private static final int PLIST_TTL_SECONDS = 120;
@@ -47,6 +54,7 @@ public class CrossProxyService {
     private final Logger logger;
     private final String proxyId;
     private final String sharedSecret;
+    private final String publicHostname;
     private final boolean enabled;
     private final boolean allowDoubleJoin;
 
@@ -56,12 +64,13 @@ public class CrossProxyService {
     private Thread subscriberThread;
     private ScheduledTask heartbeatTask;
 
-    public CrossProxyService(BeaconLabsVelocity plugin, String proxyId, String sharedSecret, boolean enabled, boolean allowDoubleJoin) {
+    public CrossProxyService(BeaconLabsVelocity plugin, String proxyId, String sharedSecret, String publicHostname, boolean enabled, boolean allowDoubleJoin) {
         this.plugin = plugin;
         this.server = plugin.getServer();
         this.logger = plugin.getLogger();
         this.proxyId = proxyId != null ? proxyId : "default";
         this.sharedSecret = sharedSecret != null ? sharedSecret : "";
+        this.publicHostname = publicHostname != null ? publicHostname.trim() : "";
         this.enabled = enabled;
         this.allowDoubleJoin = allowDoubleJoin;
     }
@@ -125,6 +134,7 @@ public class CrossProxyService {
             var sync = pubConnection.sync();
             sync.sadd(PROXIES_SET, proxyId);
             refreshHeartbeat();
+            refreshProxyHostname();
         } catch (Exception e) {
             logger.debug("Failed to register proxy: {}", e.getMessage());
         }
@@ -138,6 +148,54 @@ public class CrossProxyService {
         } catch (Exception e) {
             logger.debug("Failed to refresh heartbeat: {}", e.getMessage());
         }
+    }
+
+    /** Store this proxy's public hostname in Redis (for /proxies send transfer). */
+    private void refreshProxyHostname() {
+        if (!enabled || pubConnection == null || publicHostname.isEmpty()) return;
+        try {
+            pubConnection.sync().setex(PROXY_HOST_KEY_PREFIX + proxyId, HEARTBEAT_TTL_SECONDS, publicHostname);
+        } catch (Exception e) {
+            logger.debug("Failed to set proxy hostname: {}", e.getMessage());
+        }
+    }
+
+    /** Get public hostname for a proxy (for transfer). Returns null if not set or proxy unknown. */
+    public String getProxyHostname(String targetProxyId) {
+        if (!enabled || pubConnection == null || targetProxyId == null || targetProxyId.isEmpty()) return null;
+        try {
+            String host = pubConnection.sync().get(PROXY_HOST_KEY_PREFIX + targetProxyId);
+            return (host != null && !host.isEmpty()) ? host : null;
+        } catch (Exception e) {
+            logger.debug("Failed to get proxy hostname for {}: {}", targetProxyId, e.getMessage());
+            return null;
+        }
+    }
+
+    /** Set pending transfer: when this player connects to targetProxyId, send them to serverName. TTL 60s. */
+    public void setPendingTransfer(String targetProxyId, UUID playerUuid, String serverName) {
+        if (!enabled || pubConnection == null || targetProxyId == null || playerUuid == null || serverName == null || serverName.isEmpty()) return;
+        try {
+            pubConnection.sync().setex(TRANSFER_PENDING_KEY_PREFIX + targetProxyId + ":" + playerUuid.toString(), TRANSFER_PENDING_TTL_SECONDS, serverName);
+        } catch (Exception e) {
+            logger.debug("Failed to set pending transfer: {}", e.getMessage());
+        }
+    }
+
+    /** Get and remove pending transfer for this player on this proxy. Returns server name to connect to, or null. */
+    public String getAndClearPendingTransfer(UUID playerUuid) {
+        if (!enabled || pubConnection == null || playerUuid == null) return null;
+        try {
+            String key = TRANSFER_PENDING_KEY_PREFIX + proxyId + ":" + playerUuid.toString();
+            String serverName = pubConnection.sync().get(key);
+            if (serverName != null && !serverName.isEmpty()) {
+                pubConnection.sync().del(key);
+                return serverName;
+            }
+        } catch (Exception e) {
+            logger.debug("Failed to get pending transfer: {}", e.getMessage());
+        }
+        return null;
     }
 
     /** Unregister this proxy on shutdown. */
@@ -383,6 +441,7 @@ public class CrossProxyService {
             updatePlayerList();
             heartbeatTask = server.getScheduler().buildTask(plugin, () -> {
                 refreshHeartbeat();
+                refreshProxyHostname();
                 updatePlayerList(); // Keep plist key alive (TTL 120s); otherwise plist shows 0 after ~2 mins of no join/leave/switch
             })
                     .repeat(HEARTBEAT_REFRESH_INTERVAL_SECONDS, TimeUnit.SECONDS)
@@ -480,6 +539,9 @@ public class CrossProxyService {
                         break;
                     case BADWORD_ALERT:
                         handleBadWordAlert(msg);
+                        break;
+                    case PROXY_TRANSFER_REQUEST:
+                        handleProxyTransferRequest(msg);
                         break;
                     default:
                         break;
@@ -792,6 +854,68 @@ public class CrossProxyService {
                 .forEach(p -> p.sendMessage(notification));
     }
 
+    private void handleProxyTransferRequest(CrossProxyMessage msg) {
+        UUID uuid = msg.getUuidAsUUID();
+        String targetProxyId = msg.getReason();
+        String backendServerName = msg.getServerName();
+        if (uuid == null || targetProxyId == null || targetProxyId.isEmpty() || backendServerName == null) return;
+        Optional<Player> opt = server.getPlayer(uuid);
+        if (opt.isEmpty()) return;
+        Player player = opt.get();
+        setPendingTransfer(targetProxyId, uuid, backendServerName);
+        String hostPort = getProxyHostname(targetProxyId);
+        if (hostPort == null || hostPort.isEmpty()) {
+            logger.warn("Proxy transfer for {} to {} failed: target proxy hostname not set.", player.getUsername(), targetProxyId);
+            return;
+        }
+        performTransferToHost(player, hostPort).ifPresent(err ->
+                player.sendMessage(plugin.getPrefix().append(Component.text(err, NamedTextColor.RED))));
+    }
+
+    /** Minecraft 1.20.5+ protocol (transfer packet support). */
+    private static final int PROTOCOL_VERSION_TRANSFER = 766;
+
+    /**
+     * Transfer a player to another host (e.g. another proxy) using 1.20.5+ transfer packets.
+     * @return empty if success, or error message if transfer could not be performed (e.g. version too old)
+     */
+    public Optional<String> performTransferToHost(Player player, String hostPort) {
+        if (player == null || hostPort == null || hostPort.isEmpty()) return Optional.of("Invalid host.");
+        InetSocketAddress addr = parseHostPort(hostPort);
+        if (addr == null) return Optional.of("Invalid host format (use host or host:port).");
+        try {
+            int protocol = player.getProtocolVersion().getProtocol();
+            if (protocol < PROTOCOL_VERSION_TRANSFER) {
+                return Optional.of("A transfer was attempted but your game version is too old. Use 1.20.5 or newer for proxy transfer.");
+            }
+            Method m = player.getClass().getMethod("transferToHost", InetSocketAddress.class);
+            m.invoke(player, addr);
+            return Optional.empty();
+        } catch (NoSuchMethodException e) {
+            logger.warn("Transfer not supported by this Velocity version (transferToHost missing).");
+            return Optional.of("Proxy transfer is not available on this server.");
+        } catch (Exception e) {
+            logger.debug("Transfer failed: {}", e.getMessage());
+            return Optional.of("Transfer failed: " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
+        }
+    }
+
+    private static InetSocketAddress parseHostPort(String hostPort) {
+        String host = hostPort.trim();
+        int port = 25565;
+        int idx = host.lastIndexOf(':');
+        if (idx >= 0 && idx < host.length() - 1) {
+            try {
+                port = Integer.parseInt(host.substring(idx + 1).trim());
+                host = host.substring(0, idx).trim();
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        if (host.isEmpty()) return null;
+        return new InetSocketAddress(host, port);
+    }
+
     private static Component buildJoinMeComponent(String senderUsername, String serverName) {
         Component border = Component.text("▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬", NamedTextColor.GOLD, TextDecoration.BOLD);
         Component header = Component.text("  ✦ JOIN ME INVITATION ✦  ", NamedTextColor.YELLOW, TextDecoration.BOLD);
@@ -823,5 +947,11 @@ public class CrossProxyService {
 
     public void publishBadWordAlert(String playerName, String messageContent, String badWord) {
         publish(CrossProxyMessage.badWordAlert(playerName, messageContent, badWord, sharedSecret, proxyId));
+    }
+
+    /** Ask the proxy that has this player to transfer them to targetProxyId (for /proxies send when player is on another proxy). */
+    public void publishProxyTransferRequest(UUID playerUuid, String targetProxyId, String backendServerName) {
+        if (playerUuid == null || targetProxyId == null || backendServerName == null) return;
+        publish(CrossProxyMessage.proxyTransferRequest(playerUuid.toString(), targetProxyId, backendServerName, sharedSecret, proxyId));
     }
 }

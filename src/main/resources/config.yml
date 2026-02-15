@@ -76,6 +76,8 @@ feather:
 
 # Cross-Proxy (Redis) - Optional. When enabled, all proxy features work across multiple Velocity proxies.
 # All proxies must use the same Redis instance and the same shared-secret.
+# For /proxies send (transfer): set public-hostname so other proxies can redirect players here.
+# In velocity.toml you must enable accept-transfers (and player-info-forwarding as needed).
 redis:
   enabled: false
   host: "localhost"
@@ -83,6 +85,7 @@ redis:
   password: ""                    # Redis AUTH password (leave empty if Redis has no password)
   shared-secret: ""               # Required when enabled. Same secret on every proxy; used to verify messages.
   proxy-id: "na"                  # Unique per proxy, e.g. "na" and "eu"
+  public-hostname: ""             # Public host:port for this proxy (e.g. na.example.com or 127.0.0.1:25566). Required for /proxies send. Synced via Redis. Accept-transfers must be on in velocity.toml.
   allow-double-join: false        # If true, players can be connected to two proxies at once (no duplicate-session kick).
   connect-timeout-ms: 5000
   reconnect-interval-ms: 5000

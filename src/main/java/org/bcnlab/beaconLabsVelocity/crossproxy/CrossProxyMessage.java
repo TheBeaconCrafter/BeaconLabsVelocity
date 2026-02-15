@@ -26,7 +26,8 @@ public final class CrossProxyMessage {
         JOINME_TO_PLAYER,
         JOINME_BROADCAST,
         REPORT_NOTIFY,
-        BADWORD_ALERT
+        BADWORD_ALERT,
+        PROXY_TRANSFER_REQUEST
     }
 
     private final Type type;
@@ -145,6 +146,11 @@ public final class CrossProxyMessage {
         return "BADWORD_ALERT" + SEP + (playerName != null ? playerName : "") + SEP + (messageContent != null ? messageContent : "") + SEP + (badWord != null ? badWord : "") + SEP + secret + SEP + proxyId;
     }
 
+    /** Build outbound PROXY_TRANSFER_REQUEST: ask the proxy that has this player to transfer them to targetProxyId. (uuid, targetProxyId, backendServerName). */
+    public static String proxyTransferRequest(String uuid, String targetProxyId, String backendServerName, String secret, String fromProxyId) {
+        return "PROXY_TRANSFER_REQUEST" + SEP + (uuid != null ? uuid : "") + SEP + (targetProxyId != null ? targetProxyId : "") + SEP + (backendServerName != null ? backendServerName : "") + SEP + secret + SEP + fromProxyId;
+    }
+
     /**
      * Parse an incoming message. Returns null if invalid or unknown type.
      * Reason field may contain SEP; we reassemble it from middle parts for KICK.
@@ -214,6 +220,9 @@ public final class CrossProxyMessage {
                 String messageContent = parts.length == 6 ? parts[2] : String.join(SEP, java.util.Arrays.copyOfRange(parts, 2, parts.length - 3));
                 String badWord = parts[parts.length - 3];
                 return new CrossProxyMessage(Type.BADWORD_ALERT, parts[parts.length - 2], parts[parts.length - 1], null, messageContent, badWord, parts[1], null); // username=playerName, reason=message, serverName=badWord
+            }
+            if ("PROXY_TRANSFER_REQUEST".equals(typeStr) && parts.length >= 6) {
+                return new CrossProxyMessage(Type.PROXY_TRANSFER_REQUEST, parts[4], parts[5], parts[1], parts[2], parts[3], null, null); // uuid=parts[1], reason=targetProxyId, serverName=backendServerName
             }
         } catch (Exception ignored) { }
         return null;
