@@ -192,6 +192,7 @@ All proxies must use the same Redis instance and the same `shared-secret`. Each 
 | `/ping [player]` | Show ping | `beaconlabs.command.ping` / `.ping.others` |
 | `/playtime [player\|top]` | Playtime | `beaconlabs.command.playtime` (+ `.others`, `.top`) |
 | `/skin <name> [target]` | Get skin | — / `beaconlabs.command.skin.other` |
+| `/ente [player]` | Show duck emoji title to self or target player | `beaconlabs.command.ente` / `.ente.others` |
 | **Admin** | | |
 | `/goto <player>` | Go to player’s server | `beaconlabs.command.goto` |
 | `/send`, `/proxysend`, `/psend` | Send player(s) to server | `beaconlabs.command.send` |
@@ -234,6 +235,8 @@ All proxies must use the same Redis instance and the same `shared-secret`. Each 
 | `beaconlabs.command.playtime` | Use /playtime (self) |
 | `beaconlabs.command.playtime.others` | View others’ playtime |
 | `beaconlabs.command.playtime.top` | Use /playtime top |
+| `beaconlabs.command.ente` | Use /ente (show duck to self) |
+| `beaconlabs.command.ente.others` | Use /ente &lt;player&gt; (show duck to others) |
 | `beaconlabs.command.goto` | Use /goto |
 | `beaconlabs.command.send` | Use /send |
 | `beaconlabs.command.plist` | Use /plist |

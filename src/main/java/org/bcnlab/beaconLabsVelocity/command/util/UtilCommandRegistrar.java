@@ -31,5 +31,8 @@ public class UtilCommandRegistrar {
             commandManager.register("playtime", playtimeCommand);
             commandManager.register("pt", playtimeCommand); // Alias
         }
+
+        // Ente (duck) command
+        commandManager.register("ente", new EnteCommand(plugin, server));
     }
 }
