@@ -89,3 +89,19 @@ redis:
   allow-double-join: false        # If true, players can be connected to two proxies at once (no duplicate-session kick).
   connect-timeout-ms: 5000
   reconnect-interval-ms: 5000
+
+# Legal (Terms of Service / Privacy) - requires database.
+# Shows a book-style interface on first join. Acceptance is stored in the database.
+legal:
+  enabled: false
+  show-on-first-join: true   # Show legal interface when player has not yet accepted
+  enforce-accept: false     # If true, kick player when they don't accept (after showing the interface)
+  kick-message: "&cYou must accept the Terms of Service and Privacy Policy to play.\n&7Use &f/legal &7to view and accept."
+  deny-message: "&cYou have declined the Terms of Service and Privacy Policy. You have been disconnected."
+  top-message: "&eLegal &7- Terms of Service and Privacy Policy. Please read and accept to continue."
+  tos:
+    enabled: true
+    link: "https://example.com/tos"
+  privacy:
+    enabled: true
+    link: "https://example.com/privacy"

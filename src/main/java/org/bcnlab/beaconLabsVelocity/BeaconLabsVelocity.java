@@ -11,6 +11,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.command.JoinMeCommand;
+import org.bcnlab.beaconLabsVelocity.command.LegalCommand;
 import org.bcnlab.beaconLabsVelocity.command.ReportCommand;
 import org.bcnlab.beaconLabsVelocity.command.ReportsCommand;
 import org.bcnlab.beaconLabsVelocity.command.punishment.PunishmentCommandRegistrar;
@@ -24,6 +25,7 @@ import org.bcnlab.beaconLabsVelocity.service.MaintenanceService;
 import org.bcnlab.beaconLabsVelocity.service.MessageService;
 import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
+import org.bcnlab.beaconLabsVelocity.service.LegalService;
 import org.bcnlab.beaconLabsVelocity.service.ReportService;
 import org.bcnlab.beaconLabsVelocity.service.ServerGuardService;
 import org.bcnlab.beaconLabsVelocity.service.WhitelistService;
@@ -63,6 +65,7 @@ public class BeaconLabsVelocity {
     private MessageService messageService;
     private WhitelistService whitelistService;
     private ReportService reportService;
+    private LegalService legalService;
     private ServerGuardService serverGuardService;
     private org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService crossProxyService;
     private FileChatLogger fileChatLogger;
@@ -99,6 +102,20 @@ public class BeaconLabsVelocity {
         } catch (IOException e) {
             logger.error("Failed to load config!", e);
             prefix = "&4ConfigError &8» ";
+        }
+
+        // PacketEvents (bundled) - load early so it's ready for legal book GUI
+        try {
+            java.util.Optional<com.velocitypowered.api.plugin.PluginContainer> containerOpt = server.getPluginManager().fromInstance(this);
+            if (containerOpt.isPresent()) {
+                com.github.retrooper.packetevents.PacketEvents.setAPI(
+                        io.github.retrooper.packetevents.velocity.factory.VelocityPacketEventsBuilder.build(
+                                server, containerOpt.get(), logger, dataDirectory));
+                com.github.retrooper.packetevents.PacketEvents.getAPI().load();
+                logger.info("PacketEvents (bundled) loaded.");
+            }
+        } catch (Throwable t) {
+            logger.warn("PacketEvents could not be loaded: {}", t.getMessage());
         }
 
         // DatabaseManager
@@ -167,7 +184,23 @@ public class BeaconLabsVelocity {
             logger.info("Report service has been enabled.");
         } else {
             logger.warn("Database is not connected. Report service will be disabled.");
-        }        // Initialize ServerGuardService
+        }
+
+        // Legal (TOS/Privacy) - only when DB connected and legal enabled in config
+        if (databaseManager != null && databaseManager.isConnected()) {
+            legalService = new LegalService(this, databaseManager, logger);
+            if (legalService.isEnabled()) {
+                commandManager.register("legal", new LegalCommand(this, legalService));
+                server.getEventManager().register(this, new LegalListener(this, legalService));
+                if (com.github.retrooper.packetevents.PacketEvents.getAPI() != null) {
+                    com.github.retrooper.packetevents.PacketEvents.getAPI().getEventManager().registerListener(
+                            new org.bcnlab.beaconLabsVelocity.legal.LegalBookPacketListener(this, legalService));
+                }
+                logger.info("Legal (TOS/Privacy) feature has been enabled.");
+            }
+        }
+
+        // Initialize ServerGuardService
         serverGuardService = new ServerGuardService(this, server, logger);
         server.getEventManager().register(this, new ServerGuardListener(this, serverGuardService));
         logger.info("Server guard system has been enabled.");
@@ -222,11 +255,26 @@ public class BeaconLabsVelocity {
             commandManager, punishmentConfig, punishmentService, this, server, logger).registerAll();        // Register JoinMeCommand 
         commandManager.register("joinme", new JoinMeCommand(this, server));
 
+        // PacketEvents init (must be after load())
+        try {
+            if (com.github.retrooper.packetevents.PacketEvents.getAPI() != null) {
+                com.github.retrooper.packetevents.PacketEvents.getAPI().init();
+                logger.info("PacketEvents initialized.");
+            }
+        } catch (Throwable t) {
+            logger.warn("PacketEvents init failed: {}", t.getMessage());
+        }
+
         logger.info("BeaconLabsVelocity is initialized!");
     }
 
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
+        try {
+            if (com.github.retrooper.packetevents.PacketEvents.getAPI() != null) {
+                com.github.retrooper.packetevents.PacketEvents.getAPI().terminate();
+            }
+        } catch (Throwable ignored) {}
         if (crossProxyService != null) {
             crossProxyService.shutdown();
         }
@@ -297,6 +345,10 @@ public class BeaconLabsVelocity {
     
     public WhitelistService getWhitelistService() {
         return whitelistService;
+    }
+
+    public LegalService getLegalService() {
+        return legalService;
     }
 
     public ServerGuardService getServerGuardService() {

@@ -77,6 +77,19 @@ Requires database.
 
 ---
 
+### Legal (TOS / Privacy)
+
+When `legal.enabled` is true in `config.yml` (and the database is connected), the plugin can show a **Terms of Service and Privacy** flow:
+
+- **Show on first join** – Players who have not yet accepted are shown the legal interface (book GUI or chat with links).
+- **Enforce accept** – Optional: kick players who do not accept within a configurable time (e.g. 60 seconds), with a custom kick message.
+- **TOS and Privacy** – Each can be enabled separately with a link (e.g. to your website). The **top message** is sent when the legal UI is shown (explains what the GUI is).
+- **Commands** – `/legal` opens the legal interface; `/legal accept` records acceptance in the database and cancels any pending kick. **Reset** – `/legal reset` shows a confirmation; `/legal reset confirm` (permission: `beaconlabs.command.legal.reset`) clears legal acceptance for everyone so all players must accept again.
+
+Acceptance is stored in the database (`legal_acceptance` table). **PacketEvents is bundled** with BeaconLabsVelocity and is used to show the legal screen as an **in-game book GUI**. Do **not** install the standalone PacketEvents plugin—it is included and initialized by BeaconLabsVelocity. If the book cannot be shown (e.g. PacketEvents failed to load), the plugin falls back to an Adventure book or a chat-based interface with clickable TOS/Privacy links and an Accept button.
+
+---
+
 ### Messaging & Chat
 
 - **Private messages** – `/msg`, `/tell`, `/w`, `/whisper`, `/m` to message a player; `/r` or `/reply` to reply to the last sender.
@@ -188,6 +201,10 @@ All proxies must use the same Redis instance and the same `shared-secret`. Each 
 | **Reports** | | |
 | `/report <player> [reason]` | Report a player | `beaconlabs.command.report` |
 | `/reports` | View/manage reports | `beaconlabs.command.reports` |
+| `/legal` | Open legal (TOS/Privacy) interface | (none when legal enabled) |
+| `/legal accept` | Accept terms and record in DB | (none when legal enabled) |
+| `/legal reset` | Show confirmation to reset everyone's acceptance | `beaconlabs.command.legal.reset` |
+| `/legal reset confirm` | Reset legal acceptance for everyone | `beaconlabs.command.legal.reset` |
 | **Utility** | | |
 | `/ping [player]` | Show ping | `beaconlabs.command.ping` / `.ping.others` |
 | `/playtime [player\|top]` | Playtime | `beaconlabs.command.playtime` (+ `.others`, `.top`) |
@@ -248,6 +265,7 @@ All proxies must use the same Redis instance and the same `shared-secret`. Each 
 | `beaconlabs.command.whitelist` | Use /proxywhitelist |
 | `beaconlabs.command.serverguard` | Use /serverguard |
 | `beaconlabs.command.feather.debug` | Use /featherdebug |
+| `beaconlabs.command.legal.reset` | Use /legal reset and /legal reset confirm |
 | `beaconlabs.visual.staff` | Appear in /staff |
 | `beaconlabs.visual.mod` | Shown as Mod in /staff |
 | `beaconlabs.visual.admin` | Shown as Admin in /staff |

@@ -98,6 +98,16 @@ public class DatabaseManager {
             } catch (Exception ex) {
                 logger.error("Failed to initialize punishments table", ex);
             }
+            // Legal acceptance table (for legal feature)
+            String createLegalTable = "CREATE TABLE IF NOT EXISTS legal_acceptance (" +
+                    "player_uuid VARCHAR(36) PRIMARY KEY, " +
+                    "accepted_at BIGINT NOT NULL" +
+                    ")";
+            try (var conn = getConnection(); var stmt = conn.createStatement()) {
+                stmt.execute(createLegalTable);
+            } catch (Exception ex) {
+                logger.error("Failed to initialize legal_acceptance table", ex);
+            }
         }
     }
 
