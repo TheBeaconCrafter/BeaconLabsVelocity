@@ -56,17 +56,23 @@ joinme:
     use: "beaconlabs.command.joinme" # Permission to use the command
     bypass-cooldown: "beaconlabs.command.joinme.bypass" # Permission to bypass the cooldown
 
-# Feather client - custom server list background (optional).
-# When set, Feather clients will see this image behind your server in their server list.
-# Image: PNG only, recommended 909x102 px, max 1009x202 px, max 512 KB. Place file in plugins/BeaconLabsVelocity/feather/
+# Feather Server API integration (requires Feather Server API Velocity plugin in plugins/ folder).
+# Serverlist background changes take some time to apply
+# https://github.com/p-dobosz/feather-server-api is a velocity compatible Feather API (download from Releases and put in plugin folder)
 feather:
   enabled: false
-  server-list-background: ""   # e.g. "server-background.png" or leave empty to disable
-  channel: "feather:server_api"
-  message-id-request: 6   # C2SRequestServerBackground (client -> server)
-  message-id-response: 10 # S2CServerBackground (server -> client)
+  # Server list background: PNG only, recommended 909x102, max 1009x202 px, max 512 KB.
+  # Place image in plugins/BeaconLabsVelocity/feather/ and set filename here (e.g. "server-background.png").
+  server-list-background: ""
+  # Discord Rich Presence: shown on players' Discord status when they're on your server.
+  discord:
+    enabled: false
+    image: ""              # URL to image (e.g. "https://example.com/server-icon.png")
+    image-text: ""         # Text when hovering over the image (e.g. "My Server")
+    state: ""              # Small line (e.g. "Playing Survival")
+    details: ""            # Main line (e.g. "Join at play.example.com")
 
-# Cross-Proxy (Redis) - Optional. When enabled, kick/ban/send work across multiple Velocity proxies.
+# Cross-Proxy (Redis) - Optional. When enabled, all proxy features work across multiple Velocity proxies.
 # All proxies must use the same Redis instance and the same shared-secret.
 redis:
   enabled: false

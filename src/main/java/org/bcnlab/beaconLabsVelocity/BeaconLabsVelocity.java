@@ -198,16 +198,8 @@ public class BeaconLabsVelocity {
         server.getEventManager().register(this, fileChatLogger);
         server.getEventManager().register(this, new PingListener(this, server));
 
-        // Feather client server list background (optional)
-        org.spongepowered.configurate.ConfigurationNode featherNode = config != null ? config.node("feather") : null;
-        if (featherNode != null && featherNode.node("enabled").getBoolean(false)) {
-            org.bcnlab.beaconLabsVelocity.feather.FeatherBackgroundListener featherListener =
-                    new org.bcnlab.beaconLabsVelocity.feather.FeatherBackgroundListener(this, logger);
-            featherListener.loadImage();
-            server.getChannelRegistrar().register(featherListener.getChannelId());
-            server.getEventManager().register(this, featherListener);
-            logger.info("Feather server list background enabled (use /featherdebug on in console to log traffic).");
-        }
+        // Feather Server API integration (server list background + Discord Rich Presence)
+        org.bcnlab.beaconLabsVelocity.feather.FeatherIntegration.init(this);
 
         // Register server commands
         new org.bcnlab.beaconLabsVelocity.command.server.ServerCommandRegistrar(
@@ -322,7 +314,7 @@ public class BeaconLabsVelocity {
         return fileChatLogger;
     }
 
-    /** Feather debug: when true, FeatherBackgroundListener logs all plugin messages on the Feather channel to console. */
+    /** When true, Feather join events (PlayerHelloEvent) are logged with player, platform, and enabled mods. */
     public boolean isFeatherDebug() {
         return featherDebug;
     }
