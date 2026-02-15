@@ -27,7 +27,8 @@ public final class CrossProxyMessage {
         JOINME_BROADCAST,
         REPORT_NOTIFY,
         BADWORD_ALERT,
-        PROXY_TRANSFER_REQUEST
+        PROXY_TRANSFER_REQUEST,
+        ENTE
     }
 
     private final Type type;
@@ -151,6 +152,11 @@ public final class CrossProxyMessage {
         return "PROXY_TRANSFER_REQUEST" + SEP + (uuid != null ? uuid : "") + SEP + (targetProxyId != null ? targetProxyId : "") + SEP + (backendServerName != null ? backendServerName : "") + SEP + secret + SEP + fromProxyId;
     }
 
+    /** Build outbound ENTE (show duck title to target username; each proxy delivers if they have that player). */
+    public static String ente(String targetUsername, String secret, String proxyId) {
+        return "ENTE" + SEP + (targetUsername != null ? targetUsername : "") + SEP + secret + SEP + proxyId;
+    }
+
     /**
      * Parse an incoming message. Returns null if invalid or unknown type.
      * Reason field may contain SEP; we reassemble it from middle parts for KICK.
@@ -223,6 +229,9 @@ public final class CrossProxyMessage {
             }
             if ("PROXY_TRANSFER_REQUEST".equals(typeStr) && parts.length >= 6) {
                 return new CrossProxyMessage(Type.PROXY_TRANSFER_REQUEST, parts[4], parts[5], parts[1], parts[2], parts[3], null, null); // uuid=parts[1], reason=targetProxyId, serverName=backendServerName
+            }
+            if ("ENTE".equals(typeStr) && parts.length >= 4) {
+                return new CrossProxyMessage(Type.ENTE, parts[2], parts[3], null, null, null, parts[1], null); // username=targetUsername
             }
         } catch (Exception ignored) { }
         return null;

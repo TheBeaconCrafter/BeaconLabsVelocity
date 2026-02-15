@@ -8,7 +8,11 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
+import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.title.Title;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.command.JoinMeCommand;
 import org.bcnlab.beaconLabsVelocity.command.LegalCommand;
@@ -37,6 +41,7 @@ import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Objects;
 
 @Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.2", url = "bcnlab.org", authors = {"Vincent Wackler"})
@@ -361,6 +366,20 @@ public class BeaconLabsVelocity {
 
     public org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService getCrossProxyService() {
         return crossProxyService;
+    }
+
+    /** Show the golden duck (ente) title to a player. Used by /ente and cross-proxy ENTE. */
+    public void showEnteTitleTo(Player player) {
+        if (player == null) return;
+        Component goldenDuck = Component.text("🦆")
+                .color(NamedTextColor.GOLD)
+                .decorate(TextDecoration.BOLD);
+        Title title = Title.title(
+                goldenDuck,
+                Component.empty(),
+                Title.Times.times(Duration.ZERO, Duration.ofSeconds(2), Duration.ofMillis(500))
+        );
+        player.showTitle(title);
     }
 
     public FileChatLogger getFileChatLogger() {

@@ -572,6 +572,9 @@ public class CrossProxyService {
                     case PROXY_TRANSFER_REQUEST:
                         handleProxyTransferRequest(msg);
                         break;
+                    case ENTE:
+                        handleEnte(msg);
+                        break;
                     default:
                         break;
                 }
@@ -755,6 +758,12 @@ public class CrossProxyService {
         publish(CrossProxyMessage.chatReportRequest(targetUuid != null ? targetUuid.toString() : "", targetUsername, reporterUsername, sharedSecret, proxyId));
     }
 
+    /** Ask the proxy that has this player to show them the ente (duck) title. Used for /ente cross-proxy. */
+    public void publishEnte(String targetUsername) {
+        if (targetUsername == null || targetUsername.isEmpty()) return;
+        publish(CrossProxyMessage.ente(targetUsername, sharedSecret, proxyId));
+    }
+
     private void handleChatReportRequest(CrossProxyMessage msg) {
         UUID targetUuid = msg.getUuidAsUUID();
         if (targetUuid == null) return;
@@ -839,6 +848,12 @@ public class CrossProxyService {
             total += getPlayerListForProxy(pid).size();
         }
         return total;
+    }
+
+    private void handleEnte(CrossProxyMessage msg) {
+        String targetUsername = msg.getUsername();
+        if (targetUsername == null || targetUsername.isEmpty()) return;
+        server.getPlayer(targetUsername).ifPresent(player -> plugin.showEnteTitleTo(player));
     }
 
     private void handleJoinMeToPlayer(CrossProxyMessage msg) {
