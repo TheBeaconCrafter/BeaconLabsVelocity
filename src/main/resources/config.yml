@@ -12,7 +12,7 @@ motd:
   line1: "<gradient:#5e4fa2:#f79459><bold>BeaconLabs</bold></gradient> <gray>»</gray> <hover:show_text:'<rainbow>Join the Adventure!</rainbow>'><gold>Your Network!</gold></hover>"
   line2: "<aqua>Playing on <yellow>1.21.4+</yellow></aqua>"
   max-players: 100
-  version-name: "BeaconLabs 1.21.4+"
+  version-name: "BeaconLabs 1.21.4+"  # Leave empty to use Velocity default (real server version)
   version-protocol: 769 # Protocol version for 1.21.4. Change if needed.
 
 # Database Configuration (MariaDB/MySQL)

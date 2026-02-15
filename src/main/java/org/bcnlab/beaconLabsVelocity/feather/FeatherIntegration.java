@@ -68,13 +68,12 @@ public final class FeatherIntegration {
             "net.digitalingot.feather.DiscordActivity"
     };
 
-    private static boolean featherRetryScheduled = false;
+    /** Delays (seconds) to retry Discord RPC when PlayerHelloEvent may fire late (e.g. high latency). */
+    private static final int[] DISCORD_RETRY_DELAYS = { 3, 8, 15 };
+    /** Delays (seconds) to retry obtaining MetaService / loading server list background (plugin load order). */
+    private static final int[] INIT_RETRY_DELAYS = { 2, 5, 10 };
 
     public static void init(BeaconLabsVelocity pl) {
-        init(pl, false);
-    }
-
-    private static void init(BeaconLabsVelocity pl, boolean isRetry) {
         plugin = pl;
         logger = pl.getLogger();
         ConfigurationNode featherNode = pl.getConfig() != null ? pl.getConfig().node("feather") : null;
@@ -96,21 +95,34 @@ public final class FeatherIntegration {
         }
         metaService = obtainMetaService(apiClass);
         if (metaService == null) {
-            if (!isRetry && !featherRetryScheduled) {
-                featherRetryScheduled = true;
-                pl.getServer().getScheduler().buildTask(pl, () -> init(pl, true)).delay(2, TimeUnit.SECONDS).schedule();
-                if (pl.isFeatherDebug()) logger.info("[Feather] Service not ready. Retrying in 2 seconds.");
-            } else if (pl.isFeatherDebug()) {
-                logger.warn("[Feather] Could not obtain MetaService. Integration disabled.");
+            final Class<?> apiClassFinal = apiClass;
+            for (int delay : INIT_RETRY_DELAYS) {
+                final int d = delay;
+                pl.getServer().getScheduler().buildTask(pl, () -> tryCompleteInit(pl, apiClassFinal, featherNode, featureEnabled)).delay(d, TimeUnit.SECONDS).schedule();
             }
+            if (pl.isFeatherDebug()) logger.info("[Feather] MetaService not ready. Will retry in {} seconds.", INIT_RETRY_DELAYS);
             return;
         }
         available = true;
+        completeInit(pl, featherNode, featureEnabled);
+    }
 
+    /** Called by delayed tasks when MetaService was null at first init. */
+    private static void tryCompleteInit(BeaconLabsVelocity pl, Class<?> apiClass, ConfigurationNode featherNode, boolean featureEnabled) {
+        if (available) return;
+        Object ms = obtainMetaService(apiClass);
+        if (ms == null) return;
+        metaService = ms;
+        available = true;
+        completeInit(pl, featherNode, featureEnabled);
+        if (pl.isFeatherDebug()) logger.info("[Feather] MetaService obtained on retry. Integration enabled.");
+    }
+
+    private static void completeInit(BeaconLabsVelocity pl, ConfigurationNode featherNode, boolean featureEnabled) {
         subscribePlayerHelloEvent(pl);
         if (featureEnabled) {
             loadServerListBackground();
-            boolean discordEnabled = featherNode.node("discord").node("enabled").getBoolean(false);
+            boolean discordEnabled = featherNode != null && featherNode.node("discord").node("enabled").getBoolean(false);
             if (discordEnabled) {
                 pl.getServer().getEventManager().register(pl, new FeatherIntegration());
             }
@@ -406,14 +418,18 @@ public final class FeatherIntegration {
     @Subscribe(order = PostOrder.NORMAL)
     public void onPostLogin(PostLoginEvent event) {
         if (!available || metaService == null) return;
-        updateDiscordActivity(event.getPlayer());
+        Player player = event.getPlayer();
+        updateDiscordActivity(player);
+        scheduleDiscordRetries(player);
         scheduleRefreshAllDiscordActivities();
     }
 
     @Subscribe(order = PostOrder.NORMAL)
     public void onServerPostConnect(ServerPostConnectEvent event) {
         if (!available || metaService == null || event.getPlayer().getCurrentServer().isEmpty()) return;
-        updateDiscordActivity(event.getPlayer());
+        Player player = event.getPlayer();
+        updateDiscordActivity(player);
+        scheduleDiscordRetries(player);
     }
 
     @Subscribe
@@ -421,6 +437,21 @@ public final class FeatherIntegration {
         if (!available || metaService == null) return;
         clearDiscordActivity(event.getPlayer());
         scheduleRefreshAllDiscordActivities();
+    }
+
+    /**
+     * Schedules delayed Discord RPC updates so that when Feather's PlayerHelloEvent fires late (e.g. high latency),
+     * we still push RPC once the client has registered.
+     */
+    private void scheduleDiscordRetries(Player player) {
+        ConfigurationNode discord = plugin.getConfig() != null ? plugin.getConfig().node("feather").node("discord") : null;
+        if (discord == null || !discord.node("enabled").getBoolean(false)) return;
+        UUID uuid = player.getUniqueId();
+        for (int delay : DISCORD_RETRY_DELAYS) {
+            plugin.getServer().getScheduler().buildTask(plugin, () -> {
+                plugin.getServer().getPlayer(uuid).ifPresent(this::updateDiscordActivity);
+            }).delay(delay, TimeUnit.SECONDS).schedule();
+        }
     }
 
     /** Schedules a refresh of Discord activity for all online players (so %players% / %max_players% stay current). */

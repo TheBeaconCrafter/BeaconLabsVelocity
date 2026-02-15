@@ -43,7 +43,7 @@ public class PingListener {
         }
         
         int maxPlayers = config.node("motd", "max-players").getInt(100);
-        String versionName = config.node("motd", "version-name").getString("BeaconLabs 1.21.4+");
+        String versionName = config.node("motd", "version-name").getString("");
         int versionProtocol = config.node("motd", "version-protocol").getInt(769);
 
         pingBuilder.maximumPlayers(maxPlayers);
@@ -51,7 +51,10 @@ public class PingListener {
             ? plugin.getCrossProxyService().getTotalPlayerCount()
             : server.getPlayerCount();
         pingBuilder.onlinePlayers(playerCount);
-        pingBuilder.version(new ServerPing.Version(versionProtocol, versionName));
+        // Only override version when version-name is set; otherwise keep Velocity's default (real server version)
+        if (versionName != null && !versionName.isBlank()) {
+            pingBuilder.version(new ServerPing.Version(versionProtocol, versionName));
+        }
 
         event.setPing(pingBuilder.build());
     }

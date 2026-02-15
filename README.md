@@ -190,7 +190,7 @@ All proxies must use the same Redis instance and the same `shared-secret`. Each 
 | **Utility** | | |
 | `/ping [player]` | Show ping | `beaconlabs.command.ping` / `.ping.others` |
 | `/playtime [player\|top]` | Playtime | `beaconlabs.command.playtime` (+ `.others`, `.top`) |
-| `/skin <name> [target]` | Set skin | — / `beaconlabs.command.skin.other` |
+| `/skin <name> [target]` | Get skin | — / `beaconlabs.command.skin.other` |
 | **Admin** | | |
 | `/goto <player>` | Go to player’s server | `beaconlabs.command.goto` |
 | `/send`, `/proxysend`, `/psend` | Send player(s) to server | `beaconlabs.command.send` |
