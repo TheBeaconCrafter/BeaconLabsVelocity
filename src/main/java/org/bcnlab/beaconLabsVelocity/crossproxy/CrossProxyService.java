@@ -432,14 +432,14 @@ public class CrossProxyService {
             return;
         }
 
-        RedisURI uri = RedisURI.builder()
+        RedisURI.Builder uriBuilder = RedisURI.builder()
                 .withHost(host)
                 .withPort(port)
-                .withTimeout(Duration.ofMillis(connectTimeoutMs > 0 ? connectTimeoutMs : 5000))
-                .build();
+                .withTimeout(Duration.ofMillis(connectTimeoutMs > 0 ? connectTimeoutMs : 5000));
         if (password != null && !password.isEmpty()) {
-            uri.setPassword(password);
+            uriBuilder.withPassword(password);
         }
+        RedisURI uri = uriBuilder.build();
 
         try {
             redisClient = RedisClient.create(uri);
