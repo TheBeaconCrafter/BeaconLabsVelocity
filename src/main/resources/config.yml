@@ -1,6 +1,13 @@
 prefix: "&6BeaconLabs &8» "
 lobby-server: "lobby"
 
+# Custom F3 debug-screen brand (minecraft:brand). Leave text empty to use Velocity default (backend brand + " (Velocity)").
+# Uses MiniMessage, same as MOTD. Placeholders: {name} username, {server} backend registered name (when connected).
+f3-brand:
+  text: ""
+  # Send override this many ms after server post-connect so it applies after Velocity rewrites backend brand.
+  delay-ms: 100
+
 # Server List MOTD Configuration
 # Supports MiniMessage format: https://docs.adventure.kyori.net/minimessage/format.html
 # Examples:

@@ -3,6 +3,7 @@ package org.bcnlab.beaconLabsVelocity;
 import com.google.inject.Inject;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
+import com.velocitypowered.api.event.proxy.ProxyReloadEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.plugin.Plugin;
@@ -73,6 +74,7 @@ public class BeaconLabsVelocity {
     private LegalService legalService;
     private ServerGuardService serverGuardService;
     private org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService crossProxyService;
+    private org.bcnlab.beaconLabsVelocity.brand.F3BrandService f3BrandService;
     private FileChatLogger fileChatLogger;
     private volatile boolean featherDebug = false;
     @Inject
@@ -231,6 +233,12 @@ public class BeaconLabsVelocity {
             server.getEventManager().register(this, new CrossProxyServerSwitchListener(this));
         }
         
+        f3BrandService = new org.bcnlab.beaconLabsVelocity.brand.F3BrandService(this, logger);
+        server.getEventManager().register(this, new F3BrandListener(this, f3BrandService));
+        if (f3BrandService.isEnabled()) {
+            logger.info("Custom F3 brand is enabled.");
+        }
+
         // Other Listeners
         server.getEventManager().register(this, new ChatFilterListener(this, server));
         fileChatLogger = new FileChatLogger(getDataDirectory().toString());
@@ -271,6 +279,23 @@ public class BeaconLabsVelocity {
         }
 
         logger.info("BeaconLabsVelocity is initialized!");
+    }
+
+    @Subscribe
+    public void onProxyReload(ProxyReloadEvent event) {
+        Path configFile = dataDirectory.resolve("config.yml");
+        try {
+            ConfigurationLoader<?> loader = YamlConfigurationLoader.builder()
+                    .path(configFile)
+                    .build();
+            config = loader.load();
+            prefix = config != null
+                    ? config.node("prefix").getString("&6BeaconLabs &8» ")
+                    : "&4ConfigError &8» ";
+            logger.info("BeaconLabsVelocity config.yml reloaded (includes f3-brand).");
+        } catch (IOException e) {
+            logger.warn("Failed to reload config.yml after proxy reload: {}", e.getMessage());
+        }
     }
 
     @Subscribe
@@ -366,6 +391,10 @@ public class BeaconLabsVelocity {
 
     public org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService getCrossProxyService() {
         return crossProxyService;
+    }
+
+    public org.bcnlab.beaconLabsVelocity.brand.F3BrandService getF3BrandService() {
+        return f3BrandService;
     }
 
     /** Show the golden duck (ente) title to a player. Used by /ente and cross-proxy ENTE. */

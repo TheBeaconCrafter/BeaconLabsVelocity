@@ -213,13 +213,14 @@
             </plugin>
         </plugins>
     </reporting>    <repositories>
-        <repository>
-            <id>central</id>
-            <url>https://repo.maven.apache.org/maven2</url>
-        </repository>
+        <!-- Paper first: Velocity SNAPSHOTs and brigadier live here; avoids failed lookups on other mirrors. -->
         <repository>
             <id>papermc-repo</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
+        </repository>
+        <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
         </repository>
         <repository>
             <id>luck-repo</id>
