@@ -173,6 +173,12 @@
                                         <exclude>META-INF/*.RSA</exclude>
                                     </excludes>
                                 </filter>
+                                <filter>
+                                    <artifact>com.github.retrooper:packetevents-velocity</artifact>
+                                    <excludes>
+                                        <exclude>velocity-plugin.json</exclude>
+                                    </excludes>
+                                </filter>
                             </filters>
                             <!-- Relocate bundled dependencies to avoid conflicts -->
                             <relocations>

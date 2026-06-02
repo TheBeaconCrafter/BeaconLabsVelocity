@@ -22,13 +22,16 @@ motd:
   max-players: 100
   version-name: ""  # Leave empty to use Velocity default (real server version) - ex: BeaconLabs 1.21.4+
   version-protocol: 769 # Protocol version for 1.21.4. Change if needed.
+  icon-path: ""  # Path to a PNG server icon. Leave empty to use Velocity default (server-icon.png in proxy root). Relative paths are relative to the proxy working directory.
   hosts:
     "city.example.com":
       line1: "<gradient:#f79459:#5e4fa2><bold>BeaconLabs</bold></gradient> <gray>»</gray> <yellow>Public network</yellow>"
       line2: "<aqua>CityBuild</aqua>"
+      icon-path: ""
     "build.example.com":
       line1: "<gradient:#5e4fa2:#00c2ff><bold>BeaconLabs</bold></gradient> <gray>»</gray> <gold>Creative Build Hub</gold>"
       line2: "<aqua>Building network.</aqua>"
+      icon-path: ""
 
 # Database Configuration (MariaDB/MySQL)
 database:

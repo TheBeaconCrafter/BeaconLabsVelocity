@@ -5,12 +5,16 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyPingEvent;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.ServerPing;
+import com.velocitypowered.api.util.Favicon;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.spongepowered.configurate.ConfigurationNode;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Locale;
 
 public class PingListener {
@@ -62,6 +66,17 @@ public class PingListener {
         // Only override version when version-name is set; otherwise keep Velocity's default (real server version)
         if (versionName != null && !versionName.isBlank()) {
             pingBuilder.version(new ServerPing.Version(versionProtocol, versionName));
+        }
+
+        // favicon per hostname
+        String iconPath = getString(motdNode, defaultMotdNode, "icon-path", "");
+        if (!iconPath.isBlank()) {
+            try {
+                Path path = Paths.get(iconPath);
+                pingBuilder.favicon(Favicon.create(path));
+            } catch (IOException e) {
+                plugin.getLogger().error("Failed to load server icon from: " + iconPath, e);
+            }
         }
 
         event.setPing(pingBuilder.build());
