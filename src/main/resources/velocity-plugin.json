@@ -1,0 +1,9 @@
+{
+  "id": "beaconlabsvelocity",
+  "name": "BeaconLabsVelocity",
+  "version": "1.5",
+  "description": "A feature-rich Velocity proxy plugin for the Beacon Labs network.",
+  "authors": ["Vincent Wackler"],
+  "dependencies": [],
+  "main": "org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity"
+}
