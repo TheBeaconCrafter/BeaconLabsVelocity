@@ -255,6 +255,7 @@ public class LegalService {
             saveRestoreSnapshot(player.getUniqueId());
             addViewingLegalBook(player.getUniqueId());
             if (org.bcnlab.beaconLabsVelocity.legal.LegalBookPacketHelper.showBook(player, legal, logger, plugin)) {
+                logger.info("User {} was shown the legal book", player.getUsername());
                 return;
             }
             removeViewingLegalBook(player.getUniqueId()); // showBook failed, don't keep viewing

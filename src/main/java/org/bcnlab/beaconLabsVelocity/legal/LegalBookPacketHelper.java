@@ -41,33 +41,25 @@ public final class LegalBookPacketHelper {
      * @return true if the book was sent, false if PacketEvents was unavailable or failed
      */
     public static boolean showBook(Player player, ConfigurationNode legal, Logger logger, BeaconLabsVelocity plugin) {
-        if (logger != null) logger.info("[Legal book] showBook called for player {}", player.getUsername());
-
         if (PacketEvents.getAPI() == null) {
-            if (logger != null) logger.info("[Legal book] PacketEvents API is null");
             return false;
         }
         var playerManager = PacketEvents.getAPI().getPlayerManager();
         if (playerManager == null) {
-            if (logger != null) logger.info("[Legal book] PlayerManager is null");
             return false;
         }
-        if (logger != null) logger.info("[Legal book] PacketEvents API and PlayerManager OK");
 
         User user = null;
         try {
             user = playerManager.getUser(player);
-            if (logger != null) logger.info("[Legal book] User resolved: {}", user != null ? "yes" : "no");
         } catch (Throwable t) {
-            if (logger != null) logger.info("[Legal book] Could not get User: {}", t.getMessage());
+            if (logger != null) logger.debug("[Legal book] Could not get User: {}", t.getMessage());
         }
 
         ItemStack bookItem = buildLegalBookItem(user, legal, logger);
         if (bookItem == null) {
-            if (logger != null) logger.info("[Legal book] buildLegalBookItem returned null");
             return false;
         }
-        if (logger != null) logger.info("[Legal book] Book item built successfully");
 
         // Send book to all hotbar slots (36-44) so it opens regardless of selected slot
         final User userFinal = user;
@@ -78,7 +70,6 @@ public final class LegalBookPacketHelper {
                 WrapperPlayServerSetSlot setSlot = new WrapperPlayServerSetSlot(0, 0, slot, bookItem);
                 sendSetSlot(user, playerManager, player, setSlot);
             }
-            if (logger != null) logger.info("[Legal book] SetSlot packets sent (slots 36-44, window 0)");
 
             WrapperPlayServerOpenBook openBook = new WrapperPlayServerOpenBook(InteractionHand.MAIN_HAND);
 
@@ -86,14 +77,12 @@ public final class LegalBookPacketHelper {
                 plugin.getServer().getScheduler().buildTask(plugin, () -> {
                     try {
                         sendOpenBook(userFinal, playerManager, player, openBook);
-                        if (loggerFinal != null) loggerFinal.info("[Legal book] OpenBook packet sent (1 tick delayed)");
                     } catch (Throwable t) {
                         if (loggerFinal != null) loggerFinal.warn("[Legal book] OpenBook send failed: {}", t.getMessage());
                     }
                 }).delay(50, TimeUnit.MILLISECONDS).schedule();
             } else {
                 sendOpenBook(user, playerManager, player, openBook);
-                if (logger != null) logger.info("[Legal book] OpenBook packet sent (no plugin, immediate)");
             }
             return true;
         } catch (Throwable t) {
@@ -185,7 +174,6 @@ public final class LegalBookPacketHelper {
      * Pages are serialized to JSON (Minecraft protocol uses JSON text for book pages).
      */
     private static ItemStack buildLegalBookItem(User user, ConfigurationNode legal, Logger logger) {
-        if (logger != null) logger.info("[Legal book] Building book item (user={})", user != null ? "present" : "null");
         try {
             String author = "Server";
 
@@ -246,10 +234,9 @@ public final class LegalBookPacketHelper {
             if (stack == null || stack.isEmpty()) return null;
 
             stack.setComponent(ComponentTypes.WRITTEN_BOOK_CONTENT, content);
-            if (logger != null) logger.info("[Legal book] WrittenBookContent set (1 page)");
             return stack;
         } catch (Throwable t) {
-            if (logger != null) logger.info("[Legal book] buildLegalBookItem failed: {}", t.getMessage());
+            if (logger != null) logger.debug("[Legal book] buildLegalBookItem failed: {}", t.getMessage());
             return null;
         }
     }

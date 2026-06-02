@@ -84,6 +84,7 @@ public class LegalCommand implements SimpleCommand {
             legalService.setAcceptedAsync(player.getUniqueId()).thenAccept(ok -> {
                 plugin.getServer().getScheduler().buildTask(plugin, () -> {
                     if (ok) {
+                        plugin.getLogger().info("User {} accepted the terms", player.getUsername());
                         player.sendMessage(plugin.getPrefix().append(
                                 Component.text("You have accepted the Terms of Service and Privacy Policy. Thank you!", NamedTextColor.GREEN)));
                     } else {
