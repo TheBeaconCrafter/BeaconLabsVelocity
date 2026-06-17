@@ -58,10 +58,30 @@ public class ScreeningService {
         this.server = server;
     }
 
+    private CaptchaGenerator.CaptchaResult tryGenerateCaptcha() {
+        try {
+            return CaptchaGenerator.generate();
+        } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().contains("Fontconfig")) {
+                plugin.getLogger().error("=====================================================");
+                plugin.getLogger().error("CRITICAL ERROR: Fontconfig is missing on your server!");
+                plugin.getLogger().error("Please install 'fontconfig' and basic fonts to use Screening.");
+                plugin.getLogger().error("Ubuntu/Debian: apt-get install fontconfig fonts-dejavu");
+                plugin.getLogger().error("Alpine (Docker): apk add fontconfig ttf-dejavu");
+                plugin.getLogger().error("CentOS/RHEL: dnf install fontconfig dejavu-sans-fonts");
+                plugin.getLogger().error("=====================================================");
+            } else {
+                plugin.getLogger().error("Failed to generate captcha for screening", e);
+            }
+            return null;
+        }
+    }
+
     public void triggerScreening(Player player) {
         Optional<RegisteredServer> limboServer = server.getServer(config.getScreeningServer());
         if (limboServer.isPresent() && player.getCurrentServer().map(s -> s.getServer()).orElse(null) != limboServer.get()) {
-            CaptchaGenerator.CaptchaResult captcha = CaptchaGenerator.generate();
+            CaptchaGenerator.CaptchaResult captcha = tryGenerateCaptcha();
+            if (captcha == null) return; // Silent fail if captcha can't be generated
             ScreeningSession session = new ScreeningSession(player.getCurrentServer().map(s -> s.getServer()).orElse(null), captcha.text);
             sessions.put(player.getUniqueId(), session);
             
@@ -107,7 +127,8 @@ public class ScreeningService {
                     // Update original server if it was null from async trigger
                     sessions.put(player.getUniqueId(), new ScreeningSession(event.getOriginalServer(), existing.captchaText));
                 } else if (existing == null) {
-                    CaptchaGenerator.CaptchaResult captcha = CaptchaGenerator.generate();
+                    CaptchaGenerator.CaptchaResult captcha = tryGenerateCaptcha();
+                    if (captcha == null) return;
                     ScreeningSession session = new ScreeningSession(event.getOriginalServer(), captcha.text);
                     sessions.put(player.getUniqueId(), session);
                 }
@@ -128,7 +149,8 @@ public class ScreeningService {
         if (event.getServer().getServerInfo().getName().equalsIgnoreCase(config.getScreeningServer())) {
             
             // Re-generate map specifically to get the byte array
-            CaptchaGenerator.CaptchaResult captcha = CaptchaGenerator.generate(); // generate new or use same? Let's just generate new and override
+            CaptchaGenerator.CaptchaResult captcha = tryGenerateCaptcha();
+            if (captcha == null) return; // Shouldn't happen if they made it here, but just in case
             session = new ScreeningSession(session.originalServer, captcha.text);
             sessions.put(player.getUniqueId(), session);
 
