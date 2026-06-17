@@ -115,25 +115,28 @@ public class InfoCommand implements SimpleCommand {
             
         } else {
             // Player is offline - try to find in the database
-            UUID offlineUuid = service.getPlayerUUID(targetName);
+            PlayerStatsService.PlayerData playerDataFromStats = playerStatsService.getPlayerDataByName(targetName);
+            UUID offlineUuid = null;
             String effectivePlayerName = targetName; // Name used for display, defaults to input
 
-            PlayerStatsService.PlayerData playerDataFromStats = playerStatsService.getPlayerDataByName(targetName);
+            if (playerDataFromStats != null) {
+                offlineUuid = playerDataFromStats.getPlayerId();
+                effectivePlayerName = playerDataFromStats.getPlayerName(); // Use canonical name from DB
+                
+                // If the name found is different (e.g. case) from the input, print a clarification.
+                if (!effectivePlayerName.equalsIgnoreCase(targetName)) {
+                    src.sendMessage(Component.text("(Showing info for player: ", NamedTextColor.GRAY)
+                                      .append(Component.text(effectivePlayerName, NamedTextColor.GOLD))
+                                      .append(Component.text(")", NamedTextColor.GRAY)));
+                }
+            }
+
+            if (offlineUuid == null && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                offlineUuid = plugin.getCrossProxyService().getPlayerUuidByName(targetName);
+            }
 
             if (offlineUuid == null) {
-                // If not found via PunishmentService, try PlayerStatsService (e.g., from player_stats table)
-                // This ensures players who have joined but never been punished can still be looked up.
-                if (playerDataFromStats != null) {
-                    offlineUuid = playerDataFromStats.getPlayerId();
-                    effectivePlayerName = playerDataFromStats.getPlayerName(); // Use canonical name from DB
-                    
-                    // If the name found is different (e.g. case) from the input, print a clarification.
-                    if (!effectivePlayerName.equalsIgnoreCase(targetName)) {
-                        src.sendMessage(Component.text("(Showing info for player: ", NamedTextColor.GRAY)
-                                          .append(Component.text(effectivePlayerName, NamedTextColor.GOLD))
-                                          .append(Component.text(")", NamedTextColor.GRAY)));
-                    }
-                }
+                offlineUuid = service.getPlayerUUID(targetName);
             }
             
             if (offlineUuid != null) {

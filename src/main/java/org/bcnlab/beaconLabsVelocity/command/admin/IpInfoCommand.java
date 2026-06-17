@@ -20,13 +20,11 @@ public class IpInfoCommand implements SimpleCommand {
     private final BeaconLabsVelocity plugin;
     private final AntiBotService antiBotService;
     private final ProxyServer server;
-    private final PlayerStatsService playerStatsService;
 
     public IpInfoCommand(BeaconLabsVelocity plugin, AntiBotService antiBotService, ProxyServer server) {
         this.plugin = plugin;
         this.antiBotService = antiBotService;
         this.server = server;
-        this.playerStatsService = plugin.getPlayerStatsService();
     }
 
     @Override
@@ -56,13 +54,20 @@ public class IpInfoCommand implements SimpleCommand {
             if (p.isPresent()) {
                 targetIp = p.get().getRemoteAddress().getAddress().getHostAddress();
             } else {
-                UUID targetUuid = plugin.getPunishmentService().getPlayerUUID(target);
+                UUID targetUuid = null;
+                PlayerStatsService playerStatsService = plugin.getPlayerStatsService();
+
+                if (playerStatsService != null) {
+                    PlayerStatsService.PlayerData pd = playerStatsService.getPlayerDataByName(target);
+                    if (pd != null) targetUuid = pd.getPlayerId();
+                }
+
                 if (targetUuid == null && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
                     targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(target);
                 }
-                if (targetUuid == null && playerStatsService != null) {
-                    PlayerStatsService.PlayerData pd = playerStatsService.getPlayerDataByName(target);
-                    if (pd != null) targetUuid = pd.getPlayerId();
+
+                if (targetUuid == null) {
+                    targetUuid = plugin.getPunishmentService().getPlayerUUID(target);
                 }
 
                 if (targetUuid == null) {
@@ -107,6 +112,7 @@ public class IpInfoCommand implements SimpleCommand {
     }
 
     private void displayInfo(CommandSource src, String ip, AntiBotService.IpCheckResult result) {
+        PlayerStatsService playerStatsService = plugin.getPlayerStatsService();
         sendDivider(src, NamedTextColor.GOLD);
         
         Component header = Component.text()

@@ -43,13 +43,19 @@ public class ScreenCommand implements SimpleCommand {
                 int removed = plugin.getAntiBotService().removeScreeningPassByIp(target);
                 src.sendMessage(plugin.getPrefix().append(Component.text("Cleaned screening passes for IP " + target + " (" + removed + " removed)", NamedTextColor.GREEN)));
             } else {
-                UUID targetUuid = plugin.getPunishmentService().getPlayerUUID(target);
+                UUID targetUuid = null;
+                
+                if (plugin.getPlayerStatsService() != null) {
+                    var pd = plugin.getPlayerStatsService().getPlayerDataByName(target);
+                    if (pd != null) targetUuid = pd.getPlayerId();
+                }
+                
                 if (targetUuid == null && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
                     targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(target);
                 }
-                if (targetUuid == null && plugin.getPlayerStatsService() != null) {
-                    var pd = plugin.getPlayerStatsService().getPlayerDataByName(target);
-                    if (pd != null) targetUuid = pd.getPlayerId();
+                
+                if (targetUuid == null && plugin.getPunishmentService() != null) {
+                    targetUuid = plugin.getPunishmentService().getPlayerUUID(target);
                 }
 
                 if (targetUuid == null) {

@@ -26,8 +26,6 @@ public class AntiAbuseCommand implements SimpleCommand {
     private final BeaconLabsVelocity plugin;
     private final AntiBotService antiBotService;
     private final ProxyServer server;
-    private final PlayerStatsService playerStatsService;
-    private final PunishmentService punishmentService;
     private final AbuseConfig abuseConfig;
 
     public AntiAbuseCommand(BeaconLabsVelocity plugin, AntiBotService antiBotService, AbuseConfig abuseConfig, ProxyServer server) {
@@ -35,8 +33,6 @@ public class AntiAbuseCommand implements SimpleCommand {
         this.antiBotService = antiBotService;
         this.abuseConfig = abuseConfig;
         this.server = server;
-        this.playerStatsService = plugin.getPlayerStatsService();
-        this.punishmentService = plugin.getPunishmentService();
     }
 
     @Override
@@ -159,30 +155,43 @@ public class AntiAbuseCommand implements SimpleCommand {
             targetIp = target;
         } else {
             // It's a player
-            UUID targetUuid = punishmentService.getPlayerUUID(target);
-            if (targetUuid == null && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
-                targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(target);
-            }
-            if (targetUuid == null && playerStatsService != null) {
-                PlayerStatsService.PlayerData pd = playerStatsService.getPlayerDataByName(target);
-                if (pd != null) targetUuid = pd.getPlayerId();
-            }
+            Optional<com.velocitypowered.api.proxy.Player> p = plugin.getServer().getPlayer(target);
+            if (p.isPresent()) {
+                targetIp = p.get().getRemoteAddress().getAddress().getHostAddress();
+            } else {
+                UUID targetUuid = null;
+                PlayerStatsService playerStatsService = plugin.getPlayerStatsService();
+                PunishmentService punishmentService = plugin.getPunishmentService();
+                
+                if (playerStatsService != null) {
+                    PlayerStatsService.PlayerData pd = playerStatsService.getPlayerDataByName(target);
+                    if (pd != null) targetUuid = pd.getPlayerId();
+                }
+                
+                if (targetUuid == null && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                    targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(target);
+                }
+                
+                if (targetUuid == null && punishmentService != null) {
+                    targetUuid = punishmentService.getPlayerUUID(target);
+                }
 
-            if (targetUuid == null) {
-                src.sendMessage(Component.text("Player not found: " + target, NamedTextColor.RED));
-                return;
-            }
+                if (targetUuid == null) {
+                    src.sendMessage(plugin.getPrefix().append(Component.text("Player not found: " + target, NamedTextColor.RED)));
+                    return;
+                }
 
-            if (playerStatsService != null) {
-                List<PlayerStatsService.IpHistoryEntry> history = playerStatsService.getPlayerIpHistory(targetUuid);
-                if (!history.isEmpty()) {
-                    targetIp = history.get(0).getIpAddress();
+                if (playerStatsService != null) {
+                    List<PlayerStatsService.IpHistoryEntry> history = playerStatsService.getPlayerIpHistory(targetUuid);
+                    if (!history.isEmpty()) {
+                        targetIp = history.get(0).getIpAddress();
+                    }
                 }
             }
         }
 
         if (targetIp == null) {
-            src.sendMessage(Component.text("Could not determine IP for target: " + target, NamedTextColor.RED));
+            src.sendMessage(plugin.getPrefix().append(Component.text("Could not determine IP for target: " + target, NamedTextColor.RED)));
             return;
         }
 
