@@ -172,6 +172,33 @@ public class ScreeningService {
 
                 int mapId = 9999; // Arbitrary high map ID
 
+                int velocityProtocol = player.getProtocolVersion().getProtocol();
+                com.github.retrooper.packetevents.protocol.player.ClientVersion velocityVersion = com.github.retrooper.packetevents.protocol.player.ClientVersion.getById(velocityProtocol);
+                
+                com.github.retrooper.packetevents.protocol.player.ClientVersion originalVersion = user.getClientVersion();
+                // CRITICAL FIX: Since PacketEvents injects BEFORE ViaVersion on Velocity, we MUST serialize 
+                // the packet in Velocity's native protocol version so ViaVersion can translate it down to the client.
+                user.setClientVersion(velocityVersion);
+
+                // Find the exact item ID for "filled_map" in the Velocity protocol version.
+                // PacketEvents ItemTypes.FILLED_MAP is sometimes broken for older versions, so we hardcode the known IDs.
+                int fallbackId = -1;
+                if (velocityProtocol <= 340) fallbackId = 358; // 1.8 - 1.12.2
+                else if (velocityProtocol == 393) fallbackId = 608; // 1.13
+                else if (velocityProtocol >= 401 && velocityProtocol <= 404) fallbackId = 613; // 1.13.1 - 1.13.2
+                else if (velocityProtocol >= 477 && velocityProtocol <= 498) fallbackId = 658; // 1.14.x
+                else if (velocityProtocol >= 573 && velocityProtocol <= 578) fallbackId = 743; // 1.15.x
+                else if (velocityProtocol >= 735 && velocityProtocol <= 736) fallbackId = 741; // 1.16, 1.16.1
+                else if (velocityProtocol >= 751 && velocityProtocol <= 754) fallbackId = 794; // 1.16.2 - 1.16.5
+
+                com.github.retrooper.packetevents.protocol.item.type.ItemType mapType = ItemTypes.FILLED_MAP;
+                if (fallbackId != -1) {
+                    com.github.retrooper.packetevents.protocol.item.type.ItemType fixedType = ItemTypes.getById(velocityVersion, fallbackId);
+                    if (fixedType != null) mapType = fixedType;
+                }
+
+                plugin.getLogger().info("[DEBUG-SCREENING] Serializing packets for Proxy Protocol: " + velocityProtocol + " | MapType ID: " + mapType.getId(velocityVersion));
+
                 // 1. Send Map Data
                 WrapperPlayServerMapData mapDataPacket = new WrapperPlayServerMapData(
                         mapId,
@@ -187,20 +214,31 @@ public class ScreeningService {
                 );
                 user.sendPacket(mapDataPacket);
 
+                // Force NBT tag for ViaVersion translation
+                com.github.retrooper.packetevents.protocol.nbt.NBTCompound mapNbt = new com.github.retrooper.packetevents.protocol.nbt.NBTCompound();
+                mapNbt.setTag("map", new com.github.retrooper.packetevents.protocol.nbt.NBTInt(mapId));
+
                 // 2. Give the map item
                 ItemStack mapItem = ItemStack.builder()
-                        .type(ItemTypes.FILLED_MAP)
+                        .type(mapType)
                         .amount(1)
-                        .component(ComponentTypes.MAP_ID, mapId)
+                        .legacyData(mapId) // For 1.12.2 and older (if no ViaVersion)
+                        .nbt(mapNbt) // Explicit NBT for ViaVersion to translate to legacy damage
+                        .component(ComponentTypes.MAP_ID, mapId) // For modern versions
+                        .version(velocityVersion)
                         .build();
+
+                plugin.getLogger().info("[DEBUG-SCREENING] MapItem successfully built. Serializing and sending SetSlot packets...");
 
                 // Slot 36 is the first hotbar slot (index 0 in Minecraft inventory usually means hotbar for SetSlot, but for Window ID 0:
                 // Hotbar is 36-44
-                int hotbarSlot = 36 + player.getCurrentServer().map(s -> 0).orElse(0); // Actually we can just send to slot 36
-                // Even better, send to all hotbar slots so they can't miss it
                 for (int slot = 36; slot <= 44; slot++) {
                     WrapperPlayServerSetSlot setSlot = new WrapperPlayServerSetSlot(0, 0, slot, mapItem);
                     user.sendPacket(setSlot);
+                }
+
+                if (originalVersion != null) {
+                    user.setClientVersion(originalVersion);
                 }
 
             }).delay(Duration.ofMillis(1000)).schedule();
