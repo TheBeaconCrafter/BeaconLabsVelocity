@@ -1,5 +1,6 @@
 prefix: "&6BeaconLabs &8» "
 lobby-server: "lobby"
+limbo-server: "limbo"
 
 # Custom F3 debug-screen brand (minecraft:brand). Leave text empty to use Velocity default (backend brand + " (Velocity)").
 # Uses MiniMessage, same as MOTD. Placeholders: {name} username, {server} backend registered name (when connected).

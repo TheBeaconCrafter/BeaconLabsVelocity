@@ -119,6 +119,14 @@ public class PlayerStatsService {
                     ps.executeUpdate();
                 }
                 
+                // Record login history
+                String insertLoginHistory = "INSERT INTO login_history (player_uuid, timestamp) VALUES (?, ?)";
+                try (PreparedStatement ps = conn.prepareStatement(insertLoginHistory)) {
+                    ps.setString(1, playerId.toString());
+                    ps.setLong(2, currentTime);
+                    ps.executeUpdate();
+                }
+                
                 // Clean up old IP entries (keep only last 3)
                 String cleanupIps = "DELETE FROM ip_history WHERE player_uuid = ? AND id NOT IN " +
                         "(SELECT id FROM (SELECT id FROM ip_history WHERE player_uuid = ? ORDER BY timestamp DESC LIMIT 3) AS temp)";
@@ -156,6 +164,7 @@ public class PlayerStatsService {
             
             // Update in database
             updatePlaytime(playerId, playerName, currentTotal + sessionDuration, currentTime);
+            insertSessionSlice(playerId, sessionStart, currentTime, sessionDuration);
         } else {
             // Just update last seen time if no session start was recorded
             updateLastSeen(playerId, playerName, currentTime);
@@ -187,8 +196,26 @@ public class PlayerStatsService {
                 
                 // Update in database
                 updatePlaytime(playerId, playerName, newTotal, currentTime);
+                insertSessionSlice(playerId, sessionStart, currentTime, sessionDuration);
             }
         });
+    }
+
+    private void insertSessionSlice(UUID playerId, long startTime, long endTime, long duration) {
+        plugin.getServer().getScheduler().buildTask(plugin, () -> {
+            try (Connection conn = db.getConnection()) {
+                String sql = "INSERT INTO player_sessions (player_uuid, start_time, end_time, duration) VALUES (?, ?, ?, ?)";
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setString(1, playerId.toString());
+                    ps.setLong(2, startTime);
+                    ps.setLong(3, endTime);
+                    ps.setLong(4, duration);
+                    ps.executeUpdate();
+                }
+            } catch (SQLException e) {
+                logger.error("Failed to insert session slice", e);
+            }
+        }).schedule();
     }
     
     /**
@@ -507,6 +534,96 @@ public class PlayerStatsService {
         }
         
         return players;
+    }
+
+    public static class DailyStats {
+        public int uniqueJoins;
+        public int totalJoins;
+        public int screenedPlayers;
+    }
+
+    public DailyStats getDailyStats() {
+        DailyStats stats = new DailyStats();
+        // Calculate start of today
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        long todayStart = cal.getTimeInMillis();
+
+        try (Connection conn = db.getConnection()) {
+            // Unique Joins
+            try (PreparedStatement ps = conn.prepareStatement("SELECT COUNT(DISTINCT player_uuid) FROM login_history WHERE timestamp >= ?")) {
+                ps.setLong(1, todayStart);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) stats.uniqueJoins = rs.getInt(1);
+                }
+            }
+            // Total Joins
+            try (PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM login_history WHERE timestamp >= ?")) {
+                ps.setLong(1, todayStart);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) stats.totalJoins = rs.getInt(1);
+                }
+            }
+            // Screened Players
+            try (PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM screening_passes WHERE timestamp >= ?")) {
+                ps.setLong(1, todayStart);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) stats.screenedPlayers = rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Failed to fetch daily stats", e);
+        }
+        return stats;
+    }
+
+    public static class MonthlyStats {
+        public long cumulativePlaytime;
+        public String topPlayerName = "N/A";
+        public long topPlayerPlaytime = 0;
+    }
+
+    public MonthlyStats getMonthlyStats() {
+        MonthlyStats stats = new MonthlyStats();
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.set(java.util.Calendar.DAY_OF_MONTH, 1);
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        long monthStart = cal.getTimeInMillis();
+
+        try (Connection conn = db.getConnection()) {
+            // Cumulative Playtime
+            try (PreparedStatement ps = conn.prepareStatement("SELECT SUM(duration) FROM player_sessions WHERE start_time >= ?")) {
+                ps.setLong(1, monthStart);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) stats.cumulativePlaytime = rs.getLong(1);
+                }
+            }
+            // Top Player
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT p.player_name, SUM(s.duration) as month_pt " +
+                    "FROM player_sessions s " +
+                    "JOIN player_stats p ON s.player_uuid = p.player_uuid " +
+                    "WHERE s.start_time >= ? " +
+                    "GROUP BY p.player_name " +
+                    "ORDER BY month_pt DESC LIMIT 1")) {
+                ps.setLong(1, monthStart);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        stats.topPlayerName = rs.getString("player_name");
+                        stats.topPlayerPlaytime = rs.getLong("month_pt");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Failed to fetch monthly stats", e);
+        }
+        return stats;
     }
     
     /**

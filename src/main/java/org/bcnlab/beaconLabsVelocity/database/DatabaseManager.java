@@ -108,6 +108,63 @@ public class DatabaseManager {
             } catch (Exception ex) {
                 logger.error("Failed to initialize legal_acceptance table", ex);
             }
+            
+            // AntiBot IP cache table
+            String createAntiBotTable = "CREATE TABLE IF NOT EXISTS antibot_ip_cache (" +
+                    "ip_address VARCHAR(45) PRIMARY KEY, " +
+                    "confidence_score INT NOT NULL, " +
+                    "is_whitelisted BOOLEAN NOT NULL DEFAULT FALSE, " +
+                    "is_blacklisted BOOLEAN NOT NULL DEFAULT FALSE, " +
+                    "data_json TEXT, " +
+                    "last_checked BIGINT NOT NULL" +
+                    ")";
+            try (var conn = getConnection(); var stmt = conn.createStatement()) {
+                stmt.execute(createAntiBotTable);
+            } catch (Exception ex) {
+                logger.error("Failed to initialize antibot_ip_cache table", ex);
+            }
+            
+            // Player sessions table (for tracking playtime history)
+            String createPlayerSessionsTable = "CREATE TABLE IF NOT EXISTS player_sessions (" +
+                    "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                    "player_uuid VARCHAR(36) NOT NULL, " +
+                    "start_time BIGINT NOT NULL, " +
+                    "end_time BIGINT NOT NULL, " +
+                    "duration BIGINT NOT NULL, " +
+                    "INDEX (start_time)" +
+                    ")";
+            try (var conn = getConnection(); var stmt = conn.createStatement()) {
+                stmt.execute(createPlayerSessionsTable);
+            } catch (Exception ex) {
+                logger.error("Failed to initialize player_sessions table", ex);
+            }
+            
+            // Screening passes table
+            String createScreeningPassesTable = "CREATE TABLE IF NOT EXISTS screening_passes (" +
+                    "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                    "player_uuid VARCHAR(36) NOT NULL, " +
+                    "ip_address VARCHAR(45) NOT NULL, " +
+                    "timestamp BIGINT NOT NULL, " +
+                    "INDEX (player_uuid, ip_address)" +
+                    ")";
+            try (var conn = getConnection(); var stmt = conn.createStatement()) {
+                stmt.execute(createScreeningPassesTable);
+            } catch (Exception ex) {
+                logger.error("Failed to initialize screening_passes table", ex);
+            }
+            
+            // Login history table
+            String createLoginHistoryTable = "CREATE TABLE IF NOT EXISTS login_history (" +
+                    "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                    "player_uuid VARCHAR(36) NOT NULL, " +
+                    "timestamp BIGINT NOT NULL, " +
+                    "INDEX (timestamp)" +
+                    ")";
+            try (var conn = getConnection(); var stmt = conn.createStatement()) {
+                stmt.execute(createLoginHistoryTable);
+            } catch (Exception ex) {
+                logger.error("Failed to initialize login_history table", ex);
+            }
         }
     }
 

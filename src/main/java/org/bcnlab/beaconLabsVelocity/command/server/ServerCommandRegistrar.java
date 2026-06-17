@@ -28,5 +28,9 @@ public class ServerCommandRegistrar {
         commandManager.register("lobby", lobbyCommand);
         commandManager.register("l", lobbyCommand);
         commandManager.register("hub", lobbyCommand);
+        
+        // Limbo command
+        LimboCommand limboCommand = new LimboCommand(plugin, server);
+        commandManager.register("limbo", limboCommand);
     }
 }

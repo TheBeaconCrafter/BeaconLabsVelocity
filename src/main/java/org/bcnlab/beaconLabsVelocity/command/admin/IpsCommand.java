@@ -76,6 +76,13 @@ public class IpsCommand implements SimpleCommand {
             if (targetUuid == null && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
                 targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(targetName);
             }
+            if (targetUuid == null && playerStatsService != null) {
+                PlayerStatsService.PlayerData pd = playerStatsService.getPlayerDataByName(targetName);
+                if (pd != null) {
+                    targetUuid = pd.getPlayerId();
+                    targetName = pd.getPlayerName(); // Use canonical name
+                }
+            }
             if (targetUuid == null) {
                 src.sendMessage(plugin.getPrefix().append(
                     Component.text("Player not found: " + targetName, NamedTextColor.RED)));

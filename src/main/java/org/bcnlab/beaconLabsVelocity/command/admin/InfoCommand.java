@@ -152,9 +152,6 @@ public class InfoCommand implements SimpleCommand {
                     }
                 } else {
                     src.sendMessage(Component.text("⚠ Player is currently offline.", NamedTextColor.GOLD));
-                    if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
-                        src.sendMessage(Component.text("(Player may be online on another proxy.)", NamedTextColor.GRAY));
-                    }
                 }
 
                 // Show offline player profile
@@ -199,8 +196,12 @@ public class InfoCommand implements SimpleCommand {
                     List<IpHistoryEntry> ipHistory = playerStatsService.getPlayerIpHistory(finalOfflineUuidForLambda);
                     if (!ipHistory.isEmpty()) {
                         src.sendMessage(Component.empty());
-                        src.sendMessage(Component.text("Last Known IPs:", NamedTextColor.YELLOW)
-                            .decorate(TextDecoration.UNDERLINED));
+                        
+                        // Make the title clickable to run /ipinfo <player>
+                        src.sendMessage(Component.text("Last Known IPs: ", NamedTextColor.YELLOW)
+                            .decorate(TextDecoration.UNDERLINED)
+                            .clickEvent(ClickEvent.runCommand("/ipinfo " + effectivePlayerName))
+                            .hoverEvent(HoverEvent.showText(Component.text("Click to run /ipinfo for more details", NamedTextColor.GRAY))));
                         
                         int count = 0;
                         for (IpHistoryEntry entry : ipHistory) {
@@ -354,10 +355,25 @@ public class InfoCommand implements SimpleCommand {
         InetSocketAddress address = target.getRemoteAddress();
         String ipAddress = (address != null) ? address.getAddress().getHostAddress() : "Unknown";
         
+        NamedTextColor infoColor = NamedTextColor.AQUA;
+        if (plugin.getAntiBotService() != null) {
+            java.util.Optional<org.bcnlab.beaconLabsVelocity.service.AntiBotService.IpCheckResult> cachedInfo = plugin.getAntiBotService().getCachedInfo(ipAddress);
+            if (cachedInfo.isPresent()) {
+                int score = cachedInfo.get().confidenceScore;
+                if (score >= 90) infoColor = NamedTextColor.DARK_RED;
+                else if (score >= 50) infoColor = NamedTextColor.RED;
+                else if (score > 0) infoColor = NamedTextColor.GOLD;
+                else infoColor = NamedTextColor.GREEN;
+            }
+        }
+
         Component ipComponent = Component.text("IP: ", NamedTextColor.YELLOW)
             .append(Component.text(ipAddress, NamedTextColor.WHITE)
                 .clickEvent(ClickEvent.copyToClipboard(ipAddress))
-                .hoverEvent(HoverEvent.showText(Component.text("Click to copy IP address", NamedTextColor.GRAY))));
+                .hoverEvent(HoverEvent.showText(Component.text("Click to copy IP address", NamedTextColor.GRAY))))
+            .append(Component.text(" [ℹ]", infoColor)
+                .clickEvent(ClickEvent.runCommand("/ipinfo " + target.getUsername()))
+                .hoverEvent(HoverEvent.showText(Component.text("Click to view full IP info", NamedTextColor.YELLOW))));
         src.sendMessage(ipComponent);
           // Client brand with fancy formatting
         String clientBrand = target.getClientBrand() != null ? target.getClientBrand() : "Unknown";
@@ -374,7 +390,9 @@ public class InfoCommand implements SimpleCommand {
             if (!ipHistory.isEmpty()) {
                 src.sendMessage(Component.empty());
                 src.sendMessage(Component.text("Previous IPs:", NamedTextColor.YELLOW)
-                    .decorate(TextDecoration.UNDERLINED));
+                    .decorate(TextDecoration.UNDERLINED)
+                    .clickEvent(ClickEvent.runCommand("/ipinfo " + target.getUsername()))
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to run /ipinfo for more details", NamedTextColor.GRAY))));
                 
                 int count = 0;
                 for (IpHistoryEntry entry : ipHistory) {

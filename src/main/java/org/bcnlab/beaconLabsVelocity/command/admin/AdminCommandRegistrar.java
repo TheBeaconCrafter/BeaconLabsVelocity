@@ -45,6 +45,7 @@ public class AdminCommandRegistrar {
         // IP history command - only register if PlayerStatsService is available
         if (plugin.getPlayerStatsService() != null) {
             commandManager.register("ips", new IpsCommand(server, plugin.getPlayerStatsService(), service, plugin));
+            commandManager.register("stats", new StatsCommand(plugin));
         }
           // Server metrics command
         ServerMetricsCommand serverMetricsCommand = new ServerMetricsCommand(plugin);
@@ -63,7 +64,8 @@ public class AdminCommandRegistrar {
         if (plugin.getMaintenanceService() != null) {
             commandManager.register("maintenance", new MaintenanceCommand(plugin, plugin.getMaintenanceService()));
         }
-          // Whitelist command - only register if whitelist service is available
+
+        // Whitelist command - only register if whitelist service is available
         if (plugin.getWhitelistService() != null) {
             ProxyWhitelistCommand whitelistCommand = new ProxyWhitelistCommand(plugin, plugin.getWhitelistService());
             commandManager.register("proxywhitelist", whitelistCommand);
@@ -73,5 +75,12 @@ public class AdminCommandRegistrar {
         } else {
             logger.warn("WhitelistService is not available. Proxy whitelist commands will not be registered.");
         }
+
+        // Screening bypass command
+        com.velocitypowered.api.command.CommandMeta scbMeta = commandManager.metaBuilder("scb")
+                .aliases("screeningbypass")
+                .plugin(plugin)
+                .build();
+        commandManager.register(scbMeta, new ScreeningBypassCommand(plugin, server));
     }
 }

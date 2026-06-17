@@ -34,6 +34,12 @@ import org.bcnlab.beaconLabsVelocity.service.LegalService;
 import org.bcnlab.beaconLabsVelocity.service.ReportService;
 import org.bcnlab.beaconLabsVelocity.service.ServerGuardService;
 import org.bcnlab.beaconLabsVelocity.service.WhitelistService;
+import org.bcnlab.beaconLabsVelocity.service.AntiBotService;
+import org.bcnlab.beaconLabsVelocity.service.ScreeningService;
+import org.bcnlab.beaconLabsVelocity.config.AbuseConfig;
+import org.bcnlab.beaconLabsVelocity.command.admin.AntiAbuseCommand;
+import org.bcnlab.beaconLabsVelocity.command.admin.IpInfoCommand;
+import org.bcnlab.beaconLabsVelocity.listener.AntiBotListener;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.loader.ConfigurationLoader;
@@ -45,7 +51,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Objects;
 
-@Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.5", url = "bcnlab.org", authors = {"Vincent Wackler"})
+@Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.6", url = "bcnlab.org", authors = {"Vincent Wackler"})
 public class BeaconLabsVelocity {
 
     @Inject
@@ -55,7 +61,7 @@ public class BeaconLabsVelocity {
     private ConfigurationNode config;
 
     private String prefix;
-    private final String version = "1.5";
+    private final String version = "1.6";
 
     @Inject
     private Logger logger;
@@ -76,6 +82,9 @@ public class BeaconLabsVelocity {
     private org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService crossProxyService;
     private org.bcnlab.beaconLabsVelocity.brand.F3BrandService f3BrandService;
     private FileChatLogger fileChatLogger;
+    private AbuseConfig abuseConfig;
+    private AntiBotService antiBotService;
+    private ScreeningService screeningService;
     private volatile boolean featherDebug = false;
     @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
@@ -143,6 +152,20 @@ public class BeaconLabsVelocity {
             server.getEventManager().register(this, new BanLoginListener(this, punishmentService, punishmentConfig, logger));
         } catch (IOException e) {
             logger.error("Failed to load punishments.yml or register punishment components", e);
+        }
+        
+        // Abuse / AntiBot
+        if (databaseManager != null && databaseManager.isConnected()) {
+            abuseConfig = new AbuseConfig(dataDirectory.toFile(), logger);
+            antiBotService = new AntiBotService(this, databaseManager, abuseConfig, logger, server);
+            server.getEventManager().register(this, new AntiBotListener(antiBotService, logger));
+            commandManager.register("aa", new AntiAbuseCommand(this, antiBotService, abuseConfig, server), "antiabuse");
+            commandManager.register("ipinfo", new IpInfoCommand(this, antiBotService, server));
+            
+            screeningService = new ScreeningService(this, abuseConfig, server);
+            server.getEventManager().register(this, screeningService);
+            
+            logger.info("Abuse/AntiBot module initialized.");
         }
           // Initialize PlayerStatsService for playtime tracking and IP history
         if (databaseManager != null && databaseManager.isConnected()) {
@@ -437,5 +460,13 @@ public class BeaconLabsVelocity {
         } catch (Exception e) {
             logger.warn("Failed to perform cross-proxy chat report for {}: {}", targetName, e.getMessage());
         }
+    }
+    
+    public AntiBotService getAntiBotService() {
+        return antiBotService;
+    }
+    
+    public ScreeningService getScreeningService() {
+        return screeningService;
     }
 }

@@ -1,0 +1,49 @@
+abuse:
+  # Primary toggle to enable/disable the entire abuse module (AntiBot & AntiCheat functions)
+  module-enabled: true
+  
+  # Defense mode determines how aggressive the screening is.
+  # normal: Just basic AbuseIPDB checks on join.
+  # elevated: Screening mode enabled ONLY for new IPs and new players.
+  # attack: Screening mode forced on EVERY player join.
+  defense-mode: normal
+  
+  # The name of the server defined in velocity.toml to route players to for screening.
+  screening-server: "limbo"
+  
+  # How many seconds a player has to respond to a screening captcha
+  screening-timeout: 15
+  
+  antibot:
+    # Get your API key from https://www.abuseipdb.com/
+    api-key: "YOUR_API_KEY_HERE"
+    
+    # How many requests we can make per day (free tier is 1000)
+    daily-limit: 1000
+    
+    # If a player's IP score is >= this, they are blocked
+    min-confidence-score: 90
+    
+    # Force block if score >= this
+    force-ban-score: 90
+    
+    # Auto-screen if score >= this
+    screening-score: 50
+    
+    # Auto-screen data centers and transit IPs
+    screen-data-centers: true
+    
+    # Auto-screen specific regions by country code
+    screen-countries:
+      - "CN"
+      - "RU"
+    
+    # Message shown to bots/proxies that are kicked
+    kick-message: "&c[BeaconLabs] Your connection was blocked due to suspicious activity (VPN/Proxy/Bot).\n&eIf you believe this is an error, please contact support."
+    
+    # Discord Webhook for alerts
+    webhook-url: ""
+    role-id-to-ping: ""
+    
+    # Cooldown in minutes to prevent spamming the webhook for the same IP
+    webhook-cooldown-minutes: 60
