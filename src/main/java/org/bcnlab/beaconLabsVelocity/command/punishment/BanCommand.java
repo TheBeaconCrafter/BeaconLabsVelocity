@@ -135,23 +135,8 @@ public class BanCommand implements SimpleCommand {
                     plugin.getCrossProxyService().publishKickByName(targetName, rawKick); // in case they're on another proxy
                 }
             }
-        }        // Broadcast to notified players
-        String rawBroadcast = config.getMessage("ban-broadcast");
-        if (rawBroadcast != null) {
-            rawBroadcast = rawBroadcast
-                    .replace("{player}", targetName)
-                    .replace("{issuer}", (src instanceof Player) ? ((Player) src).getUsername() : "Console")
-                    .replace("{duration}", DurationUtils.formatDuration(duration))
-                    .replace("{reason}", reason);
-            Component broadcastComp = plugin.getPrefix().append(
-                    LegacyComponentSerializer.legacyAmpersand().deserialize(rawBroadcast)
-            );
-            server.getAllPlayers().stream()
-                    .filter(p -> p.hasPermission("beaconlabs.punish.notify"))
-                    .forEach(p -> p.sendMessage(broadcastComp));
         }
     }
-
     @Override
     public List<String> suggest(Invocation invocation) {
         String[] args = invocation.arguments();

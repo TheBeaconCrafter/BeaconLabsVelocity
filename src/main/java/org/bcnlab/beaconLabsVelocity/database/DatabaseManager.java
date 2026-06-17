@@ -124,6 +124,17 @@ public class DatabaseManager {
                 logger.error("Failed to initialize antibot_ip_cache table", ex);
             }
             
+            // AntiBot API Usage table
+            String createApiUsageTable = "CREATE TABLE IF NOT EXISTS antibot_api_usage (" +
+                    "usage_date DATE PRIMARY KEY, " +
+                    "request_count INT DEFAULT 0" +
+                    ")";
+            try (var conn = getConnection(); var stmt = conn.createStatement()) {
+                stmt.execute(createApiUsageTable);
+            } catch (Exception ex) {
+                logger.error("Failed to initialize antibot_api_usage table", ex);
+            }
+            
             // Player sessions table (for tracking playtime history)
             String createPlayerSessionsTable = "CREATE TABLE IF NOT EXISTS player_sessions (" +
                     "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
@@ -151,6 +162,16 @@ public class DatabaseManager {
                 stmt.execute(createScreeningPassesTable);
             } catch (Exception ex) {
                 logger.error("Failed to initialize screening_passes table", ex);
+            }
+            
+            // Force screen table
+            String createForceScreenTable = "CREATE TABLE IF NOT EXISTS force_screen (" +
+                    "player_uuid VARCHAR(36) PRIMARY KEY" +
+                    ")";
+            try (var conn = getConnection(); var stmt = conn.createStatement()) {
+                stmt.execute(createForceScreenTable);
+            } catch (Exception ex) {
+                logger.error("Failed to initialize force_screen table", ex);
             }
             
             // Login history table

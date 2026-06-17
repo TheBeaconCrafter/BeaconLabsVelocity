@@ -61,6 +61,11 @@ public class MessageCommand implements SimpleCommand {
 
         // Not on this proxy: try cross-proxy /msg
         if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            java.util.UUID targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(recipientName);
+            if (targetUuid == null) {
+                sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + recipientName + "' not found or offline.", NamedTextColor.RED)));
+                return;
+            }
             String recipientMessageLegacy = messageService.formatIncomingMessageLegacy(sender, message);
             plugin.getCrossProxyService().publishPrivateMsg(recipientName, sender.getUniqueId().toString(), sender.getUsername(), recipientMessageLegacy);
             // Get the recipient's prefix from Redis for the outgoing display

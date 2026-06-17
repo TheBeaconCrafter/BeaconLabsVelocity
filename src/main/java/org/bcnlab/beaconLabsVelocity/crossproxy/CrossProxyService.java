@@ -527,6 +527,9 @@ public class CrossProxyService {
                     case SENDALL:
                         handleSendAll(msg);
                         break;
+                    case SEND_SERVER:
+                        handleSendServer(msg);
+                        break;
                     case PLAYER_CONNECT:
                         handlePlayerConnect(msg);
                         break;
@@ -575,6 +578,9 @@ public class CrossProxyService {
                     case ENTE:
                         handleEnte(msg);
                         break;
+                    case DEFENSE_MODE_UPDATE:
+                        handleDefenseModeUpdate(msg);
+                        break;
                     default:
                         break;
                 }
@@ -617,6 +623,18 @@ public class CrossProxyService {
         RegisteredServer rs = target.get();
         server.getAllPlayers().forEach(player ->
                 player.createConnectionRequest(rs).connectWithIndication());
+    }
+
+    private void handleSendServer(CrossProxyMessage msg) {
+        String sourceServer = msg.getReason(); // mapped to reason in parse
+        String targetServer = msg.getServerName();
+        if (sourceServer == null || sourceServer.isEmpty() || targetServer == null || targetServer.isEmpty()) return;
+        Optional<RegisteredServer> target = server.getServer(targetServer);
+        if (target.isEmpty()) return;
+        RegisteredServer rs = target.get();
+        server.getAllPlayers().stream()
+                .filter(p -> p.getCurrentServer().isPresent() && p.getCurrentServer().get().getServerInfo().getName().equalsIgnoreCase(sourceServer))
+                .forEach(p -> p.createConnectionRequest(rs).connectWithIndication());
     }
 
     private void handlePlayerConnect(CrossProxyMessage msg) {
@@ -704,18 +722,6 @@ public class CrossProxyService {
                 .forEach(p -> p.sendMessage(linkMessage));
     }
 
-    private void publish(String message) {
-        if (!enabled || pubConnection == null) return;
-        try {
-            pubConnection.async().publish(CHANNEL, message);
-        } catch (Exception e) {
-            logger.warn("Failed to publish cross-proxy message: {}", e.getMessage());
-        }
-    }
-
-    public void publishKick(UUID uuid, String reason) {
-        publish(CrossProxyMessage.kick(uuid, reason, sharedSecret, proxyId));
-    }
 
     /** Ask other proxies to kick a player by name (used when player is not on this proxy). */
     public void publishKickByName(String username, String reason) {
@@ -724,6 +730,23 @@ public class CrossProxyService {
 
     public void publishSendAll(String serverName) {
         publish(CrossProxyMessage.sendAll(serverName, sharedSecret, proxyId));
+    }
+
+    public void publishSendServer(String sourceServer, String targetServer) {
+        publish(CrossProxyMessage.sendServer(sourceServer, targetServer, sharedSecret, proxyId));
+    }
+
+    public void publishKick(UUID uuid, String reason) {
+        publish(CrossProxyMessage.kick(uuid, reason, sharedSecret, proxyId));
+    }
+
+    private void publish(String message) {
+        if (!enabled || pubConnection == null) return;
+        try {
+            pubConnection.async().publish(CHANNEL, message);
+        } catch (Exception e) {
+            logger.warn("Failed to publish cross-proxy message: {}", e.getMessage());
+        }
     }
 
     public void publishPlayerConnect(UUID uuid) {
@@ -797,6 +820,29 @@ public class CrossProxyService {
             }
         }
     }
+
+    public void publishDefenseModeUpdate(String mode, String issuerName) {
+        publish(CrossProxyMessage.defenseModeUpdate(mode, issuerName, sharedSecret, proxyId));
+    }
+
+    private void handleDefenseModeUpdate(CrossProxyMessage msg) {
+        if (proxyId != null && proxyId.equals(msg.getProxyId())) return; // skip originator
+        String mode = msg.getReason(); // We use reason field for mode
+        String issuerName = msg.getUsername();
+        if (mode == null || mode.isEmpty()) return;
+        if (plugin.getAbuseConfig() != null) {
+            plugin.getAbuseConfig().setDefenseMode(mode);
+            Component comp = plugin.getPrefix().append(Component.text("Abuse Defense Mode updated to: ", net.kyori.adventure.text.format.NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
+                .append(Component.text(mode.toUpperCase(), net.kyori.adventure.text.format.NamedTextColor.GREEN))
+                .append(Component.text(" by " + (issuerName != null ? issuerName : "Console"), net.kyori.adventure.text.format.NamedTextColor.GRAY)));
+            
+            logger.info(LegacyComponentSerializer.legacySection().serialize(comp));
+            server.getAllPlayers().stream()
+                    .filter(p -> p.hasPermission("beaconlabs.antiabuse"))
+                    .forEach(p -> p.sendMessage(comp));
+        }
+    }
+
 
     public void publishMaintenanceSet(boolean enabled, String broadcastMessageLegacy) {
         publish(CrossProxyMessage.maintenanceSet(enabled, broadcastMessageLegacy, sharedSecret, proxyId));

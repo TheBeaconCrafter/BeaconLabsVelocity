@@ -161,6 +161,7 @@ public class BeaconLabsVelocity {
             server.getEventManager().register(this, new AntiBotListener(antiBotService, logger));
             commandManager.register("aa", new AntiAbuseCommand(this, antiBotService, abuseConfig, server), "antiabuse");
             commandManager.register("ipinfo", new IpInfoCommand(this, antiBotService, server));
+            commandManager.register("screen", new org.bcnlab.beaconLabsVelocity.command.admin.ScreenCommand(this));
             
             screeningService = new ScreeningService(this, abuseConfig, server);
             server.getEventManager().register(this, screeningService);
@@ -468,5 +469,9 @@ public class BeaconLabsVelocity {
     
     public ScreeningService getScreeningService() {
         return screeningService;
+    }
+    
+    public org.bcnlab.beaconLabsVelocity.config.AbuseConfig getAbuseConfig() {
+        return abuseConfig;
     }
 }

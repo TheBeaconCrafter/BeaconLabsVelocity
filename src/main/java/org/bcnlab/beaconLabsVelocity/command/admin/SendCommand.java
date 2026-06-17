@@ -56,7 +56,7 @@ public class SendCommand implements SimpleCommand {
             return;
         }
 
-        if ("*".equals(target)) {
+        if ("*".equals(target) || "all".equalsIgnoreCase(target)) {
             if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
                 plugin.getCrossProxyService().publishSendAll(serverName);
                 source.sendMessage(plugin.getPrefix().append(
@@ -69,6 +69,39 @@ public class SendCommand implements SimpleCommand {
                 }
                 source.sendMessage(plugin.getPrefix().append(
                         Component.text("Sent " + count + " player(s) to " + serverName + ".", NamedTextColor.GREEN)));
+            }
+            return;
+        }
+
+        if ("current".equalsIgnoreCase(target) && source instanceof Player) {
+            Player executor = (Player) source;
+            if (executor.getCurrentServer().isPresent()) {
+                target = executor.getCurrentServer().get().getServerInfo().getName();
+            } else {
+                source.sendMessage(plugin.getPrefix().append(
+                        Component.text("You are not connected to a server.", NamedTextColor.RED)));
+                return;
+            }
+        }
+
+        // Check if target is a known server
+        Optional<RegisteredServer> sourceServerOpt = server.getServer(target);
+        if (sourceServerOpt.isPresent()) {
+            String srcServerName = sourceServerOpt.get().getServerInfo().getName();
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                plugin.getCrossProxyService().publishSendServer(srcServerName, serverName);
+                source.sendMessage(plugin.getPrefix().append(
+                        Component.text("Sending all players on server '" + srcServerName + "' to '" + serverName + "' across the network...", NamedTextColor.GREEN)));
+            } else {
+                int count = 0;
+                for (Player p : server.getAllPlayers()) {
+                    if (p.getCurrentServer().isPresent() && p.getCurrentServer().get().getServerInfo().getName().equalsIgnoreCase(srcServerName)) {
+                        p.createConnectionRequest(registeredServer.get()).connectWithIndication();
+                        count++;
+                    }
+                }
+                source.sendMessage(plugin.getPrefix().append(
+                        Component.text("Sent " + count + " player(s) from " + srcServerName + " to " + serverName + ".", NamedTextColor.GREEN)));
             }
             return;
         }
@@ -99,7 +132,7 @@ public class SendCommand implements SimpleCommand {
         }
 
         source.sendMessage(plugin.getPrefix().append(
-                Component.text("Player not found: " + target, NamedTextColor.RED)));
+                Component.text("Player or server not found: " + target, NamedTextColor.RED)));
     }
 
     @Override
@@ -108,13 +141,19 @@ public class SendCommand implements SimpleCommand {
         java.util.stream.Stream<String> playerNames = (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled())
                 ? plugin.getCrossProxyService().getOnlinePlayerNames().stream()
                 : server.getAllPlayers().stream().map(Player::getUsername);
+        java.util.stream.Stream<String> serverNames = server.getAllServers().stream().map(s -> s.getServerInfo().getName());
+        
         if (args.length == 0) {
-            return Stream.concat(Stream.of("*"), playerNames).collect(Collectors.toList());
+            return Stream.concat(
+                    Stream.concat(Stream.of("*", "all", "current"), serverNames),
+                    playerNames
+            ).collect(Collectors.toList());
         }
         if (args.length == 1) {
             String prefix = args[0].toLowerCase();
             return Stream.concat(
-                    Stream.of("*").filter(s -> s.startsWith(prefix)),
+                    Stream.concat(Stream.of("*", "all", "current"), server.getAllServers().stream().map(s -> s.getServerInfo().getName()))
+                            .filter(s -> s.toLowerCase().startsWith(prefix)),
                     (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()
                             ? plugin.getCrossProxyService().getOnlinePlayerNames().stream()
                             : server.getAllPlayers().stream().map(Player::getUsername))

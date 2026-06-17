@@ -35,31 +35,39 @@ public class AntiBotService {
     private final ProxyServer server;
     private final Gson gson = new Gson();
     
-    private final AtomicInteger dailyRequests = new AtomicInteger(0);
-    private int currentDayOfYear = -1;
-
     private static final long CACHE_TTL_MS = 3L * 24L * 60L * 60L * 1000L; // 3 days
-
+    
     public AntiBotService(BeaconLabsVelocity plugin, DatabaseManager databaseManager, AbuseConfig config, Logger logger, ProxyServer server) {
         this.plugin = plugin;
         this.databaseManager = databaseManager;
         this.config = config;
         this.logger = logger;
         this.server = server;
-        resetDailyCounterIfNeeded();
-    }
-
-    private void resetDailyCounterIfNeeded() {
-        int today = Calendar.getInstance().get(Calendar.DAY_OF_YEAR);
-        if (today != currentDayOfYear) {
-            currentDayOfYear = today;
-            dailyRequests.set(0);
-        }
     }
 
     public int getRequestsToday() {
-        resetDailyCounterIfNeeded();
-        return dailyRequests.get();
+        if (!databaseManager.isConnected()) return 0;
+        try (Connection conn = databaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT request_count FROM antibot_api_usage WHERE usage_date = CURRENT_DATE")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("request_count");
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Failed to fetch API usage", e);
+        }
+        return 0;
+    }
+
+    public void incrementRequestsToday() {
+        if (!databaseManager.isConnected()) return;
+        try (Connection conn = databaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("INSERT INTO antibot_api_usage (usage_date, request_count) VALUES (CURRENT_DATE, 1) ON DUPLICATE KEY UPDATE request_count = request_count + 1")) {
+            stmt.executeUpdate();
+        } catch (Exception e) {
+            logger.error("Failed to increment API usage", e);
+        }
     }
 
     public enum DefenseAction { ALLOW, SCREEN, BLOCK }
@@ -165,6 +173,77 @@ public class AntiBotService {
         return false;
     }
 
+    public boolean hasPlayerBeenScreened(UUID playerUuid) {
+        if (playerUuid == null) return false;
+        try (Connection conn = databaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT 1 FROM screening_passes WHERE player_uuid = ? LIMIT 1")) {
+            stmt.setString(1, playerUuid.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+        } catch (Exception e) {
+            logger.error("Failed to check if player was screened", e);
+        }
+        return false;
+    }
+
+    public int removeScreeningPassByUuid(UUID playerUuid) {
+        if (playerUuid == null) return 0;
+        try (Connection conn = databaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("DELETE FROM screening_passes WHERE player_uuid = ?")) {
+            stmt.setString(1, playerUuid.toString());
+            return stmt.executeUpdate();
+        } catch (Exception e) {
+            logger.error("Failed to remove screening pass by UUID", e);
+        }
+        return 0;
+    }
+
+    public int removeScreeningPassByIp(String ip) {
+        if (ip == null || ip.isEmpty()) return 0;
+        try (Connection conn = databaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("DELETE FROM screening_passes WHERE ip_address = ?")) {
+            stmt.setString(1, ip);
+            return stmt.executeUpdate();
+        } catch (Exception e) {
+            logger.error("Failed to remove screening pass by IP", e);
+        }
+        return 0;
+    }
+
+    public void setForceScreen(UUID playerUuid) {
+        if (playerUuid == null) return;
+        try (Connection conn = databaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("INSERT IGNORE INTO force_screen (player_uuid) VALUES (?)")) {
+            stmt.setString(1, playerUuid.toString());
+            stmt.executeUpdate();
+        } catch (Exception e) {
+            logger.error("Failed to set force screen", e);
+        }
+    }
+
+    public boolean checkAndClearForceScreen(UUID playerUuid) {
+        if (playerUuid == null) return false;
+        try (Connection conn = databaseManager.getConnection();
+             PreparedStatement checkStmt = conn.prepareStatement("SELECT 1 FROM force_screen WHERE player_uuid = ?");
+             PreparedStatement deleteStmt = conn.prepareStatement("DELETE FROM force_screen WHERE player_uuid = ?")) {
+             
+            checkStmt.setString(1, playerUuid.toString());
+            boolean forced = false;
+            try (ResultSet rs = checkStmt.executeQuery()) {
+                forced = rs.next();
+            }
+            if (forced) {
+                deleteStmt.setString(1, playerUuid.toString());
+                deleteStmt.executeUpdate();
+            }
+            return forced;
+        } catch (Exception e) {
+            logger.error("Failed to check force screen", e);
+        }
+        return false;
+    }
+
     private IpData parseIpDataFromJson(String jsonStr) {
         IpData res = new IpData();
         if (jsonStr == null || jsonStr.isEmpty()) return res;
@@ -188,6 +267,9 @@ public class AntiBotService {
     }
 
     private DefenseAction getDefenseAction(int score, String usageType, String countryCode, UUID playerUuid, String ip) {
+        if (checkAndClearForceScreen(playerUuid)) {
+            return DefenseAction.SCREEN;
+        }
         if (hasPassedScreeningBefore(playerUuid, ip)) {
             return DefenseAction.ALLOW;
         }
@@ -199,8 +281,7 @@ public class AntiBotService {
     }
 
     private IpCheckResult fetchFromAbuseIpDb(String ip, UUID playerUuid, String playerName, boolean silent) {
-        resetDailyCounterIfNeeded();
-        if (dailyRequests.get() >= config.getDailyLimit()) {
+        if (getRequestsToday() >= config.getDailyLimit()) {
             logger.warn("AbuseIPDB daily limit reached! Skipping check for " + ip);
             return new IpCheckResult(DefenseAction.ALLOW, 0, new IpData(), false, false, "{}");
         }
@@ -211,7 +292,7 @@ public class AntiBotService {
                 return new IpCheckResult(DefenseAction.ALLOW, 0, new IpData(), false, false, "{}");
             }
 
-            dailyRequests.incrementAndGet();
+            incrementRequestsToday();
 
             URL url = new URL("https://api.abuseipdb.com/api/v2/check?ipAddress=" + URLEncoder.encode(ip, StandardCharsets.UTF_8) + "&maxAgeInDays=90&verbose");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();

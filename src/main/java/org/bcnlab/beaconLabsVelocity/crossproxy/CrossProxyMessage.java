@@ -28,7 +28,9 @@ public final class CrossProxyMessage {
         REPORT_NOTIFY,
         BADWORD_ALERT,
         PROXY_TRANSFER_REQUEST,
-        ENTE
+        ENTE,
+        DEFENSE_MODE_UPDATE,
+        SEND_SERVER
     }
 
     private final Type type;
@@ -75,6 +77,11 @@ public final class CrossProxyMessage {
     /** Build outbound SENDALL message. */
     public static String sendAll(String serverName, String secret, String proxyId) {
         return "SENDALL" + SEP + serverName + SEP + secret + SEP + proxyId;
+    }
+
+    /** Build outbound SEND_SERVER message. */
+    public static String sendServer(String sourceServer, String targetServer, String secret, String proxyId) {
+        return "SEND_SERVER" + SEP + (sourceServer != null ? sourceServer : "") + SEP + (targetServer != null ? targetServer : "") + SEP + secret + SEP + proxyId;
     }
 
     /** Build outbound PLAYER_CONNECT message. */
@@ -157,6 +164,11 @@ public final class CrossProxyMessage {
         return "ENTE" + SEP + (targetUsername != null ? targetUsername : "") + SEP + secret + SEP + proxyId;
     }
 
+    /** Build outbound DEFENSE_MODE_UPDATE (mode name, issuer name). */
+    public static String defenseModeUpdate(String mode, String issuerName, String secret, String proxyId) {
+        return "DEFENSE_MODE_UPDATE" + SEP + (mode != null ? mode : "") + SEP + (issuerName != null ? issuerName : "") + SEP + secret + SEP + proxyId;
+    }
+
     /**
      * Parse an incoming message. Returns null if invalid or unknown type.
      * Reason field may contain SEP; we reassemble it from middle parts for KICK.
@@ -176,6 +188,9 @@ public final class CrossProxyMessage {
             }
             if ("SENDALL".equals(typeStr) && parts.length >= 4) {
                 return new CrossProxyMessage(Type.SENDALL, parts[2], parts.length > 3 ? parts[3] : null, null, null, parts[1], null, null);
+            }
+            if ("SEND_SERVER".equals(typeStr) && parts.length >= 5) {
+                return new CrossProxyMessage(Type.SEND_SERVER, parts[3], parts[4], null, parts[1], parts[2], null, null); // reason=sourceServer, serverName=targetServer
             }
             if ("PLAYER_CONNECT".equals(typeStr) && parts.length >= 4) {
                 return new CrossProxyMessage(Type.PLAYER_CONNECT, parts[3], parts[1], parts[2], null, null, null, null);
@@ -232,6 +247,9 @@ public final class CrossProxyMessage {
             }
             if ("ENTE".equals(typeStr) && parts.length >= 4) {
                 return new CrossProxyMessage(Type.ENTE, parts[2], parts[3], null, null, null, parts[1], null); // username=targetUsername
+            }
+            if ("DEFENSE_MODE_UPDATE".equals(typeStr) && parts.length >= 5) {
+                return new CrossProxyMessage(Type.DEFENSE_MODE_UPDATE, parts[3], parts[4], null, parts[1], null, parts[2], null); // reason=mode, username=issuerName
             }
         } catch (Exception ignored) { }
         return null;

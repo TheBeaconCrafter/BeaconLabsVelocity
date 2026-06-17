@@ -41,7 +41,7 @@ public class ScreeningService {
     private final Map<UUID, ScreeningSession> sessions = new ConcurrentHashMap<>();
 
     private static class ScreeningSession {
-        final RegisteredServer originalServer;
+        RegisteredServer originalServer;
         final String captchaText;
         ScheduledTask timeoutTask;
         boolean passed;
@@ -64,7 +64,10 @@ public class ScreeningService {
             CaptchaGenerator.CaptchaResult captcha = CaptchaGenerator.generate();
             ScreeningSession session = new ScreeningSession(player.getCurrentServer().map(s -> s.getServer()).orElse(null), captcha.text);
             sessions.put(player.getUniqueId(), session);
-            player.createConnectionRequest(limboServer.get()).connect();
+            
+            if (player.getCurrentServer().isPresent()) {
+                player.createConnectionRequest(limboServer.get()).connect();
+            }
         }
     }
 
@@ -80,11 +83,8 @@ public class ScreeningService {
         }
 
         String mode = config.getDefenseMode();
-        if ("normal".equalsIgnoreCase(mode)) {
-            return;
-        }
-
         boolean shouldScreen = false;
+
         if ("attack".equalsIgnoreCase(mode)) {
             shouldScreen = true;
         } else if ("elevated".equalsIgnoreCase(mode)) {
@@ -99,14 +99,18 @@ public class ScreeningService {
             }
         }
 
-        if (shouldScreen) {
+        if (shouldScreen || sessions.containsKey(player.getUniqueId())) {
             Optional<RegisteredServer> limboServer = server.getServer(config.getScreeningServer());
             if (limboServer.isPresent() && event.getOriginalServer() != limboServer.get()) {
-                // Generate captcha text now so we have it ready
-                CaptchaGenerator.CaptchaResult captcha = CaptchaGenerator.generate();
-                
-                ScreeningSession session = new ScreeningSession(event.getOriginalServer(), captcha.text);
-                sessions.put(player.getUniqueId(), session);
+                ScreeningSession existing = sessions.get(player.getUniqueId());
+                if (existing != null && existing.originalServer == null) {
+                    // Update original server if it was null from async trigger
+                    sessions.put(player.getUniqueId(), new ScreeningSession(event.getOriginalServer(), existing.captchaText));
+                } else if (existing == null) {
+                    CaptchaGenerator.CaptchaResult captcha = CaptchaGenerator.generate();
+                    ScreeningSession session = new ScreeningSession(event.getOriginalServer(), captcha.text);
+                    sessions.put(player.getUniqueId(), session);
+                }
 
                 event.setResult(ServerPreConnectEvent.ServerResult.allowed(limboServer.get()));
             }
@@ -188,6 +192,15 @@ public class ScreeningService {
                     sessions.remove(player.getUniqueId());
                 }
             }).delay(Duration.ofSeconds(config.getScreeningTimeout())).schedule();
+        } else {
+            // Player is in sessions but connected to a non-limbo server (e.g. from async trigger check Ip taking too long)
+            if (!session.passed) {
+                Optional<RegisteredServer> limboServer = server.getServer(config.getScreeningServer());
+                if (limboServer.isPresent()) {
+                    session.originalServer = event.getServer(); // Update their original server to where they just connected
+                    player.createConnectionRequest(limboServer.get()).connect();
+                }
+            }
         }
     }
 
@@ -230,7 +243,18 @@ public class ScreeningService {
                 if (session.originalServer != null) {
                     player.createConnectionRequest(session.originalServer).connectWithIndication();
                 } else {
-                    // It will just let them fall through if originalServer was null, which shouldn't happen unless they were not on a server yet
+                    java.util.List<String> attemptOrder = server.getConfiguration().getAttemptConnectionOrder();
+                    if (!attemptOrder.isEmpty()) {
+                        String defaultServerName = attemptOrder.get(0);
+                        Optional<RegisteredServer> defaultServer = server.getServer(defaultServerName);
+                        if (defaultServer.isPresent()) {
+                            player.createConnectionRequest(defaultServer.get()).connectWithIndication();
+                        } else {
+                            player.disconnect(Component.text("Failed to find default server after screening.", NamedTextColor.RED));
+                        }
+                    } else {
+                        player.disconnect(Component.text("No fallback servers configured.", NamedTextColor.RED));
+                    }
                 }
             } else {
                 player.sendMessage(Component.text("Incorrect code. Try again.", NamedTextColor.RED));

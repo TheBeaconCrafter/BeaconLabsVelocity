@@ -52,27 +52,34 @@ public class IpInfoCommand implements SimpleCommand {
             targetIp = target;
         } else {
             // Player
-            UUID targetUuid = plugin.getPunishmentService().getPlayerUUID(target);
-            if (targetUuid == null && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
-                targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(target);
-            }
-            if (targetUuid == null && playerStatsService != null) {
-                PlayerStatsService.PlayerData pd = playerStatsService.getPlayerDataByName(target);
-                if (pd != null) targetUuid = pd.getPlayerId();
-            }
+            Optional<com.velocitypowered.api.proxy.Player> p = server.getPlayer(target);
+            if (p.isPresent()) {
+                targetIp = p.get().getRemoteAddress().getAddress().getHostAddress();
+            } else {
+                UUID targetUuid = plugin.getPunishmentService().getPlayerUUID(target);
+                if (targetUuid == null && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                    targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(target);
+                }
+                if (targetUuid == null && playerStatsService != null) {
+                    PlayerStatsService.PlayerData pd = playerStatsService.getPlayerDataByName(target);
+                    if (pd != null) targetUuid = pd.getPlayerId();
+                }
 
-            if (targetUuid == null) {
-                src.sendMessage(plugin.getPrefix().append(Component.text("Player not found: " + target, NamedTextColor.RED)));
-                return;
-            }
+                if (targetUuid == null) {
+                    src.sendMessage(plugin.getPrefix().append(Component.text("Player not found: " + target, NamedTextColor.RED)));
+                    return;
+                }
 
-            if (playerStatsService != null) {
-                List<PlayerStatsService.IpHistoryEntry> history = playerStatsService.getPlayerIpHistory(targetUuid);
-                if (!history.isEmpty()) {
-                    targetIp = history.get(0).getIpAddress();
+                if (playerStatsService != null) {
+                    List<PlayerStatsService.IpHistoryEntry> history = playerStatsService.getPlayerIpHistory(targetUuid);
+                    if (!history.isEmpty()) {
+                        targetIp = history.get(0).getIpAddress();
+                    }
                 }
             }
         }
+
+
 
         if (targetIp == null) {
             src.sendMessage(plugin.getPrefix().append(Component.text("Could not determine IP for target: " + target, NamedTextColor.RED)));
@@ -151,6 +158,38 @@ public class IpInfoCommand implements SimpleCommand {
             
         src.sendMessage(Component.text("  Action Taken: ", NamedTextColor.YELLOW)
             .append(Component.text(actionStr, actionColor)));
+            
+        if (playerStatsService != null) {
+            List<PlayerStatsService.PlayerData> playersWithSameIp = playerStatsService.getPlayersWithSameIp(ip);
+            if (!playersWithSameIp.isEmpty()) {
+                src.sendMessage(Component.empty());
+                src.sendMessage(Component.text("» KNOWN ACCOUNTS ON IP", NamedTextColor.DARK_AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD));
+                for (PlayerStatsService.PlayerData pd : playersWithSameIp) {
+                    boolean isOnline = server.getPlayer(pd.getPlayerId()).isPresent();
+                    NamedTextColor nameColor = isOnline ? NamedTextColor.GREEN : NamedTextColor.WHITE;
+                    
+                    Component playerComp = Component.text(pd.getPlayerName(), nameColor);
+                    if (isOnline) {
+                        playerComp = playerComp.decorate(net.kyori.adventure.text.format.TextDecoration.BOLD);
+                    }
+                    
+                    Component entry = Component.text("  • ", NamedTextColor.GRAY)
+                        .append(playerComp
+                            .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/info " + pd.getPlayerName()))
+                            .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Click to view player info", NamedTextColor.YELLOW)))
+                        );
+                        
+                    if (isOnline) {
+                        entry = entry.append(Component.text(" (Online)", NamedTextColor.GREEN));
+                    } else {
+                        java.util.Date lastSeen = new java.util.Date(pd.getLastSeen());
+                        String lastSeenStr = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(lastSeen);
+                        entry = entry.append(Component.text(" (Last seen: " + lastSeenStr + ")", NamedTextColor.GRAY));
+                    }
+                    src.sendMessage(entry);
+                }
+            }
+        }
             
         sendDivider(src, NamedTextColor.GOLD);
     }

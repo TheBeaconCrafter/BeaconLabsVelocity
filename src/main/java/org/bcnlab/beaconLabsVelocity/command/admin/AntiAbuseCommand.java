@@ -106,8 +106,19 @@ public class AntiAbuseCommand implements SimpleCommand {
         String mode = args[1].toLowerCase();
         if (mode.equals("normal") || mode.equals("elevated") || mode.equals("attack")) {
             abuseConfig.setDefenseMode(mode);
-            src.sendMessage(plugin.getPrefix().append(Component.text("Abuse Defense Mode updated to: ", NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
-                .append(Component.text(mode.toUpperCase(), NamedTextColor.GREEN))));
+            String issuerName = (src instanceof Player) ? ((Player) src).getUsername() : "Console";
+            Component comp = plugin.getPrefix().append(Component.text("Abuse Defense Mode updated to: ", NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
+                .append(Component.text(mode.toUpperCase(), NamedTextColor.GREEN))
+                .append(Component.text(" by " + issuerName, NamedTextColor.GRAY)));
+            
+            plugin.getLogger().info(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(comp));
+            plugin.getServer().getAllPlayers().stream()
+                .filter(p -> p.hasPermission("beaconlabs.antiabuse"))
+                .forEach(p -> p.sendMessage(comp));
+                
+            if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                plugin.getCrossProxyService().publishDefenseModeUpdate(mode, issuerName);
+            }
         } else {
             src.sendMessage(plugin.getPrefix().append(Component.text("Invalid mode. Use: normal, elevated, or attack.", NamedTextColor.RED)));
         }

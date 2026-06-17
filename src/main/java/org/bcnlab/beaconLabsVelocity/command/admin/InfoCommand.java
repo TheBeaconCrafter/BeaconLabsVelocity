@@ -118,10 +118,11 @@ public class InfoCommand implements SimpleCommand {
             UUID offlineUuid = service.getPlayerUUID(targetName);
             String effectivePlayerName = targetName; // Name used for display, defaults to input
 
+            PlayerStatsService.PlayerData playerDataFromStats = playerStatsService.getPlayerDataByName(targetName);
+
             if (offlineUuid == null) {
                 // If not found via PunishmentService, try PlayerStatsService (e.g., from player_stats table)
                 // This ensures players who have joined but never been punished can still be looked up.
-                PlayerStatsService.PlayerData playerDataFromStats = playerStatsService.getPlayerDataByName(targetName);
                 if (playerDataFromStats != null) {
                     offlineUuid = playerDataFromStats.getPlayerId();
                     effectivePlayerName = playerDataFromStats.getPlayerName(); // Use canonical name from DB
@@ -138,6 +139,11 @@ public class InfoCommand implements SimpleCommand {
             if (offlineUuid != null) {
                 String onlineProxyId = (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled())
                         ? plugin.getCrossProxyService().getPlayerProxy(offlineUuid) : null;
+                
+                String lastProxy = null;
+                if (playerDataFromStats != null && playerDataFromStats.getLastProxy() != null) {
+                    lastProxy = playerDataFromStats.getLastProxy();
+                }
 
                 if (onlineProxyId != null) {
                     src.sendMessage(Component.text("● Online on proxy: ", NamedTextColor.GREEN)
@@ -273,6 +279,12 @@ public class InfoCommand implements SimpleCommand {
                             .decorate(TextDecoration.BOLD));
                     src.sendMessage(Component.text("Proxy: ", NamedTextColor.YELLOW)
                             .append(Component.text(onlineProxyId, NamedTextColor.AQUA)));
+                } else if (lastProxy != null) {
+                    src.sendMessage(Component.empty());
+                    src.sendMessage(Component.text("» CONNECTION", NamedTextColor.GREEN)
+                            .decorate(TextDecoration.BOLD));
+                    src.sendMessage(Component.text("Last Proxy: ", NamedTextColor.YELLOW)
+                            .append(Component.text(lastProxy, NamedTextColor.GRAY)));
                 }
 
                 // Separator for punishment section
@@ -359,11 +371,14 @@ public class InfoCommand implements SimpleCommand {
         if (plugin.getAntiBotService() != null) {
             java.util.Optional<org.bcnlab.beaconLabsVelocity.service.AntiBotService.IpCheckResult> cachedInfo = plugin.getAntiBotService().getCachedInfo(ipAddress);
             if (cachedInfo.isPresent()) {
-                int score = cachedInfo.get().confidenceScore;
-                if (score >= 90) infoColor = NamedTextColor.DARK_RED;
-                else if (score >= 50) infoColor = NamedTextColor.RED;
-                else if (score > 0) infoColor = NamedTextColor.GOLD;
-                else infoColor = NamedTextColor.GREEN;
+                org.bcnlab.beaconLabsVelocity.service.AntiBotService.IpCheckResult result = cachedInfo.get();
+                if (result.confidenceScore >= 90 || result.action == org.bcnlab.beaconLabsVelocity.service.AntiBotService.DefenseAction.BLOCK) {
+                    infoColor = NamedTextColor.RED;
+                } else if (result.action == org.bcnlab.beaconLabsVelocity.service.AntiBotService.DefenseAction.SCREEN) {
+                    infoColor = NamedTextColor.YELLOW;
+                } else {
+                    infoColor = NamedTextColor.GREEN;
+                }
             }
         }
 
@@ -506,8 +521,18 @@ public class InfoCommand implements SimpleCommand {
                 Component.text(muteSymbol + "MUTED", NamedTextColor.RED).decorate(TextDecoration.BOLD) : 
                 Component.text(muteSymbol + "Not Muted", NamedTextColor.GREEN));
         
+        boolean screened = false;
+        if (plugin.getAntiBotService() != null) {
+            screened = plugin.getAntiBotService().hasPlayerBeenScreened(uuid);
+        }
+        Component screenedStatus = Component.text("Screened: ", NamedTextColor.YELLOW)
+            .append(screened ? 
+                Component.text("✓ Yes (Passed)", NamedTextColor.GREEN) : 
+                Component.text("✗ No", NamedTextColor.GRAY));
+        
         src.sendMessage(banStatus);
         src.sendMessage(muteStatus);
+        src.sendMessage(screenedStatus);
         
         // Active punishments with better formatting
         List<PunishmentRecord> history = service.getHistory(uuid);

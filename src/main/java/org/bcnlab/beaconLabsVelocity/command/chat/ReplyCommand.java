@@ -61,6 +61,11 @@ public class ReplyCommand implements SimpleCommand {
         // Cross-proxy: last message was from a player on another proxy
         String lastSenderUsername = messageService.getLastSenderUsername(sender.getUniqueId());
         if (lastSenderUsername != null && !lastSenderUsername.isEmpty() && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            java.util.UUID targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(lastSenderUsername);
+            if (targetUuid == null) {
+                sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + lastSenderUsername + "' is no longer online.", NamedTextColor.RED)));
+                return;
+            }
             String recipientMessageLegacy = messageService.formatIncomingMessageLegacy(sender, message);
             plugin.getCrossProxyService().publishPrivateMsg(lastSenderUsername, sender.getUniqueId().toString(), sender.getUsername(), recipientMessageLegacy);
             Component senderMsg = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()

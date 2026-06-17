@@ -58,8 +58,12 @@ public class PlayerStatsService {
                     "player_name VARCHAR(16) NOT NULL, " +
                     "total_playtime BIGINT DEFAULT 0, " +
                     "first_join BIGINT, " +
-                    "last_seen BIGINT" +
+                    "last_seen BIGINT, " +
+                    "last_proxy VARCHAR(64)" +
                     ")";
+            
+            // Alter table to add last_proxy if it doesn't exist
+            String alterPlayerStatsTable = "ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS last_proxy VARCHAR(64)";
             
             // Create ip_history table with index on player_uuid
             String createIpHistoryTable = "CREATE TABLE IF NOT EXISTS ip_history (" +
@@ -72,6 +76,11 @@ public class PlayerStatsService {
             
             try (var stmt = conn.createStatement()) {
                 stmt.execute(createPlayerStatsTable);
+                try {
+                    stmt.execute(alterPlayerStatsTable);
+                } catch (SQLException ignore) {
+                    // Ignore error if column already exists (for MySQL versions older than 10.3/8.0 without IF NOT EXISTS)
+                }
                 stmt.execute(createIpHistoryTable);
                 logger.info("Successfully initialized player stats database tables");
             }
@@ -92,21 +101,33 @@ public class PlayerStatsService {
         // Start tracking session time
         playerSessionStart.put(playerId, currentTime);
         
+        // Get proxy ID
+        String proxyId = "unknown";
+        if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            proxyId = plugin.getCrossProxyService().getProxyId();
+        } else {
+            // Read from Velocity TOML if possible? No easy way, just use config or plugin id
+            proxyId = "local";
+        }
+        final String finalProxyId = proxyId;
+        
         // Run database operations async
         plugin.getServer().getScheduler().buildTask(plugin, () -> {
             try (Connection conn = db.getConnection()) {
                 // Update or insert player stats
-                String upsertPlayerStats = "INSERT INTO player_stats (player_uuid, player_name, first_join, last_seen) " +
-                        "VALUES (?, ?, ?, ?) " +
-                        "ON DUPLICATE KEY UPDATE player_name = ?, last_seen = ?";
+                String upsertPlayerStats = "INSERT INTO player_stats (player_uuid, player_name, first_join, last_seen, last_proxy) " +
+                        "VALUES (?, ?, ?, ?, ?) " +
+                        "ON DUPLICATE KEY UPDATE player_name = ?, last_seen = ?, last_proxy = ?";
                 
                 try (PreparedStatement ps = conn.prepareStatement(upsertPlayerStats)) {
                     ps.setString(1, playerId.toString());
                     ps.setString(2, playerName);
                     ps.setLong(3, currentTime); // first_join
                     ps.setLong(4, currentTime); // last_seen
-                    ps.setString(5, playerName); // update name
-                    ps.setLong(6, currentTime); // update last_seen
+                    ps.setString(5, finalProxyId); // last_proxy
+                    ps.setString(6, playerName); // update name
+                    ps.setLong(7, currentTime); // update last_seen
+                    ps.setString(8, finalProxyId); // update last_proxy
                     ps.executeUpdate();
                 }
                 
@@ -127,9 +148,9 @@ public class PlayerStatsService {
                     ps.executeUpdate();
                 }
                 
-                // Clean up old IP entries (keep only last 3)
+                // Clean up old IP entries (keep only last 10)
                 String cleanupIps = "DELETE FROM ip_history WHERE player_uuid = ? AND id NOT IN " +
-                        "(SELECT id FROM (SELECT id FROM ip_history WHERE player_uuid = ? ORDER BY timestamp DESC LIMIT 3) AS temp)";
+                        "(SELECT id FROM (SELECT id FROM ip_history WHERE player_uuid = ? ORDER BY timestamp DESC LIMIT 10) AS temp)";
                 try (PreparedStatement ps = conn.prepareStatement(cleanupIps)) {
                     ps.setString(1, playerId.toString());
                     ps.setString(2, playerId.toString());
@@ -475,7 +496,7 @@ public class PlayerStatsService {
         try (Connection conn = db.getConnection()) {
             // Using LOWER() for case-insensitive search, assuming player_name column might be case-sensitive
             // or the database collation handles it appropriately.
-            String sql = "SELECT player_uuid, player_name, last_seen FROM player_stats WHERE LOWER(player_name) = LOWER(?)";
+            String sql = "SELECT player_uuid, player_name, last_seen, last_proxy FROM player_stats WHERE LOWER(player_name) = LOWER(?)";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, playerName.toLowerCase()); // Ensure consistent case for the query parameter
                 try (ResultSet rs = ps.executeQuery()) {
@@ -483,9 +504,10 @@ public class PlayerStatsService {
                         String uuidStr = rs.getString("player_uuid");
                         String canonicalName = rs.getString("player_name"); // Get the canonical name
                         long lastSeen = rs.getLong("last_seen");
+                        String lastProxy = rs.getString("last_proxy");
                         if (uuidStr != null && canonicalName != null) {
                             try {
-                                return new PlayerData(UUID.fromString(uuidStr), canonicalName, lastSeen);
+                                return new PlayerData(UUID.fromString(uuidStr), canonicalName, lastSeen, lastProxy);
                             } catch (IllegalArgumentException e) {
                                 logger.error("Invalid UUID format in database for player name " + playerName + ": " + uuidStr, e);
                                 return null;
@@ -511,7 +533,7 @@ public class PlayerStatsService {
         
         try (Connection conn = db.getConnection()) {
             // Find distinct players who used this IP, joining with player_stats to get names
-            String sql = "SELECT DISTINCT h.player_uuid, s.player_name, s.last_seen " + 
+            String sql = "SELECT DISTINCT h.player_uuid, s.player_name, s.last_seen, s.last_proxy " + 
                          "FROM ip_history h " +
                          "JOIN player_stats s ON h.player_uuid = s.player_uuid " +
                          "WHERE h.ip_address = ? " +
@@ -524,7 +546,8 @@ public class PlayerStatsService {
                         players.add(new PlayerData(
                             UUID.fromString(rs.getString("player_uuid")),
                             rs.getString("player_name"),
-                            rs.getLong("last_seen")
+                            rs.getLong("last_seen"),
+                            rs.getString("last_proxy")
                         ));
                     }
                 }
@@ -685,11 +708,17 @@ public class PlayerStatsService {
         private final UUID playerId;
         private final String playerName;
         private final long lastSeen;
+        private final String lastProxy;
         
         public PlayerData(UUID playerId, String playerName, long lastSeen) {
+            this(playerId, playerName, lastSeen, null);
+        }
+
+        public PlayerData(UUID playerId, String playerName, long lastSeen, String lastProxy) {
             this.playerId = playerId;
             this.playerName = playerName;
             this.lastSeen = lastSeen;
+            this.lastProxy = lastProxy;
         }
         
         public UUID getPlayerId() {
@@ -702,6 +731,10 @@ public class PlayerStatsService {
         
         public long getLastSeen() {
             return lastSeen;
+        }
+        
+        public String getLastProxy() {
+            return lastProxy;
         }
     }
 }

@@ -176,7 +176,9 @@ public class IpsCommand implements SimpleCommand {
             }
             
             src.sendMessage(Component.text()
-                .append(Component.text(count + ". ", NamedTextColor.GOLD))
+                .append(Component.text(count + ". ", NamedTextColor.GOLD)
+                    .clickEvent(ClickEvent.runCommand("/ipinfo " + ipAddress))
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to run /ipinfo", NamedTextColor.YELLOW))))
                 .append(ipComponent)
                 .append(Component.text(" - Last seen: ", NamedTextColor.DARK_GRAY))
                 .append(Component.text(latestDateStr, NamedTextColor.AQUA))

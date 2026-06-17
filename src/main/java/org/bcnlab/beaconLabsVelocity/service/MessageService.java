@@ -128,7 +128,7 @@ public class MessageService {
      */
     public boolean sendPrivateMessage(Player sender, Player recipient, String message) {
         if (sender.equals(recipient)) {
-            sender.sendMessage(Component.text("You cannot message yourself!", NamedTextColor.RED));
+            sender.sendMessage(plugin.getPrefix().append(Component.text("You cannot message yourself!", NamedTextColor.RED)));
             return false;
         }
 
