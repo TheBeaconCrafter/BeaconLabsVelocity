@@ -197,7 +197,7 @@ public class ScreeningService {
                     if (fixedType != null) mapType = fixedType;
                 }
 
-                plugin.getLogger().info("[DEBUG-SCREENING] Serializing packets for Proxy Protocol: " + velocityProtocol + " | MapType ID: " + mapType.getId(velocityVersion));
+                //plugin.getLogger().info("[DEBUG-SCREENING] Serializing packets for Proxy Protocol: " + velocityProtocol + " | MapType ID: " + mapType.getId(velocityVersion));
 
                 // 1. Send Map Data
                 WrapperPlayServerMapData mapDataPacket = new WrapperPlayServerMapData(
@@ -228,7 +228,7 @@ public class ScreeningService {
                         .version(velocityVersion)
                         .build();
 
-                plugin.getLogger().info("[DEBUG-SCREENING] MapItem successfully built. Serializing and sending SetSlot packets...");
+                //plugin.getLogger().info("[DEBUG-SCREENING] MapItem successfully built. Serializing and sending SetSlot packets...");
 
                 // Slot 36 is the first hotbar slot (index 0 in Minecraft inventory usually means hotbar for SetSlot, but for Window ID 0:
                 // Hotbar is 36-44
