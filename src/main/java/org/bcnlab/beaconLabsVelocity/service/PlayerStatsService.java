@@ -82,6 +82,10 @@ public class PlayerStatsService {
                     // Ignore error if column already exists (for MySQL versions older than 10.3/8.0 without IF NOT EXISTS)
                 }
                 stmt.execute(createIpHistoryTable);
+                try {
+                    stmt.execute("ALTER TABLE ip_history ADD COLUMN IF NOT EXISTS was_kicked BOOLEAN DEFAULT FALSE");
+                } catch (SQLException ignore) {
+                }
                 logger.info("Successfully initialized player stats database tables");
             }
         } catch (SQLException e) {

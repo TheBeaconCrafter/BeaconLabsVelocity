@@ -432,6 +432,20 @@ public class AntiBotService {
             Optional<Player> p = server.getPlayer(playerUuid);
             p.ifPresent(player -> {
                 player.disconnect(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getKickMessage()));
+                
+                // Record successful kick
+                plugin.getServer().getScheduler().buildTask(plugin, () -> {
+                    if (databaseManager != null && databaseManager.isConnected()) {
+                        try (Connection conn = databaseManager.getConnection();
+                             PreparedStatement stmt = conn.prepareStatement(
+                                 "UPDATE ip_history SET was_kicked = TRUE WHERE player_uuid = ? ORDER BY id DESC LIMIT 1")) {
+                            stmt.setString(1, playerUuid.toString());
+                            stmt.executeUpdate();
+                        } catch (Exception e) {
+                            logger.error("Failed to mark player as kicked in ip_history", e);
+                        }
+                    }
+                }).schedule();
             });
         }
         

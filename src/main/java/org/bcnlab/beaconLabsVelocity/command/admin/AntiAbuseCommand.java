@@ -57,6 +57,9 @@ public class AntiAbuseCommand implements SimpleCommand {
             case "blacklist":
                 handleList(src, args, sub.equals("whitelist"));
                 break;
+            case "history":
+                handleHistory(src, args);
+                break;
             case "requests":
                 int req = antiBotService.getRequestsToday();
                 sendDivider(src, NamedTextColor.GOLD);
@@ -129,10 +132,119 @@ public class AntiAbuseCommand implements SimpleCommand {
         src.sendMessage(Component.empty());
         src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa whitelist <ip/player> [true/false]", NamedTextColor.AQUA)));
         src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa blacklist <ip/player> [true/false]", NamedTextColor.AQUA)));
+        src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa history [page]", NamedTextColor.AQUA).append(Component.text(" - View past blocked players", NamedTextColor.GRAY))));
         src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa requests", NamedTextColor.AQUA).append(Component.text(" - View AbuseIPDB daily requests", NamedTextColor.GRAY))));
         src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa status", NamedTextColor.AQUA).append(Component.text(" - View AntiBot database stats", NamedTextColor.GRAY))));
         src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa mode <normal|elevated|attack>", NamedTextColor.AQUA).append(Component.text(" - Change defense level", NamedTextColor.GRAY))));
         sendDivider(src, NamedTextColor.GOLD);
+    }
+
+    private void handleHistory(CommandSource src, String[] args) {
+        int page = (args.length >= 2 && args[1].matches("\\d+")) ? Integer.parseInt(args[1]) : 1;
+        
+        if (plugin.getDatabaseManager() == null || !plugin.getDatabaseManager().isConnected()) {
+            src.sendMessage(Component.text("Database not connected.", NamedTextColor.RED));
+            return;
+        }
+        
+        plugin.getServer().getScheduler().buildTask(plugin, () -> {
+            try (Connection conn = plugin.getDatabaseManager().getConnection();
+                 PreparedStatement countStmt = conn.prepareStatement(
+                     "SELECT COUNT(DISTINCT ps.player_uuid) " +
+                     "FROM player_stats ps " +
+                     "JOIN ip_history ih ON ps.player_uuid = ih.player_uuid " +
+                     "JOIN antibot_ip_cache aic ON ih.ip_address = aic.ip_address " +
+                     "WHERE aic.is_blacklisted = true OR aic.confidence_score >= ?"
+                 );
+                 PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT ps.player_name, MAX(ps.last_seen) as last_joined, MAX(aic.confidence_score) as max_score, MAX(CAST(ih.was_kicked AS SIGNED)) as was_kicked, MAX(ps.total_playtime) as total_playtime " +
+                     "FROM player_stats ps " +
+                     "JOIN ip_history ih ON ps.player_uuid = ih.player_uuid " +
+                     "JOIN antibot_ip_cache aic ON ih.ip_address = aic.ip_address " +
+                     "WHERE aic.is_blacklisted = true OR aic.confidence_score >= ? " +
+                     "GROUP BY ps.player_uuid, ps.player_name " +
+                     "ORDER BY last_joined DESC " +
+                     "LIMIT ? OFFSET ?"
+                 )) {
+                 
+                int minScoreToBlock = abuseConfig.getForceBanScore();
+                
+                countStmt.setInt(1, minScoreToBlock);
+                int totalEntries = 0;
+                try (ResultSet rs = countStmt.executeQuery()) {
+                    if (rs.next()) totalEntries = rs.getInt(1);
+                }
+                
+                int perPage = 10;
+                int maxPage = Math.max(1, (int) Math.ceil((double) totalEntries / perPage));
+                int actualPage = Math.max(1, Math.min(page, maxPage));
+                
+                stmt.setInt(1, minScoreToBlock);
+                stmt.setInt(2, perPage);
+                stmt.setInt(3, (actualPage - 1) * perPage);
+                
+                sendDivider(src, NamedTextColor.GOLD);
+                src.sendMessage(Component.text("✦ ", NamedTextColor.GOLD)
+                    .append(Component.text("BLOCKED PLAYERS HISTORY", NamedTextColor.RED).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD))
+                    .append(Component.text(" ✦", NamedTextColor.GOLD)));
+                src.sendMessage(Component.empty());
+                
+                if (totalEntries == 0) {
+                    src.sendMessage(Component.text("  No historical blocked players found.", NamedTextColor.GRAY));
+                } else {
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            String pName = rs.getString("player_name");
+                            long lastSeenMillis = rs.getLong("last_joined");
+                            java.sql.Timestamp lastSeen = lastSeenMillis > 0 ? new java.sql.Timestamp(lastSeenMillis) : null;
+                            int score = rs.getInt("max_score");
+                            long playtime = rs.getLong("total_playtime");
+                            boolean actuallyKicked = rs.getInt("was_kicked") == 1;
+                            
+                            String timeStr = lastSeen != null ? sdf.format(lastSeen) : "Unknown";
+                            
+                            Component nameComp = Component.text(pName, NamedTextColor.WHITE)
+                                .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/info " + pName))
+                                .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Click to view player info", NamedTextColor.YELLOW)));
+                                
+                            Component prefixComp = Component.text("  • ", NamedTextColor.DARK_GRAY);
+                            
+                            if (!actuallyKicked) {
+                                long seconds = playtime / 1000;
+                                String ptStr = seconds < 60 ? "less than 1m" : (seconds / 60) + "m";
+                                if (seconds >= 3600) ptStr = (seconds / 3600) + "h " + ((seconds % 3600) / 60) + "m";
+                                
+                                prefixComp = prefixComp.append(Component.text("⚠ ", NamedTextColor.RED)
+                                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Was not immediately kicked. Playtime: " + ptStr, NamedTextColor.YELLOW))));
+                            }
+                                
+                            src.sendMessage(prefixComp
+                                .append(nameComp)
+                                .append(Component.text(" (Score: " + score + "%) - ", NamedTextColor.GRAY))
+                                .append(Component.text(timeStr, NamedTextColor.DARK_AQUA)));
+                        }
+                    }
+                }
+                
+                src.sendMessage(Component.empty());
+                Component footer = Component.text("  Page " + actualPage + " of " + maxPage, NamedTextColor.GRAY);
+                if (actualPage > 1) {
+                    footer = footer.append(Component.text(" [«]", NamedTextColor.AQUA)
+                        .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/aa history " + (actualPage - 1))));
+                }
+                if (actualPage < maxPage) {
+                    footer = footer.append(Component.text(" [»]", NamedTextColor.AQUA)
+                        .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/aa history " + (actualPage + 1))));
+                }
+                src.sendMessage(footer);
+                sendDivider(src, NamedTextColor.GOLD);
+                
+            } catch (Exception e) {
+                src.sendMessage(Component.text("⚠ Error fetching history.", NamedTextColor.RED));
+                plugin.getLogger().error("Error fetching history", e);
+            }
+        }).schedule();
     }
 
     private void handleList(CommandSource src, String[] args, boolean isWhitelist) {
