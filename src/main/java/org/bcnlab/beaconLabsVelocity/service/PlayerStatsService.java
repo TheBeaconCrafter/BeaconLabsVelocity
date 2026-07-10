@@ -102,7 +102,12 @@ public class PlayerStatsService {
         long currentTime = System.currentTimeMillis();
         String ipAddress = player.getRemoteAddress().getAddress().getHostAddress();
         
-        // Start tracking session time
+        // Load player's playtime into cache SYNCHRONOUSLY before setting session start.
+        // This prevents a race condition where recordLogout() could fire before the
+        // async load completes, reading 0 from the cache and wiping accumulated playtime.
+        loadPlayerPlaytime(playerId);
+        
+        // Start tracking session time (after cache is populated)
         playerSessionStart.put(playerId, currentTime);
         
         // Get proxy ID
@@ -115,7 +120,7 @@ public class PlayerStatsService {
         }
         final String finalProxyId = proxyId;
         
-        // Run database operations async
+        // Run database operations async (playtime cache is already loaded above)
         plugin.getServer().getScheduler().buildTask(plugin, () -> {
             try (Connection conn = db.getConnection()) {
                 // Update or insert player stats
@@ -161,9 +166,6 @@ public class PlayerStatsService {
                     ps.executeUpdate();
                 }
                 
-                // Load player's playtime into cache
-                loadPlayerPlaytime(playerId);
-                
             } catch (SQLException e) {
                 logger.error("Failed to record player login: " + playerName, e);
             }
@@ -183,17 +185,21 @@ public class PlayerStatsService {
             long sessionStart = playerSessionStart.remove(playerId);
             long sessionDuration = currentTime - sessionStart;
             
-            // Add to cached total
-            long currentTotal = playerTotalPlaytime.getOrDefault(playerId, 0L);
-            playerTotalPlaytime.put(playerId, currentTotal + sessionDuration);
+            // Update cache for read queries (best-effort, only if already loaded)
+            playerTotalPlaytime.computeIfPresent(playerId, (k, v) -> v + sessionDuration);
             
-            // Update in database
-            updatePlaytime(playerId, playerName, currentTotal + sessionDuration, currentTime);
+            // Use SQL INCREMENT to add session duration to DB total.
+            // This prevents the race condition where an unloaded cache (0) would
+            // overwrite the accumulated total_playtime in the database.
+            incrementPlaytime(playerId, playerName, sessionDuration, currentTime);
             insertSessionSlice(playerId, sessionStart, currentTime, sessionDuration);
         } else {
             // Just update last seen time if no session start was recorded
             updateLastSeen(playerId, playerName, currentTime);
         }
+        
+        // Clean up cache on disconnect
+        playerTotalPlaytime.remove(playerId);
     }
     
     /**
@@ -214,13 +220,11 @@ public class PlayerStatsService {
                 // Update session start to current time for the next interval
                 playerSessionStart.put(playerId, currentTime);
                 
-                // Add to cached total
-                long currentTotal = playerTotalPlaytime.getOrDefault(playerId, 0L);
-                long newTotal = currentTotal + sessionDuration;
-                playerTotalPlaytime.put(playerId, newTotal);
+                // Update cache for read queries (best-effort, only if already loaded)
+                playerTotalPlaytime.computeIfPresent(playerId, (k, v) -> v + sessionDuration);
                 
-                // Update in database
-                updatePlaytime(playerId, playerName, newTotal, currentTime);
+                // Use SQL INCREMENT — never writes an absolute value that could reset playtime
+                incrementPlaytime(playerId, playerName, sessionDuration, currentTime);
                 insertSessionSlice(playerId, sessionStart, currentTime, sessionDuration);
             }
         });
@@ -244,20 +248,22 @@ public class PlayerStatsService {
     }
     
     /**
-     * Update a player's playtime and last seen time in the database
+     * Increment a player's playtime in the database using SQL addition.
+     * This is safe against race conditions — it never overwrites with an absolute value,
+     * so even if the in-memory cache is stale or empty, accumulated playtime is preserved.
      */
-    private void updatePlaytime(UUID playerId, String playerName, long totalPlaytime, long lastSeen) {
+    private void incrementPlaytime(UUID playerId, String playerName, long additionalPlaytime, long lastSeen) {
         plugin.getServer().getScheduler().buildTask(plugin, () -> {
             try (Connection conn = db.getConnection()) {
-                String updateSql = "UPDATE player_stats SET total_playtime = ?, last_seen = ? WHERE player_uuid = ?";
+                String updateSql = "UPDATE player_stats SET total_playtime = total_playtime + ?, last_seen = ? WHERE player_uuid = ?";
                 try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
-                    ps.setLong(1, totalPlaytime);
+                    ps.setLong(1, additionalPlaytime);
                     ps.setLong(2, lastSeen);
                     ps.setString(3, playerId.toString());
                     ps.executeUpdate();
                 }
             } catch (SQLException e) {
-                logger.error("Failed to update playtime for: " + playerName, e);
+                logger.error("Failed to increment playtime for: " + playerName, e);
             }
         }).schedule();
     }
