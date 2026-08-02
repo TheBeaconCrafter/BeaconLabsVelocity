@@ -8,7 +8,7 @@
 
 | Requirement | Notes |
 |-------------|--------|
-| **Velocity** | Latest 3.x recommended |
+| **Velocity** | Latest 4.x recommended |
 | **Java 17+** | Required to run the plugin |
 | **MariaDB/MySQL** | Optional. Required for punishments, reports, whitelist, playtime, and IP history. |
 | **Redis** | Optional. Required only for [Cross-Proxy](#cross-proxy-redis) features. |
