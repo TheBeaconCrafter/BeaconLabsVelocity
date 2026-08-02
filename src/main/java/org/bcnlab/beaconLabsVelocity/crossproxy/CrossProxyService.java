@@ -13,6 +13,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import com.velocitypowered.api.proxy.Player;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
@@ -835,8 +836,8 @@ public class CrossProxyService {
             Component comp = plugin.getPrefix().append(Component.text("Abuse Defense Mode updated to: ", net.kyori.adventure.text.format.NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
                 .append(Component.text(mode.toUpperCase(), net.kyori.adventure.text.format.NamedTextColor.GREEN))
                 .append(Component.text(" by " + (issuerName != null ? issuerName : "Console"), net.kyori.adventure.text.format.NamedTextColor.GRAY)));
-            
-            logger.info(LegacyComponentSerializer.legacySection().serialize(comp));
+
+            logger.info(MiniMessage.miniMessage().serialize(comp));
             server.getAllPlayers().stream()
                     .filter(p -> p.hasPermission("beaconlabs.antiabuse"))
                     .forEach(p -> p.sendMessage(comp));

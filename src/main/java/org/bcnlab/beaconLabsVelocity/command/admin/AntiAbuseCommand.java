@@ -6,6 +6,7 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.AbuseConfig;
 import org.bcnlab.beaconLabsVelocity.service.AntiBotService;
@@ -110,7 +111,7 @@ public class AntiAbuseCommand implements SimpleCommand {
                 .append(Component.text(mode.toUpperCase(), NamedTextColor.GREEN))
                 .append(Component.text(" by " + issuerName, NamedTextColor.GRAY)));
             
-            plugin.getLogger().info(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(comp));
+            plugin.getLogger().info(MiniMessage.miniMessage().serialize(comp));
             plugin.getServer().getAllPlayers().stream()
                 .filter(p -> p.hasPermission("beaconlabs.antiabuse"))
                 .forEach(p -> p.sendMessage(comp));

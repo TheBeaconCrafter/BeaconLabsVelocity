@@ -2,6 +2,7 @@ package org.bcnlab.beaconLabsVelocity.service;
 
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
@@ -185,7 +186,7 @@ public class PunishmentService {
                     .forEach(p -> p.sendMessage(comp));
             
             // Log to console as well
-            logger.info(LegacyComponentSerializer.legacySection().serialize(comp));
+            logger.info(MiniMessage.miniMessage().serialize(comp));
         }
     }
 
