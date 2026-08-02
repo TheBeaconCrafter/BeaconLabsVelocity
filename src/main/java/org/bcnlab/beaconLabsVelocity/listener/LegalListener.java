@@ -4,11 +4,12 @@ import com.velocitypowered.api.event.PostOrder;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.proxy.Player;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.service.LegalService;
 
 import java.util.concurrent.TimeUnit;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 /**
  * When legal feature is enabled and show-on-first-join is true, shows the legal interface to players who have not yet accepted.
@@ -55,7 +56,7 @@ public class LegalListener {
                             legalService.clearPendingKick(player.getUniqueId());
                             String msg = legalService.getKickMessage();
                             if (msg == null || msg.isEmpty()) msg = "You must accept the Terms of Service and Privacy Policy to play.";
-                            player.disconnect(LegacyComponentSerializer.legacyAmpersand().deserialize(msg));
+                            player.disconnect(ColorParser.parse(msg));
                         }).delay(KICK_DELAY_SECONDS, TimeUnit.SECONDS).schedule();
                         legalService.registerPendingKickCancel(player.getUniqueId(), task::cancel);
                     }

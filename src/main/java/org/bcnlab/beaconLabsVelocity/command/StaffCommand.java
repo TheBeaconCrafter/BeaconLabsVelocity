@@ -7,7 +7,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.user.User;
 import net.luckperms.api.cacheddata.CachedMetaData;
@@ -18,6 +18,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 /**
  * Command to display online staff members. Works across proxies when Redis cross-proxy is enabled.
@@ -108,7 +109,7 @@ public class StaffCommand implements SimpleCommand {
         String prefix = cross.getPlayerPrefix(username);
         if (prefix != null && !prefix.isEmpty()) {
             try {
-                return LegacyComponentSerializer.legacyAmpersand().deserialize(prefix).append(Component.text(username));
+                return ColorParser.parse(prefix).append(Component.text(username));
             } catch (Exception ignored) { }
         }
         return Component.text(username, NamedTextColor.AQUA);
@@ -122,7 +123,7 @@ public class StaffCommand implements SimpleCommand {
                 CachedMetaData metaData = user.getCachedData().getMetaData();
                 String prefix = metaData.getPrefix();
                 if (prefix != null && !prefix.isEmpty()) {
-                    Component prefixComponent = LegacyComponentSerializer.legacyAmpersand().deserialize(prefix);
+                    Component prefixComponent = ColorParser.parse(prefix);
                     return prefixComponent.append(Component.text(player.getUsername()));
                 }
             }

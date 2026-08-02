@@ -5,7 +5,7 @@ import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig.PredefinedReason;
@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 /**
  * /warn <player> <reason>
@@ -38,15 +39,15 @@ public class WarnCommand implements SimpleCommand {
         CommandSource src = invocation.source();
         String[] args = invocation.arguments();
         if (!src.hasPermission("beaconlabs.punish.warn")) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("no-permission"))));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(config.getMessage("no-permission"))));
             return;
         }
         if (args.length < 2) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize("&cUsage: /warn <player> <reasonKey>")));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse("&cUsage: /warn <player> <reasonKey>")));
             return;
         }        String targetName = args[0];
         if (src instanceof Player && ((Player) src).getUsername().equalsIgnoreCase(targetName)) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("self-punish"))));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(config.getMessage("self-punish"))));
             return;
         }
         
@@ -56,7 +57,7 @@ public class WarnCommand implements SimpleCommand {
         if (pr == null) {
             // unknown reason key
             String keys = String.join(", ", config.getAllPredefinedReasons().keySet());
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize("&cUnknown reason key. Available: " + keys)));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse("&cUnknown reason key. Available: " + keys)));
             return;
         }
         
@@ -83,11 +84,11 @@ public class WarnCommand implements SimpleCommand {
             String msg = config.getMessage("warn-success")
                     .replace("{player}", target.getUsername())
                     .replace("{reason}", reason);
-            src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(msg));
+            src.sendMessage(ColorParser.parse(msg));
             
             // Notify the player
             target.sendMessage(plugin.getPrefix().append(
-                LegacyComponentSerializer.legacyAmpersand().deserialize(
+                ColorParser.parse(
                     "&cYou have been warned: " + reason
                 )
             ));
@@ -109,7 +110,7 @@ public class WarnCommand implements SimpleCommand {
                 String msg = config.getMessage("warn-success")
                         .replace("{player}", targetName)
                         .replace("{reason}", reason) + " (Offline player)";
-                src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(msg));
+                src.sendMessage(ColorParser.parse(msg));
                 
             } else {
                 // Create a new offline warning entry
@@ -126,7 +127,7 @@ public class WarnCommand implements SimpleCommand {
                 String msg = config.getMessage("warn-success")
                         .replace("{player}", targetName)
                         .replace("{reason}", reason) + " (New offline player)";
-                src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(msg));
+                src.sendMessage(ColorParser.parse(msg));
             }
         }
     }

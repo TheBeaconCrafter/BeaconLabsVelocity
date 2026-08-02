@@ -4,7 +4,7 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.slf4j.Logger;
 
@@ -137,10 +137,10 @@ public class MessageService {
         String senderPrefix = getPlayerPrefix(sender);
 
         // Format messages for sender and recipient
-        Component senderMessage = LegacyComponentSerializer.legacyAmpersand()
+        Component senderMessage = MiniMessage.miniMessage()
                 .deserialize(String.format(outgoingFormat, recipientPrefix, recipient.getUsername(), message));
         
-        Component recipientMessage = LegacyComponentSerializer.legacyAmpersand()
+        Component recipientMessage = MiniMessage.miniMessage()
                 .deserialize(String.format(incomingFormat, senderPrefix, sender.getUsername(), message));
 
         // Send the messages

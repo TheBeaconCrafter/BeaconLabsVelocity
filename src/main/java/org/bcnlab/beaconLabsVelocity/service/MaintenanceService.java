@@ -4,7 +4,7 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.slf4j.Logger;
@@ -306,7 +306,7 @@ public class MaintenanceService {
      * Kick all players without the bypass permission
      */
     private void kickPlayersWithoutPermission() {
-        Component kickMessageComponent = LegacyComponentSerializer.legacyAmpersand()
+        Component kickMessageComponent = MiniMessage.miniMessage()
             .deserialize(kickMessage);
         
         server.getAllPlayers().forEach(player -> {

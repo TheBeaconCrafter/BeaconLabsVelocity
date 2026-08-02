@@ -9,7 +9,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 /**
  * /info <player> - show detailed player information and punishment status
@@ -55,7 +56,7 @@ public class InfoCommand implements SimpleCommand {
         // Permission check
         if (!src.hasPermission("beaconlabs.punish.info")) {
             src.sendMessage(plugin.getPrefix().append(
-                LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("no-permission"))));
+                ColorParser.parse(config.getMessage("no-permission"))));
             return;
         }
         

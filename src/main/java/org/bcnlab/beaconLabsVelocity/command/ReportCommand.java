@@ -7,7 +7,7 @@ import com.velocitypowered.api.proxy.ServerConnection;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.service.ReportService;
 
@@ -145,7 +145,7 @@ public class ReportCommand implements SimpleCommand {
                 Component notification = buildReportNotification(targetName, player.getUsername(), reason, serverName, reportId);
                 notifyStaff(notification);
                 if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
-                    plugin.getCrossProxyService().publishReportNotify(LegacyComponentSerializer.legacyAmpersand().serialize(notification));
+                    plugin.getCrossProxyService().publishReportNotify(MiniMessage.miniMessage().serialize(notification));
                 }
                 
                 // Add cooldown

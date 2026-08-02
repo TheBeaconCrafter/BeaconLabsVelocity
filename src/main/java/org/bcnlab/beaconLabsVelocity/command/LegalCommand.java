@@ -4,13 +4,14 @@ import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.service.LegalService;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 /**
  * /legal - show legal (TOS/Privacy) interface.
@@ -101,7 +102,7 @@ public class LegalCommand implements SimpleCommand {
             if (denyMsg == null || denyMsg.isEmpty()) {
                 denyMsg = legalService.getKickMessage();
             }
-            player.disconnect(LegacyComponentSerializer.legacyAmpersand().deserialize(denyMsg));
+            player.disconnect(ColorParser.parse(denyMsg));
             return;
         }
 

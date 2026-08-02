@@ -7,7 +7,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
 import org.slf4j.Logger;
@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import com.velocitypowered.api.scheduler.ScheduledTask;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 /**
  * Legal (Terms of Service / Privacy) feature. Shows a book or chat interface and stores acceptance in the database.
@@ -247,7 +248,7 @@ public class LegalService {
         String topMessage = getTopMessage();
         if (topMessage != null && !topMessage.isEmpty()) {
             player.sendMessage(plugin.getPrefix().append(
-                    LegacyComponentSerializer.legacyAmpersand().deserialize(topMessage)));
+                    ColorParser.parse(topMessage)));
         }
 
         try {

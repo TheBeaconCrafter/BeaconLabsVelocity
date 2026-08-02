@@ -4,7 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
@@ -15,6 +15,7 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 /**
  * /punishments <player> - show punishment history
@@ -38,11 +39,11 @@ public class PunishmentsCommand implements SimpleCommand {
         CommandSource src = invocation.source();
         String[] args = invocation.arguments();
         if (!src.hasPermission("beaconlabs.punish.history")) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("no-permission"))));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(config.getMessage("no-permission"))));
             return;
         }
         if (args.length < 1) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize("&cUsage: /punishments <player>")));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse("&cUsage: /punishments <player>")));
             return;
         }
         String targetName = args[0];
@@ -64,7 +65,7 @@ public class PunishmentsCommand implements SimpleCommand {
                 notFoundMsg = "&cPlayer &f{player} &cnot found.";
                 // Consider adding logger warning here if needed
             }
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand()
+            src.sendMessage(plugin.getPrefix().append(MiniMessage.miniMessage()
                     .deserialize(notFoundMsg.replace("{player}", targetName))));
             return;
         }
@@ -74,10 +75,10 @@ public class PunishmentsCommand implements SimpleCommand {
 
         // Use the provided targetName for the header, as we might not have the exact casing from the DB
         String header = config.getMessage("history-header").replace("{player}", targetName);
-        src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(header));
+        src.sendMessage(ColorParser.parse(header));
 
         if (history.isEmpty()) {
-            src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("history-empty")));
+            src.sendMessage(ColorParser.parse(config.getMessage("history-empty")));
             return;
         }        for (PunishmentRecord record : history) {            String status = record.active ? "&aActive" : "&cInactive";
             String durationStr = DurationUtils.formatDuration(record.duration);
@@ -99,7 +100,7 @@ public class PunishmentsCommand implements SimpleCommand {
                     .replace("{duration}", durationStr)
                     .replace("{expiry}", expiryStr)
                     .replace("{issuer}", record.issuerName != null ? record.issuerName : "Console");
-            src.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(line));
+            src.sendMessage(ColorParser.parse(line));
         }
     }
 

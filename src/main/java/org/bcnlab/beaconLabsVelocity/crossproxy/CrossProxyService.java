@@ -14,7 +14,7 @@ import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import com.velocitypowered.api.proxy.Player;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.slf4j.Logger;
@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 /**
  * Optional cross-proxy sync via Redis Pub/Sub. When enabled, kick/ban/send and
@@ -597,7 +598,7 @@ public class CrossProxyService {
         if (uuid == null) return;
         server.getPlayer(uuid).ifPresent(player -> {
             Component reason = msg.getReason() != null && !msg.getReason().isEmpty()
-                    ? LegacyComponentSerializer.legacyAmpersand().deserialize(msg.getReason())
+                    ? ColorParser.parse(msg.getReason())
                     : Component.text("Kicked from the network.");
             player.disconnect(reason);
             logger.debug("Kicked player {} on cross-proxy request.", player.getUsername());
@@ -609,7 +610,7 @@ public class CrossProxyService {
         if (name == null || name.isEmpty()) return;
         server.getPlayer(name).ifPresent(player -> {
             Component reason = msg.getReason() != null && !msg.getReason().isEmpty()
-                    ? LegacyComponentSerializer.legacyAmpersand().deserialize(msg.getReason())
+                    ? ColorParser.parse(msg.getReason())
                     : Component.text("Kicked from the network.");
             player.disconnect(reason);
             logger.debug("Kicked player {} on cross-proxy kick-by-name.", player.getUsername());
@@ -664,7 +665,7 @@ public class CrossProxyService {
         server.getPlayer(uuid).ifPresent(player -> {
             String reason = msg.getReason() != null && !msg.getReason().isEmpty() ? msg.getReason() : "No reason specified";
             String duration = msg.getDurationFormatted() != null && !msg.getDurationFormatted().isEmpty() ? msg.getDurationFormatted() : "Permanent";
-            Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(
+            Component comp = ColorParser.parse(
                     "&c&lYou have been muted. &7Duration: &f" + duration + " &7| Reason: &f" + reason);
             player.sendMessage(plugin.getPrefix().append(comp));
         });
@@ -676,7 +677,7 @@ public class CrossProxyService {
         String legacy = msg.getReason();
         if (legacy == null) return;
         server.getPlayer(targetUsername).ifPresent(player -> {
-            player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(legacy));
+            player.sendMessage(ColorParser.parse(legacy));
             if (plugin.getMessageService() != null && msg.getUuidAsUUID() != null && msg.getServerName() != null && !msg.getServerName().isEmpty()) {
                 plugin.getMessageService().setLastMessageSenderForReply(player.getUniqueId(), msg.getUuidAsUUID(), msg.getServerName());
             }
@@ -686,14 +687,14 @@ public class CrossProxyService {
     private void handleBroadcast(CrossProxyMessage msg) {
         String legacy = msg.getReason();
         if (legacy == null) return;
-        Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
+        Component comp = ColorParser.parse(legacy);
         server.getAllPlayers().forEach(p -> p.sendMessage(comp));
     }
 
     private void handleTeamChat(CrossProxyMessage msg) {
         String legacy = msg.getReason();
         if (legacy == null) return;
-        Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
+        Component comp = ColorParser.parse(legacy);
         server.getAllPlayers().stream()
                 .filter(p -> p.hasPermission("beaconlabs.teamchat"))
                 .forEach(p -> p.sendMessage(comp));
@@ -808,7 +809,7 @@ public class CrossProxyService {
 
         if (enable) {
             if (broadcastLegacy != null && !broadcastLegacy.isEmpty() && !isOriginator) {
-                Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(broadcastLegacy);
+                Component comp = ColorParser.parse(broadcastLegacy);
                 server.getAllPlayers().forEach(p -> p.sendMessage(comp));
             }
             // All proxies (including originator) run the countdown so the mid-screen alert shows everywhere
@@ -816,7 +817,7 @@ public class CrossProxyService {
         } else {
             plugin.getMaintenanceService().setMaintenanceFromRemote(false);
             if (!isOriginator && broadcastLegacy != null && !broadcastLegacy.isEmpty()) {
-                Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(broadcastLegacy);
+                Component comp = ColorParser.parse(broadcastLegacy);
                 server.getAllPlayers().forEach(p -> p.sendMessage(comp));
             }
         }
@@ -927,7 +928,7 @@ public class CrossProxyService {
         if (msg.getProxyId() != null && msg.getProxyId().equals(proxyId)) return; // originator already notified local staff
         String legacy = msg.getReason();
         if (legacy == null || legacy.isEmpty()) return;
-        Component notification = LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
+        Component notification = ColorParser.parse(legacy);
         server.getAllPlayers().stream()
                 .filter(p -> p.hasPermission("beaconlabs.reports.notify"))
                 .forEach(p -> p.sendMessage(notification));

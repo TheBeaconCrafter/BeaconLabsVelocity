@@ -5,7 +5,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 public class MuteCommand implements SimpleCommand {
     private final ProxyServer server;
@@ -34,18 +35,18 @@ public class MuteCommand implements SimpleCommand {
     public void execute(Invocation invocation) {
         CommandSource src = invocation.source();
         String[] args = invocation.arguments();
-        Component noPerm = plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("no-permission")));
+        Component noPerm = plugin.getPrefix().append(ColorParser.parse(config.getMessage("no-permission")));
         if (!src.hasPermission("beaconlabs.punish.mute")) {
             src.sendMessage(noPerm);
             return;
         }
         if (args.length < 2) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize("&cUsage: /mute <player> <duration> [reason]")));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse("&cUsage: /mute <player> <duration> [reason]")));
             return;
         }
         String targetName = args[0];
         if (src instanceof Player && ((Player) src).getUsername().equalsIgnoreCase(targetName)) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("self-punish"))));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(config.getMessage("self-punish"))));
             return;
         }
         long duration = DurationUtils.parseDuration(args[1]);
@@ -75,12 +76,12 @@ public class MuteCommand implements SimpleCommand {
                         .replace("{player}", canonicalName)
                         .replace("{duration}", DurationUtils.formatDuration(duration))
                         .replace("{reason}", reason);
-                src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(msg + (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled() ? " (on another proxy)" : ""))));
+                src.sendMessage(plugin.getPrefix().append(ColorParser.parse(msg + (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled() ? " (on another proxy)" : ""))));
                 if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
                     plugin.getCrossProxyService().publishMuteApplied(offlineUuid, reason, DurationUtils.formatDuration(duration));
                 }
             } else {
-                src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("player-not-found").replace("{player}", targetName))));
+                src.sendMessage(plugin.getPrefix().append(ColorParser.parse(config.getMessage("player-not-found").replace("{player}", targetName))));
             }
             return;
         }
@@ -93,7 +94,7 @@ public class MuteCommand implements SimpleCommand {
                 .replace("{player}", target.getUsername())
                 .replace("{duration}", DurationUtils.formatDuration(duration))
                 .replace("{reason}", reason);
-        src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(msg)));
+        src.sendMessage(plugin.getPrefix().append(ColorParser.parse(msg)));
         if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
             plugin.getCrossProxyService().publishMuteApplied(target.getUniqueId(), reason, DurationUtils.formatDuration(duration));
         }

@@ -4,7 +4,7 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.player.PlayerChatEvent;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 public class MuteListener {
 
@@ -71,7 +72,7 @@ public class MuteListener {
                          muteMessage = muteMessage.replace("{duration}", "Unknown"); // Handle case where duration placeholder exists but record is null
                     }
                     
-                    Component formattedMessage = LegacyComponentSerializer.legacyAmpersand().deserialize(muteMessage);
+                    Component formattedMessage = ColorParser.parse(muteMessage);
                     player.sendMessage(formattedMessage);
                     
                     recentMuteNotifications.add(playerUuid);

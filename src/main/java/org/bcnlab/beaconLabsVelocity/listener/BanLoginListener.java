@@ -4,7 +4,7 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 
 import java.text.SimpleDateFormat;
 import java.util.UUID;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 public class BanLoginListener {
 
@@ -61,7 +62,7 @@ public class BanLoginListener {
                         .replace("{duration}", formattedDuration)
                         .replace("{expires}", formattedEndTime);
 
-                Component kickReason = LegacyComponentSerializer.legacyAmpersand().deserialize(banMessage);
+                Component kickReason = ColorParser.parse(banMessage);
                 event.setResult(LoginEvent.ComponentResult.denied(kickReason));
                 logger.info("Denied login for banned player: " + player.getUsername() + " (UUID: " + playerUuid + ")");
             } else {
@@ -72,7 +73,7 @@ public class BanLoginListener {
                 if (banRecord == null) {
                     logger.warn("Could not retrieve active ban record for " + player.getUsername());
                 }
-                Component defaultKickReason = LegacyComponentSerializer.legacyAmpersand().deserialize(defaultKickMessage);
+                Component defaultKickReason = ColorParser.parse(defaultKickMessage);
                 event.setResult(LoginEvent.ComponentResult.denied(defaultKickReason));
                 logger.warn("Denied login for banned player " + player.getUsername() + ". Used default kick message.");
             }

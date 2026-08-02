@@ -4,8 +4,9 @@ import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 public class BroadcastCommand implements SimpleCommand {
     private final BeaconLabsVelocity plugin;
@@ -23,7 +24,7 @@ public class BroadcastCommand implements SimpleCommand {
         String msg = String.join(" ", invocation.arguments());
         String customPrefixStr = "&4Broadcast &8» &f";
         String fullMsgLegacy = customPrefixStr + msg;
-        Component fullMsg = LegacyComponentSerializer.legacyAmpersand().deserialize(fullMsgLegacy);
+        Component fullMsg = ColorParser.parse(fullMsgLegacy);
 
         if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
             plugin.getCrossProxyService().publishBroadcast(fullMsgLegacy);

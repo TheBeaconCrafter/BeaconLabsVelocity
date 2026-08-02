@@ -5,7 +5,7 @@ import com.velocitypowered.api.command.SimpleCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.service.MaintenanceService;
 
@@ -80,7 +80,7 @@ public class MaintenanceCommand implements SimpleCommand {
                 Component.text("enabled", NamedTextColor.RED, TextDecoration.BOLD) :
                 Component.text("disabled", NamedTextColor.GREEN, TextDecoration.BOLD))
             .build();
-        String broadcastLegacy = LegacyComponentSerializer.legacyAmpersand().serialize(resultMessage);
+        String broadcastLegacy = MiniMessage.miniMessage().serialize(resultMessage);
 
         boolean crossProxy = plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled();
 

@@ -5,7 +5,7 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 public class BanCommand implements SimpleCommand {
     private final BeaconLabsVelocity plugin;
@@ -34,15 +35,15 @@ public class BanCommand implements SimpleCommand {
         CommandSource src = invocation.source();
         String[] args = invocation.arguments();
         if (!src.hasPermission("beaconlabs.punish.ban")) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("no-permission"))));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(config.getMessage("no-permission"))));
             return;
         }
         if (args.length < 2) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize("&cUsage: /ban <player> <duration> [reason]")));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse("&cUsage: /ban <player> <duration> [reason]")));
             return;
         }        String targetName = args[0];
         if (src instanceof Player && ((Player) src).getUsername().equalsIgnoreCase(targetName)) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("self-punish"))));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(config.getMessage("self-punish"))));
             return;
         }
         
@@ -73,14 +74,14 @@ public class BanCommand implements SimpleCommand {
                     .replace("{player}", target.getUsername())
                     .replace("{duration}", DurationUtils.formatDuration(duration))
                     .replace("{reason}", reason);
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(successMsg)));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(successMsg)));
             
             // Disconnect the player with ban-kick-message template and prefix
             String rawKick = config.getMessage("ban-screen")
                     .replace("{reason}", reason)
                     .replace("{duration}", DurationUtils.formatDuration(duration));
             Component kickComp = plugin.getPrefix().append(
-                    LegacyComponentSerializer.legacyAmpersand().deserialize(rawKick)
+                    ColorParser.parse(rawKick)
             );
             target.disconnect(kickComp);
 
@@ -106,7 +107,7 @@ public class BanCommand implements SimpleCommand {
                         .replace("{player}", targetName)
                         .replace("{duration}", DurationUtils.formatDuration(duration))
                         .replace("{reason}", reason) + " (Offline player)";
-                src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(successMsg)));
+                src.sendMessage(plugin.getPrefix().append(ColorParser.parse(successMsg)));
                 if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
                     String rawKick = config.getMessage("ban-screen").replace("{reason}", reason).replace("{duration}", DurationUtils.formatDuration(duration));
                     plugin.getCrossProxyService().publishKick(offlineUuid, rawKick);
@@ -128,7 +129,7 @@ public class BanCommand implements SimpleCommand {
                         .replace("{player}", targetName)
                         .replace("{duration}", DurationUtils.formatDuration(duration))
                         .replace("{reason}", reason) + " (New offline player)";
-                src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(successMsg)));
+                src.sendMessage(plugin.getPrefix().append(ColorParser.parse(successMsg)));
                 if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
                     String rawKick = config.getMessage("ban-screen").replace("{reason}", reason).replace("{duration}", DurationUtils.formatDuration(duration));
                     plugin.getCrossProxyService().publishKick(generatedUuid, rawKick);

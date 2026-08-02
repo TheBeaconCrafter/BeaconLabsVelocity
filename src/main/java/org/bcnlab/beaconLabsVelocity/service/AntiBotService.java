@@ -5,7 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.AbuseConfig;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 public class AntiBotService {
 
@@ -431,7 +432,7 @@ public class AntiBotService {
         if (playerUuid != null) {
             Optional<Player> p = server.getPlayer(playerUuid);
             p.ifPresent(player -> {
-                player.disconnect(LegacyComponentSerializer.legacyAmpersand().deserialize(config.getKickMessage()));
+                player.disconnect(ColorParser.parse(config.getKickMessage()));
                 
                 // Record successful kick
                 plugin.getServer().getScheduler().buildTask(plugin, () -> {

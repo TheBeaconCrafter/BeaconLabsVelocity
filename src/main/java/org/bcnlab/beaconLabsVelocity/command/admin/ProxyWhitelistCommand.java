@@ -5,7 +5,7 @@ import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.service.WhitelistService;
 
@@ -189,7 +189,7 @@ public class ProxyWhitelistCommand implements SimpleCommand {
                         }
                         
                         // Kick the player
-                        Component kickMessage = LegacyComponentSerializer.legacyAmpersand()
+                        Component kickMessage = MiniMessage.miniMessage()
                             .deserialize(whitelistService.getKickMessage());
                         player.disconnect(kickMessage);
                         

@@ -4,7 +4,7 @@ import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity; // Import plugin
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig; // Import config
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService; // Import service
@@ -13,6 +13,7 @@ import org.slf4j.Logger; // Import Logger
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 /**
  * /unban <player> - lifts an active ban
@@ -43,13 +44,13 @@ public class UnbanCommand implements SimpleCommand {
                 noPermMsg = "&cYou do not have permission to use this command.";
                 logger.warn("Missing 'no-permission' message in punishments.yml");
             }
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(noPermMsg)));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(noPermMsg)));
             return;
         }
 
         // Usage Message with Prefix
         if (args.length < 1) {
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize("&cUsage: /unban <player>")));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse("&cUsage: /unban <player>")));
             return;
         }        String targetName = args[0];
         // Use the new method to get UUID for both online and offline players
@@ -61,7 +62,7 @@ public class UnbanCommand implements SimpleCommand {
                 notFoundMsg = "&cPlayer &f{player} &cnot found.";
                 logger.warn("Missing 'player-not-found' message in punishments.yml");
             }
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(
                     notFoundMsg.replace("{player}", targetName)
             )));
             return;
@@ -72,7 +73,7 @@ public class UnbanCommand implements SimpleCommand {
             success = service.unban(targetUUID); // Use unban() with UUID
         } catch (Exception e) {
             logger.error("Error occurred while unbanning " + targetName, e);
-            src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize("&cAn internal error occurred.")));
+            src.sendMessage(plugin.getPrefix().append(ColorParser.parse("&cAn internal error occurred.")));
             return;
         }
 
@@ -89,7 +90,7 @@ public class UnbanCommand implements SimpleCommand {
             msg = "&cNo active ban found for " + targetName + " or an error occurred.";
         }
         // Add prefix to final message
-        src.sendMessage(plugin.getPrefix().append(LegacyComponentSerializer.legacyAmpersand().deserialize(msg)));
+        src.sendMessage(plugin.getPrefix().append(ColorParser.parse(msg)));
     }
 
     @Override

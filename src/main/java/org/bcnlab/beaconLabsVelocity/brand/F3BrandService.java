@@ -5,7 +5,7 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
@@ -25,7 +25,7 @@ import java.nio.charset.StandardCharsets;
 public final class F3BrandService {
 
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
-    private static final LegacyComponentSerializer LEGACY_SECTION = LegacyComponentSerializer.legacySection();
+    private static final MiniMessage LEGACY_SECTION = MiniMessage.miniMessage();
     private static final MinecraftChannelIdentifier BRAND_MODERN = MinecraftChannelIdentifier.from("minecraft:brand");
 
     private final BeaconLabsVelocity plugin;

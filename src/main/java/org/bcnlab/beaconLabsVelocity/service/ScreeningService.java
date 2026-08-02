@@ -18,7 +18,7 @@ import com.velocitypowered.api.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.AbuseConfig;
 import org.bcnlab.beaconLabsVelocity.util.CaptchaGenerator;
@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 public class ScreeningService {
 
@@ -248,7 +249,7 @@ public class ScreeningService {
                 if (!sessions.containsKey(player.getUniqueId())) return;
                 ScreeningSession s = sessions.get(player.getUniqueId());
                 if (s != null && !s.passed) {
-                    player.disconnect(LegacyComponentSerializer.legacyAmpersand().deserialize("&cScreening timeout. Please try connecting again."));
+                    player.disconnect(ColorParser.parse("&cScreening timeout. Please try connecting again."));
                     sessions.remove(player.getUniqueId());
                 }
             }).delay(Duration.ofSeconds(config.getScreeningTimeout())).schedule();

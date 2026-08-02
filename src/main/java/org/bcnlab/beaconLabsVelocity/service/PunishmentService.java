@@ -3,7 +3,7 @@ package org.bcnlab.beaconLabsVelocity.service;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 public class PunishmentService {
     private static final java.text.SimpleDateFormat DATE_FORMAT = new java.text.SimpleDateFormat(
@@ -177,7 +178,7 @@ public class PunishmentService {
             
             // Send with plugin prefix
             Component comp = plugin.getPrefix().append(
-                    LegacyComponentSerializer.legacyAmpersand().deserialize(broadcastMsg)
+                    ColorParser.parse(broadcastMsg)
             );
             
             // Send to players with permission

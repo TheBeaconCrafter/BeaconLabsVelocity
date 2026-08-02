@@ -5,9 +5,10 @@ import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.service.MessageService;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 /**
  * Command for team chat visible only to players with beaconlabs.teamchat permission
@@ -52,7 +53,7 @@ public class TeamChatCommand implements SimpleCommand {
         if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
             plugin.getCrossProxyService().publishTeamChat(messageLegacy);
         } else {
-            Component formattedMessage = LegacyComponentSerializer.legacyAmpersand().deserialize(messageLegacy);
+            Component formattedMessage = ColorParser.parse(messageLegacy);
             for (Player player : plugin.getServer().getAllPlayers()) {
                 if (player.hasPermission("beaconlabs.teamchat")) {
                     player.sendMessage(formattedMessage);

@@ -14,7 +14,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.title.Title;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.command.JoinMeCommand;
 import org.bcnlab.beaconLabsVelocity.command.LegalCommand;
 import org.bcnlab.beaconLabsVelocity.command.ReportCommand;
@@ -50,6 +50,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Objects;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 @Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.7.0", url = "bcnlab.org", authors = {"Vincent Wackler"})
 public class BeaconLabsVelocity {
@@ -339,7 +340,7 @@ public class BeaconLabsVelocity {
     }
 
     public Component getPrefix() {
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(prefix);
+        return ColorParser.parse(prefix);
     }
 
     public String getVersion() {

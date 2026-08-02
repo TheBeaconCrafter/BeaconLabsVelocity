@@ -4,7 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
@@ -12,6 +12,7 @@ import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 /**
  * Command to clear all punishments for a player
@@ -37,13 +38,13 @@ public class ClearPunishmentCommand implements SimpleCommand {
         
         if (!src.hasPermission("beaconlabs.punish.clear")) {
             src.sendMessage(plugin.getPrefix().append(
-                LegacyComponentSerializer.legacyAmpersand().deserialize(config.getMessage("no-permission"))));
+                ColorParser.parse(config.getMessage("no-permission"))));
             return;
         }
         
         if (args.length < 1) {
             src.sendMessage(plugin.getPrefix().append(
-                LegacyComponentSerializer.legacyAmpersand().deserialize("&cUsage: /cpunish <player>")));
+                ColorParser.parse("&cUsage: /cpunish <player>")));
             return;
         }
         
@@ -63,7 +64,7 @@ public class ClearPunishmentCommand implements SimpleCommand {
             }
             if (targetUUID == null) {
                 src.sendMessage(plugin.getPrefix().append(
-                    LegacyComponentSerializer.legacyAmpersand().deserialize(
+                    ColorParser.parse(
                         config.getMessage("player-not-found").replace("{player}", playerName))));
                 return;
             }
@@ -75,11 +76,11 @@ public class ClearPunishmentCommand implements SimpleCommand {
         // Send success message
         if (count > 0) {
             src.sendMessage(plugin.getPrefix().append(
-                LegacyComponentSerializer.legacyAmpersand().deserialize(
+                ColorParser.parse(
                     "&aCleared all punishments for &f" + playerName + "&a. &7(" + count + " records removed)")));
         } else {
             src.sendMessage(plugin.getPrefix().append(
-                LegacyComponentSerializer.legacyAmpersand().deserialize(
+                ColorParser.parse(
                     "&aNo punishment records found for &f" + playerName + "&a.")));
         }
     }

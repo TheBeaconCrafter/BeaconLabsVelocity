@@ -3,7 +3,7 @@ package org.bcnlab.beaconLabsVelocity.service;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
 import org.slf4j.Logger;
@@ -458,7 +458,7 @@ public class WhitelistService {
             return CompletableFuture.completedFuture(0);
         }
         
-        Component kickMessageComponent = LegacyComponentSerializer.legacyAmpersand()
+        Component kickMessageComponent = MiniMessage.miniMessage()
             .deserialize(kickMessage);
         
         List<CompletableFuture<Boolean>> futures = new ArrayList<>();

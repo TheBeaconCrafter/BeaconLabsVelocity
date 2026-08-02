@@ -4,11 +4,12 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 
 
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.service.WhitelistService;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 /**
  * Listener to enforce the proxy whitelist
@@ -44,7 +45,7 @@ public class WhitelistListener {
                 
                 // Player is not whitelisted, deny connection
                 event.setResult(LoginEvent.ComponentResult.denied(
-                    LegacyComponentSerializer.legacyAmpersand().deserialize(kickMessageStr)
+                    ColorParser.parse(kickMessageStr)
                 ));
                 
                 // Log the denied connection
