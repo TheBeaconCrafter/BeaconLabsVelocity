@@ -69,6 +69,15 @@ public class InfoCommand implements SimpleCommand {
         String targetName = args[0];
         Optional<Player> optionalTarget = server.getPlayer(targetName);
         
+        boolean isNickname = false;
+        if (optionalTarget.isEmpty() && plugin.getVisualStateListener() != null) {
+            UUID targetUuid = plugin.getVisualStateListener().getUuidByNickname(targetName);
+            if (targetUuid != null) {
+                optionalTarget = server.getPlayer(targetUuid);
+                isNickname = true;
+            }
+        }
+        
         // Send elegant header
         sendDivider(src, NamedTextColor.GOLD);
         
@@ -81,6 +90,21 @@ public class InfoCommand implements SimpleCommand {
             .append(Component.text(" ✦", NamedTextColor.GOLD))
             .build();
         src.sendMessage(playerHeader);
+
+        if (isNickname && optionalTarget.isPresent()) {
+            src.sendMessage(Component.text("  (Playing as nick: ", NamedTextColor.GRAY)
+                .append(Component.text(targetName, NamedTextColor.YELLOW))
+                .append(Component.text(", Real name: ", NamedTextColor.GRAY))
+                .append(Component.text(optionalTarget.get().getUsername(), NamedTextColor.YELLOW))
+                .append(Component.text(")", NamedTextColor.GRAY)));
+        } else if (!isNickname && optionalTarget.isPresent() && plugin.getVisualStateListener() != null) {
+            String nick = plugin.getVisualStateListener().getNickname(optionalTarget.get().getUniqueId());
+            if (nick != null) {
+                src.sendMessage(Component.text("  (Currently nicked as: ", NamedTextColor.GRAY)
+                    .append(Component.text(nick, NamedTextColor.YELLOW))
+                    .append(Component.text(")", NamedTextColor.GRAY)));
+            }
+        }
         
         // If online player, show detailed info
         if (optionalTarget.isPresent()) {

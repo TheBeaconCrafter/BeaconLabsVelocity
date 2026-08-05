@@ -30,7 +30,11 @@ public final class CrossProxyMessage {
         PROXY_TRANSFER_REQUEST,
         ENTE,
         DEFENSE_MODE_UPDATE,
-        SEND_SERVER
+        SEND_SERVER,
+        FRIEND_REQUEST,
+        FRIEND_ACCEPT,
+        FRIEND_JOIN,
+        FRIEND_LEAVE
     }
 
     private final Type type;
@@ -169,6 +173,22 @@ public final class CrossProxyMessage {
         return "DEFENSE_MODE_UPDATE" + SEP + (mode != null ? mode : "") + SEP + (issuerName != null ? issuerName : "") + SEP + secret + SEP + proxyId;
     }
 
+    public static String friendRequest(String targetUuid, String senderName, String secret, String proxyId) {
+        return "FRIEND_REQUEST" + SEP + (targetUuid != null ? targetUuid : "") + SEP + (senderName != null ? senderName : "") + SEP + secret + SEP + proxyId;
+    }
+
+    public static String friendAccept(String targetUuid, String acceptorName, String secret, String proxyId) {
+        return "FRIEND_ACCEPT" + SEP + (targetUuid != null ? targetUuid : "") + SEP + (acceptorName != null ? acceptorName : "") + SEP + secret + SEP + proxyId;
+    }
+
+    public static String friendJoin(String uuid, String name, String secret, String proxyId) {
+        return "FRIEND_JOIN" + SEP + (uuid != null ? uuid : "") + SEP + (name != null ? name : "") + SEP + secret + SEP + proxyId;
+    }
+
+    public static String friendLeave(String uuid, String name, String secret, String proxyId) {
+        return "FRIEND_LEAVE" + SEP + (uuid != null ? uuid : "") + SEP + (name != null ? name : "") + SEP + secret + SEP + proxyId;
+    }
+
     /**
      * Parse an incoming message. Returns null if invalid or unknown type.
      * Reason field may contain SEP; we reassemble it from middle parts for KICK.
@@ -250,6 +270,18 @@ public final class CrossProxyMessage {
             }
             if ("DEFENSE_MODE_UPDATE".equals(typeStr) && parts.length >= 5) {
                 return new CrossProxyMessage(Type.DEFENSE_MODE_UPDATE, parts[3], parts[4], null, parts[1], null, parts[2], null); // reason=mode, username=issuerName
+            }
+            if ("FRIEND_REQUEST".equals(typeStr) && parts.length >= 5) {
+                return new CrossProxyMessage(Type.FRIEND_REQUEST, parts[3], parts[4], parts[1], null, null, parts[2], null); // uuid=targetUuid, username=senderName
+            }
+            if ("FRIEND_ACCEPT".equals(typeStr) && parts.length >= 5) {
+                return new CrossProxyMessage(Type.FRIEND_ACCEPT, parts[3], parts[4], parts[1], null, null, parts[2], null); // uuid=targetUuid, username=acceptorName
+            }
+            if ("FRIEND_JOIN".equals(typeStr) && parts.length >= 5) {
+                return new CrossProxyMessage(Type.FRIEND_JOIN, parts[3], parts[4], parts[1], null, null, parts[2], null); // uuid=uuid, username=name
+            }
+            if ("FRIEND_LEAVE".equals(typeStr) && parts.length >= 5) {
+                return new CrossProxyMessage(Type.FRIEND_LEAVE, parts[3], parts[4], parts[1], null, null, parts[2], null); // uuid=uuid, username=name
             }
         } catch (Exception ignored) { }
         return null;

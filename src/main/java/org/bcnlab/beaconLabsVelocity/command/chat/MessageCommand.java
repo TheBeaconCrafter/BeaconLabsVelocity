@@ -57,7 +57,20 @@ public class MessageCommand implements SimpleCommand {
 
         Optional<Player> optRecipient = plugin.getServer().getPlayer(recipientName);
         if (optRecipient.isPresent()) {
-            messageService.sendPrivateMessage(sender, optRecipient.get(), message);
+            Player recipient = optRecipient.get();
+            String privacy = plugin.getPlayerSettingsService().getPlayerSetting(recipient.getUniqueId(), "msg_privacy", "everyone");
+            
+            if (privacy.equals("nobody")) {
+                sender.sendMessage(plugin.getPrefix().append(Component.text("You cannot message this player.", NamedTextColor.RED)));
+                return;
+            } else if (privacy.equals("friends_only")) {
+                if (!plugin.getFriendService().areFriends(sender.getUniqueId(), recipient.getUniqueId())) {
+                    sender.sendMessage(plugin.getPrefix().append(Component.text("This player only accepts messages from friends.", NamedTextColor.RED)));
+                    return;
+                }
+            }
+            
+            messageService.sendPrivateMessage(sender, recipient, message);
             return;
         }
 
@@ -68,12 +81,25 @@ public class MessageCommand implements SimpleCommand {
                 sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + recipientName + "' not found or offline.", NamedTextColor.RED)));
                 return;
             }
-            String recipientMessageLegacy = messageService.formatIncomingMessageLegacy(sender, message);
-            plugin.getCrossProxyService().publishPrivateMsg(recipientName, sender.getUniqueId().toString(), sender.getUsername(), recipientMessageLegacy);
+
+            // Note: Since target is on another proxy, we can't easily synchronously check their privacy setting from DB if it's strictly cached locally.
+            // But since it's the database, we can check it directly via service which falls back to DB.
+            String privacy = plugin.getPlayerSettingsService().getPlayerSetting(targetUuid, "msg_privacy", "everyone");
+            if (privacy.equals("nobody")) {
+                sender.sendMessage(plugin.getPrefix().append(Component.text("You cannot message this player.", NamedTextColor.RED)));
+                return;
+            } else if (privacy.equals("friends_only")) {
+                if (!plugin.getFriendService().areFriends(sender.getUniqueId(), targetUuid)) {
+                    sender.sendMessage(plugin.getPrefix().append(Component.text("This player only accepts messages from friends.", NamedTextColor.RED)));
+                    return;
+                }
+            }
+
+            String recipientMessage = messageService.formatIncomingMessage(sender, message);
+            plugin.getCrossProxyService().publishPrivateMsg(recipientName, sender.getUniqueId().toString(), sender.getUsername(), recipientMessage);
             // Get the recipient's prefix from Redis for the outgoing display
-            String recipientPrefix = plugin.getCrossProxyService().getPlayerPrefix(recipientName);
-            if (!recipientPrefix.isEmpty()) recipientPrefix = recipientPrefix + " ";
-            Component senderMsg = ColorParser.parse(String.format("&8[&7You &8-> %s&7%s&8]: &f%s", recipientPrefix, recipientName, message));
+            String recipientPrefix = MessageService.convertLegacyToMiniMessage(plugin.getCrossProxyService().getPlayerPrefix(recipientName));
+            Component senderMsg = MiniMessage.miniMessage().deserialize(String.format("<dark_gray>[<gray>You <dark_gray>-> %s<gray>%s<dark_gray>]: <white>%s", recipientPrefix, recipientName, message));
             sender.sendMessage(senderMsg);
         } else {
             sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + recipientName + "' not found or offline.", NamedTextColor.RED)));

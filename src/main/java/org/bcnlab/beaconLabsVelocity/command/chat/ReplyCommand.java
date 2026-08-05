@@ -56,11 +56,22 @@ public class ReplyCommand implements SimpleCommand {
                 sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + recipient.getUsername() + "' is no longer online.", NamedTextColor.RED)));
                 return;
             }
+            
+            String privacy = plugin.getPlayerSettingsService().getPlayerSetting(recipient.getUniqueId(), "msg_privacy", "everyone");
+            if (privacy.equals("nobody")) {
+                sender.sendMessage(plugin.getPrefix().append(Component.text("You cannot message this player.", NamedTextColor.RED)));
+                return;
+            } else if (privacy.equals("friends_only")) {
+                if (!plugin.getFriendService().areFriends(sender.getUniqueId(), recipient.getUniqueId())) {
+                    sender.sendMessage(plugin.getPrefix().append(Component.text("This player only accepts messages from friends.", NamedTextColor.RED)));
+                    return;
+                }
+            }
+            
             messageService.sendPrivateMessage(sender, recipient, message);
             return;
         }
 
-        // Cross-proxy: last message was from a player on another proxy
         String lastSenderUsername = messageService.getLastSenderUsername(sender.getUniqueId());
         if (lastSenderUsername != null && !lastSenderUsername.isEmpty() && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
             java.util.UUID targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(lastSenderUsername);
@@ -68,9 +79,22 @@ public class ReplyCommand implements SimpleCommand {
                 sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + lastSenderUsername + "' is no longer online.", NamedTextColor.RED)));
                 return;
             }
-            String recipientMessageLegacy = messageService.formatIncomingMessageLegacy(sender, message);
-            plugin.getCrossProxyService().publishPrivateMsg(lastSenderUsername, sender.getUniqueId().toString(), sender.getUsername(), recipientMessageLegacy);
-            Component senderMsg = ColorParser.parse(String.format("&8[&7You &8-> %s&7%s&8]: &f%s", "", lastSenderUsername, message));
+            
+            String privacy = plugin.getPlayerSettingsService().getPlayerSetting(targetUuid, "msg_privacy", "everyone");
+            if (privacy.equals("nobody")) {
+                sender.sendMessage(plugin.getPrefix().append(Component.text("You cannot message this player.", NamedTextColor.RED)));
+                return;
+            } else if (privacy.equals("friends_only")) {
+                if (!plugin.getFriendService().areFriends(sender.getUniqueId(), targetUuid)) {
+                    sender.sendMessage(plugin.getPrefix().append(Component.text("This player only accepts messages from friends.", NamedTextColor.RED)));
+                    return;
+                }
+            }
+            
+            String recipientMessage = messageService.formatIncomingMessage(sender, message);
+            plugin.getCrossProxyService().publishPrivateMsg(lastSenderUsername, sender.getUniqueId().toString(), sender.getUsername(), recipientMessage);
+            String recipientPrefix = MessageService.convertLegacyToMiniMessage(plugin.getCrossProxyService().getPlayerPrefix(lastSenderUsername));
+            Component senderMsg = MiniMessage.miniMessage().deserialize(String.format("<dark_gray>[<gray>You <dark_gray>-> %s<gray>%s<dark_gray>]: <white>%s", recipientPrefix, lastSenderUsername, message));
             sender.sendMessage(senderMsg);
             return;
         }

@@ -186,6 +186,47 @@ public class DatabaseManager {
             } catch (Exception ex) {
                 logger.error("Failed to initialize login_history table", ex);
             }
+            
+            // Friends table
+            String createFriendsTable = "CREATE TABLE IF NOT EXISTS friends (" +
+                    "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                    "player_uuid VARCHAR(36) NOT NULL, " +
+                    "friend_uuid VARCHAR(36) NOT NULL, " +
+                    "status ENUM('pending', 'accepted') NOT NULL, " +
+                    "created_at BIGINT NOT NULL, " +
+                    "UNIQUE KEY unique_friendship (player_uuid, friend_uuid)" +
+                    ")";
+            try (var conn = getConnection(); var stmt = conn.createStatement()) {
+                stmt.execute(createFriendsTable);
+            } catch (Exception ex) {
+                logger.error("Failed to initialize friends table", ex);
+            }
+
+            // Player Settings table
+            String createPlayerSettingsTable = "CREATE TABLE IF NOT EXISTS player_settings (" +
+                    "uuid VARCHAR(36) NOT NULL, " +
+                    "setting_key VARCHAR(64) NOT NULL, " +
+                    "setting_value TEXT NOT NULL, " +
+                    "PRIMARY KEY (uuid, setting_key)" +
+                    ")";
+            try (var conn = getConnection(); var stmt = conn.createStatement()) {
+                stmt.execute(createPlayerSettingsTable);
+            } catch (Exception ex) {
+                logger.error("Failed to initialize player_settings table", ex);
+            }
+
+            // Player Profiles table (for offline name lookups)
+            String createPlayerProfilesTable = "CREATE TABLE IF NOT EXISTS player_profiles (" +
+                    "uuid VARCHAR(36) PRIMARY KEY, " +
+                    "username VARCHAR(16) NOT NULL, " +
+                    "last_seen BIGINT NOT NULL, " +
+                    "INDEX (username)" +
+                    ")";
+            try (var conn = getConnection(); var stmt = conn.createStatement()) {
+                stmt.execute(createPlayerProfilesTable);
+            } catch (Exception ex) {
+                logger.error("Failed to initialize player_profiles table", ex);
+            }
         }
     }
 

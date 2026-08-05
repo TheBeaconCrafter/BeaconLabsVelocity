@@ -27,8 +27,8 @@ public class MessageService {
     // When last message was from another proxy: recipient -> that sender's username (for /r)
     private final Map<UUID, String> lastSenderUsernameByRecipient = new ConcurrentHashMap<>();
       // Format for messages with brackets around player sections
-    private final String outgoingFormat = "&8[&7You &8-> %s&7%s&8]: &f%s";  // Args: prefix, name, message
-    private final String incomingFormat = "&8[%s&7%s &8-> &7You&8]: &f%s"; // Args: prefix, name, message
+    private final String outgoingFormat = "<dark_gray>[<gray>You <dark_gray>-> %s<gray>%s<dark_gray>]: <white>%s";  // Args: prefix, name, message
+    private final String incomingFormat = "<dark_gray>[%s<gray>%s <dark_gray>-> <gray>You<dark_gray>]: <white>%s"; // Args: prefix, name, message
 
     public MessageService(BeaconLabsVelocity plugin, ProxyServer server, Logger logger) {
         this.plugin = plugin;
@@ -58,7 +58,7 @@ public class MessageService {
     }    /**
      * Format the incoming PM message as legacy string (for cross-proxy delivery).
      */
-    public String formatIncomingMessageLegacy(Player sender, String message) {
+    public String formatIncomingMessage(Player sender, String message) {
         String senderPrefix = getPlayerPrefix(sender);
         return String.format(incomingFormat, senderPrefix, sender.getUsername(), message);
     }
@@ -138,10 +138,10 @@ public class MessageService {
 
         // Format messages for sender and recipient
         Component senderMessage = MiniMessage.miniMessage()
-                .deserialize(String.format(outgoingFormat, recipientPrefix, recipient.getUsername(), message));
+                .deserialize(String.format(outgoingFormat, convertLegacyToMiniMessage(recipientPrefix), recipient.getUsername(), message));
         
         Component recipientMessage = MiniMessage.miniMessage()
-                .deserialize(String.format(incomingFormat, senderPrefix, sender.getUsername(), message));
+                .deserialize(String.format(incomingFormat, convertLegacyToMiniMessage(senderPrefix), sender.getUsername(), message));
 
         // Send the messages
         sender.sendMessage(senderMessage);
@@ -194,5 +194,11 @@ public class MessageService {
     public void clearPlayerData(UUID playerUuid) {
         lastMessageRecipients.remove(playerUuid);
         lastSenderUsernameByRecipient.remove(playerUuid);
+    }
+
+    public static String convertLegacyToMiniMessage(String legacy) {
+        if (legacy == null || legacy.isEmpty()) return "";
+        Component comp = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
+        return MiniMessage.miniMessage().serialize(comp);
     }
 }

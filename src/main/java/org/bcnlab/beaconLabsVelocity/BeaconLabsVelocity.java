@@ -21,6 +21,7 @@ import org.bcnlab.beaconLabsVelocity.command.ReportCommand;
 import org.bcnlab.beaconLabsVelocity.command.ReportsCommand;
 import org.bcnlab.beaconLabsVelocity.command.punishment.PunishmentCommandRegistrar;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
+import org.bcnlab.beaconLabsVelocity.config.AbuseConfig;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
 import org.bcnlab.beaconLabsVelocity.listener.*;
 import org.bcnlab.beaconLabsVelocity.command.chat.ChatReportCommand;
@@ -36,9 +37,12 @@ import org.bcnlab.beaconLabsVelocity.service.ServerGuardService;
 import org.bcnlab.beaconLabsVelocity.service.WhitelistService;
 import org.bcnlab.beaconLabsVelocity.service.AntiBotService;
 import org.bcnlab.beaconLabsVelocity.service.ScreeningService;
-import org.bcnlab.beaconLabsVelocity.config.AbuseConfig;
+import org.bcnlab.beaconLabsVelocity.service.PlayerSettingsService;
+import org.bcnlab.beaconLabsVelocity.service.FriendService;
 import org.bcnlab.beaconLabsVelocity.command.admin.AntiAbuseCommand;
 import org.bcnlab.beaconLabsVelocity.command.admin.IpInfoCommand;
+import org.bcnlab.beaconLabsVelocity.brand.F3BrandService;
+import org.bcnlab.beaconLabsVelocity.listener.VisualStateListener;
 import org.bcnlab.beaconLabsVelocity.listener.AntiBotListener;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
@@ -52,7 +56,7 @@ import java.time.Duration;
 import java.util.Objects;
 import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
-@Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.7.0", url = "bcnlab.org", authors = {"Vincent Wackler"})
+@Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.8.0", url = "bcnlab.org", authors = {"Vincent Wackler"})
 public class BeaconLabsVelocity {
 
     @Inject
@@ -62,7 +66,7 @@ public class BeaconLabsVelocity {
     private ConfigurationNode config;
 
     private String prefix;
-    private final String version = "1.7.0";
+    private final String version = "1.8.0";
 
     @Inject
     private Logger logger;
@@ -80,12 +84,15 @@ public class BeaconLabsVelocity {
     private ReportService reportService;
     private LegalService legalService;
     private ServerGuardService serverGuardService;
+    private F3BrandService f3BrandService;
+    private VisualStateListener visualStateListener;
     private org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService crossProxyService;
-    private org.bcnlab.beaconLabsVelocity.brand.F3BrandService f3BrandService;
     private FileChatLogger fileChatLogger;
     private AbuseConfig abuseConfig;
     private AntiBotService antiBotService;
     private ScreeningService screeningService;
+    private PlayerSettingsService playerSettingsService;
+    private FriendService friendService;
     private volatile boolean featherDebug = false;
     @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
@@ -180,7 +187,13 @@ public class BeaconLabsVelocity {
           // Initialize MaintenanceService
         maintenanceService = new MaintenanceService(this, server, logger);
         server.getEventManager().register(this, new MaintenanceListener(maintenanceService));
-        logger.info("Maintenance service has been enabled.");        // Initialize MessageService for private messaging
+        logger.info("Maintenance service has been enabled.");
+
+        // New services
+        this.playerSettingsService = new PlayerSettingsService(this, databaseManager, logger);
+        this.friendService = new FriendService(this, databaseManager, server, logger);
+
+        // Initialize MessageService for private messaging
         messageService = new MessageService(this, server, logger);
         server.getEventManager().register(this, new MessageListener(messageService));
         logger.info("Message service has been enabled.");        // Initialize WhitelistService and register WhitelistListener if database is connected
@@ -258,7 +271,7 @@ public class BeaconLabsVelocity {
             server.getEventManager().register(this, new CrossProxyServerSwitchListener(this));
         }
         
-        f3BrandService = new org.bcnlab.beaconLabsVelocity.brand.F3BrandService(this, logger);
+        f3BrandService = new F3BrandService(this, logger);
         server.getEventManager().register(this, new F3BrandListener(this, f3BrandService));
         if (f3BrandService.isEnabled()) {
             logger.info("Custom F3 brand is enabled.");
@@ -266,6 +279,22 @@ public class BeaconLabsVelocity {
 
         // Other Listeners
         server.getEventManager().register(this, new ChatFilterListener(this, server));
+        server.getEventManager().register(this, new org.bcnlab.beaconLabsVelocity.listener.FriendNotificationListener(this));
+        
+        visualStateListener = new VisualStateListener(this);
+        server.getEventManager().register(this, visualStateListener);
+        
+        // Plugin Message Channels
+        server.getChannelRegistrar().register(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:friend_dialog"));
+        server.getChannelRegistrar().register(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:settings_dialog"));
+        
+        server.getChannelRegistrar().register(org.bcnlab.beaconLabsVelocity.listener.SettingsUpdateListener.CHANNEL);
+        server.getEventManager().register(this, new org.bcnlab.beaconLabsVelocity.listener.SettingsUpdateListener(this));
+        
+        server.getChannelRegistrar().register(org.bcnlab.beaconLabsVelocity.listener.FriendRequestListener.CHANNEL);
+        server.getEventManager().register(this, new org.bcnlab.beaconLabsVelocity.listener.FriendRequestListener(this));
+        server.getChannelRegistrar().register(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:visual_state"));
+
         fileChatLogger = new FileChatLogger(getDataDirectory().toString());
         server.getEventManager().register(this, fileChatLogger);
         server.getEventManager().register(this, new PingListener(this, server));
@@ -288,10 +317,20 @@ public class BeaconLabsVelocity {
         // Register utility commands
         new org.bcnlab.beaconLabsVelocity.command.util.UtilCommandRegistrar(
             commandManager, this, server, logger).registerAll();
-          // Register admin commands
+        // Register admin commands
         new org.bcnlab.beaconLabsVelocity.command.admin.AdminCommandRegistrar(
             commandManager, punishmentConfig, punishmentService, this, server, logger).registerAll();        // Register JoinMeCommand 
         commandManager.register("joinme", new JoinMeCommand(this, server));
+
+        // Register FriendCommand
+        org.bcnlab.beaconLabsVelocity.command.social.FriendCommandRegistrar.registerAll(this, commandManager);
+        
+        // Register NicklistCommand
+        commandManager.register(
+            commandManager.metaBuilder("nicklist").build(),
+            new org.bcnlab.beaconLabsVelocity.command.social.NicklistCommand(this)
+        );
+        org.bcnlab.beaconLabsVelocity.command.social.SettingsCommandRegistrar.registerAll(this, commandManager);
 
         // PacketEvents init (must be after load())
         try {
@@ -418,8 +457,12 @@ public class BeaconLabsVelocity {
         return crossProxyService;
     }
 
-    public org.bcnlab.beaconLabsVelocity.brand.F3BrandService getF3BrandService() {
+    public F3BrandService getF3BrandService() {
         return f3BrandService;
+    }
+
+    public VisualStateListener getVisualStateListener() {
+        return visualStateListener;
     }
 
     /** Show the golden duck (ente) title to a player. Used by /ente and cross-proxy ENTE. */
@@ -470,6 +513,14 @@ public class BeaconLabsVelocity {
     
     public ScreeningService getScreeningService() {
         return screeningService;
+    }
+    
+    public PlayerSettingsService getPlayerSettingsService() {
+        return playerSettingsService;
+    }
+    
+    public FriendService getFriendService() {
+        return friendService;
     }
     
     public org.bcnlab.beaconLabsVelocity.config.AbuseConfig getAbuseConfig() {

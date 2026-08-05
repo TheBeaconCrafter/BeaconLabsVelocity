@@ -583,6 +583,18 @@ public class CrossProxyService {
                     case DEFENSE_MODE_UPDATE:
                         handleDefenseModeUpdate(msg);
                         break;
+                    case FRIEND_REQUEST:
+                        handleFriendRequest(msg);
+                        break;
+                    case FRIEND_ACCEPT:
+                        handleFriendAccept(msg);
+                        break;
+                    case FRIEND_JOIN:
+                        handleFriendJoin(msg);
+                        break;
+                    case FRIEND_LEAVE:
+                        handleFriendLeave(msg);
+                        break;
                     default:
                         break;
                 }
@@ -798,6 +810,73 @@ public class CrossProxyService {
         if (targetUsername == null) targetUsername = "Unknown";
         if (reporterUsername == null) reporterUsername = "Unknown";
         plugin.performChatReportForPlayer(targetUuid, targetUsername, reporterUsername);
+    }
+    
+    // Friend System Handlers
+
+    private void handleFriendRequest(CrossProxyMessage msg) {
+        UUID targetUuid = msg.getUuidAsUUID();
+        if (targetUuid == null) return;
+        String senderName = msg.getUsername();
+        server.getPlayer(targetUuid).ifPresent(player -> {
+            player.sendMessage(plugin.getPrefix().append(Component.text("You have a new friend request from ", NamedTextColor.YELLOW))
+                    .append(Component.text(senderName, NamedTextColor.GREEN))
+                    .append(Component.text("! Use /friend accept " + senderName + " to accept.", NamedTextColor.YELLOW)));
+        });
+    }
+
+    private void handleFriendAccept(CrossProxyMessage msg) {
+        UUID targetUuid = msg.getUuidAsUUID();
+        if (targetUuid == null) return;
+        String acceptorName = msg.getUsername();
+        server.getPlayer(targetUuid).ifPresent(player -> {
+            player.sendMessage(plugin.getPrefix().append(Component.text(acceptorName, NamedTextColor.GREEN))
+                    .append(Component.text(" has accepted your friend request!", NamedTextColor.YELLOW)));
+        });
+    }
+
+    private void handleFriendJoin(CrossProxyMessage msg) {
+        if (proxyId != null && proxyId.equals(msg.getProxyId())) return;
+        UUID joinedUuid = msg.getUuidAsUUID();
+        if (joinedUuid == null) return;
+        String joinedName = msg.getUsername();
+        server.getAllPlayers().forEach(player -> {
+            if (plugin.getFriendService().areFriends(player.getUniqueId(), joinedUuid)) {
+                player.sendMessage(plugin.getPrefix().append(Component.text("Friend ", NamedTextColor.YELLOW))
+                        .append(Component.text(joinedName, NamedTextColor.GREEN))
+                        .append(Component.text(" has joined the network.", NamedTextColor.YELLOW)));
+            }
+        });
+    }
+
+    private void handleFriendLeave(CrossProxyMessage msg) {
+        if (proxyId != null && proxyId.equals(msg.getProxyId())) return;
+        UUID leftUuid = msg.getUuidAsUUID();
+        if (leftUuid == null) return;
+        String leftName = msg.getUsername();
+        server.getAllPlayers().forEach(player -> {
+            if (plugin.getFriendService().areFriends(player.getUniqueId(), leftUuid)) {
+                player.sendMessage(plugin.getPrefix().append(Component.text("Friend ", NamedTextColor.YELLOW))
+                        .append(Component.text(leftName, NamedTextColor.GREEN))
+                        .append(Component.text(" has left the network.", NamedTextColor.YELLOW)));
+            }
+        });
+    }
+
+    public void publishFriendRequest(UUID targetUuid, String senderName) {
+        publish(CrossProxyMessage.friendRequest(targetUuid.toString(), senderName, sharedSecret, proxyId));
+    }
+
+    public void publishFriendAccept(UUID targetUuid, String acceptorName) {
+        publish(CrossProxyMessage.friendAccept(targetUuid.toString(), acceptorName, sharedSecret, proxyId));
+    }
+
+    public void publishFriendJoin(UUID uuid, String name) {
+        publish(CrossProxyMessage.friendJoin(uuid.toString(), name, sharedSecret, proxyId));
+    }
+
+    public void publishFriendLeave(UUID uuid, String name) {
+        publish(CrossProxyMessage.friendLeave(uuid.toString(), name, sharedSecret, proxyId));
     }
 
     private void handleMaintenanceSet(CrossProxyMessage msg) {

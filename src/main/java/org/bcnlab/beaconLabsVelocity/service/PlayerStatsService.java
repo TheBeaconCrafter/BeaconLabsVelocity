@@ -139,6 +139,17 @@ public class PlayerStatsService {
                     ps.setString(8, finalProxyId); // update last_proxy
                     ps.executeUpdate();
                 }
+
+                // Update player_profiles
+                String upsertPlayerProfiles = "INSERT INTO player_profiles (uuid, username, last_seen) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = ?, last_seen = ?";
+                try (PreparedStatement ps = conn.prepareStatement(upsertPlayerProfiles)) {
+                    ps.setString(1, playerId.toString());
+                    ps.setString(2, playerName);
+                    ps.setLong(3, currentTime);
+                    ps.setString(4, playerName);
+                    ps.setLong(5, currentTime);
+                    ps.executeUpdate();
+                }
                 
                 // Record IP address
                 String insertIp = "INSERT INTO ip_history (player_uuid, ip_address, timestamp) VALUES (?, ?, ?)";
