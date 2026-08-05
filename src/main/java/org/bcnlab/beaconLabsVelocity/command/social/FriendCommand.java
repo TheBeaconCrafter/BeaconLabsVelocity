@@ -117,7 +117,10 @@ public class FriendCommand implements SimpleCommand {
         if (targetPlayer.isPresent()) {
             targetPlayer.get().sendMessage(plugin.getPrefix().append(Component.text("You have a new friend request from ", NamedTextColor.YELLOW))
                     .append(Component.text(player.getUsername(), NamedTextColor.GREEN))
-                    .append(Component.text("! Use /friend accept " + player.getUsername() + " to accept.", NamedTextColor.YELLOW)));
+                    .append(Component.text("! ", NamedTextColor.YELLOW))
+                    .append(Component.text("[Click to Accept]", NamedTextColor.GREEN)
+                            .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Accept " + player.getUsername() + "'s request")))
+                            .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/friend accept " + player.getUsername()))));
         } else if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
             plugin.getCrossProxyService().publishFriendRequest(targetUuid, player.getUsername());
         }

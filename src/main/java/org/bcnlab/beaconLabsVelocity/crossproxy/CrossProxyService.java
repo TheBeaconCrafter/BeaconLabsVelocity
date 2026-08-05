@@ -821,7 +821,10 @@ public class CrossProxyService {
         server.getPlayer(targetUuid).ifPresent(player -> {
             player.sendMessage(plugin.getPrefix().append(Component.text("You have a new friend request from ", NamedTextColor.YELLOW))
                     .append(Component.text(senderName, NamedTextColor.GREEN))
-                    .append(Component.text("! Use /friend accept " + senderName + " to accept.", NamedTextColor.YELLOW)));
+                    .append(Component.text("! ", NamedTextColor.YELLOW))
+                    .append(Component.text("[Click to Accept]", NamedTextColor.GREEN)
+                            .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Accept " + senderName + "'s request")))
+                            .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/friend accept " + senderName))));
         });
     }
 

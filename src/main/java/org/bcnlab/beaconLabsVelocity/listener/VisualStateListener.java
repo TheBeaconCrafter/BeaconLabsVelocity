@@ -41,6 +41,11 @@ public class VisualStateListener {
             String action = in.readUTF();
             String nickname = in.readUTF();
             String skin = in.readUTF();
+            
+            String rank = "";
+            if (in.available() > 0) {
+                rank = in.readUTF();
+            }
 
             UUID uuid = UUID.fromString(uuidStr);
 
@@ -48,13 +53,95 @@ public class VisualStateListener {
                 if (nickname != null && !nickname.isBlank()) {
                     activeNicknames.put(uuid, nickname);
                     plugin.getLogger().info("[VisualState] Registered nickname " + nickname + " for " + uuid);
+                    applyToTab(uuid, nickname, rank);
                 } else {
                     activeNicknames.remove(uuid);
+                    applyToTab(uuid, null, null);
                 }
             }
         } catch (Exception e) {
             plugin.getLogger().warn("Failed to parse visual state message: " + e.getMessage());
         }
+    }
+
+    private void applyToTab(UUID uuid, String nickname, String fakeRank) {
+        if (!plugin.getServer().getPluginManager().isLoaded("tab")) return;
+        
+        try {
+            Class<?> tabApiClass = Class.forName("me.neznamy.tab.api.TabAPI");
+            Object tabApi = tabApiClass.getMethod("getInstance").invoke(null);
+            if (tabApi == null) return;
+            
+            Object tabPlayer = tabApiClass.getMethod("getPlayer", java.util.UUID.class).invoke(tabApi, uuid);
+            if (tabPlayer == null) return;
+            
+            Object tabListMgr = tabApiClass.getMethod("getTabListFormatManager").invoke(tabApi);
+            Object nameTagMgr = tabApiClass.getMethod("getNameTagManager").invoke(tabApi);
+            
+            String prefix = "";
+            String name = nickname != null ? nickname : "";
+            
+            if (nickname != null) {
+                if (fakeRank == null || fakeRank.isBlank()) fakeRank = "default";
+                if (plugin.getServer().getPluginManager().isLoaded("luckperms")) {
+                    try {
+                        net.luckperms.api.LuckPerms luckPerms = net.luckperms.api.LuckPermsProvider.get();
+                        net.luckperms.api.model.group.Group group = luckPerms.getGroupManager().getGroup(fakeRank.toLowerCase());
+                        if (group != null) {
+                            String lpPrefix = group.getCachedData().getMetaData(net.luckperms.api.query.QueryOptions.defaultContextualOptions()).getPrefix();
+                            if (lpPrefix != null) prefix = lpPrefix;
+                        }
+                    } catch (Exception e) {}
+                }
+            } else {
+                prefix = null;
+                name = null;
+            }
+            
+            Object prefixObj = getTabComponent(prefix);
+            Object nameObj = getTabComponent(name);
+
+            if (tabListMgr != null) {
+                invokeMethod(tabListMgr, "setPrefix", tabPlayer, prefixObj);
+                invokeMethod(tabListMgr, "setName", tabPlayer, nameObj);
+            }
+            if (nameTagMgr != null) {
+                invokeMethod(nameTagMgr, "setPrefix", tabPlayer, prefixObj);
+            }
+        } catch (Throwable t) {
+            plugin.getLogger().warn("[VS] Failed to update TAB plugin: " + t.getMessage());
+        }
+    }
+
+    private Object getTabComponent(String text) {
+        if (text == null) return null;
+        try {
+            Class<?> clazz = Class.forName("me.neznamy.tab.api.chat.TabComponent");
+            return clazz.getMethod("optimized", String.class).invoke(null, text);
+        } catch (Exception e1) {
+            try {
+                Class<?> clazz = Class.forName("me.neznamy.tab.shared.chat.TabComponent");
+                return clazz.getMethod("optimized", String.class).invoke(null, text);
+            } catch (Exception e2) {
+                try {
+                    Class<?> clazz = Class.forName("me.neznamy.tab.api.chat.IChatBaseComponent");
+                    return clazz.getMethod("optimizedComponent", String.class).invoke(null, text);
+                } catch (Exception e3) {
+                    return text; // Fallback if it accepts String
+                }
+            }
+        }
+    }
+
+    private void invokeMethod(Object manager, String methodName, Object tabPlayer, Object value) {
+        try {
+            for (java.lang.reflect.Method m : manager.getClass().getMethods()) {
+                if (m.getName().equals(methodName) && m.getParameterCount() == 2) {
+                    m.invoke(manager, tabPlayer, value);
+                    return;
+                }
+            }
+        } catch (Exception e) {}
     }
     
     public String getNickname(UUID uuid) {
