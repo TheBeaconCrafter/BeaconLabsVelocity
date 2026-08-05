@@ -166,10 +166,6 @@ public class FriendCommand implements SimpleCommand {
 
     private void handleList(Player player, boolean tryGui) {
         var friends = plugin.getFriendService().getDetailedFriends(player.getUniqueId());
-        if (friends.isEmpty()) {
-            player.sendMessage(plugin.getPrefix().append(Component.text("You have no friends yet.", NamedTextColor.YELLOW)));
-            return;
-        }
         
         if (tryGui && player.getCurrentServer().isPresent()) {
             com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier identifier = com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:friend_dialog");
