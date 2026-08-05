@@ -293,6 +293,9 @@ public class BeaconLabsVelocity {
         
         server.getChannelRegistrar().register(org.bcnlab.beaconLabsVelocity.listener.FriendRequestListener.CHANNEL);
         server.getEventManager().register(this, new org.bcnlab.beaconLabsVelocity.listener.FriendRequestListener(this));
+        
+        server.getChannelRegistrar().register(org.bcnlab.beaconLabsVelocity.listener.ProxyCommandListener.CHANNEL);
+        server.getEventManager().register(this, new org.bcnlab.beaconLabsVelocity.listener.ProxyCommandListener(this));
         server.getChannelRegistrar().register(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:visual_state"));
 
         fileChatLogger = new FileChatLogger(getDataDirectory().toString());

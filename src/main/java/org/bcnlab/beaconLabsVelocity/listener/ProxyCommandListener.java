@@ -11,11 +11,11 @@ import java.io.DataInputStream;
 import java.util.Optional;
 import java.util.UUID;
 
-public class FriendRequestListener {
+public class ProxyCommandListener {
     private final BeaconLabsVelocity plugin;
-    public static final MinecraftChannelIdentifier CHANNEL = MinecraftChannelIdentifier.from("beaconlabs:friend_request");
+    public static final MinecraftChannelIdentifier CHANNEL = MinecraftChannelIdentifier.from("beaconlabs:proxy_command");
 
-    public FriendRequestListener(BeaconLabsVelocity plugin) {
+    public ProxyCommandListener(BeaconLabsVelocity plugin) {
         this.plugin = plugin;
     }
 
@@ -25,13 +25,14 @@ public class FriendRequestListener {
         
         try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(event.getData()))) {
             String uuidStr = in.readUTF();
+            String command = in.readUTF();
             UUID uuid = UUID.fromString(uuidStr);
             
             Optional<Player> playerOpt = plugin.getServer().getPlayer(uuid);
             if (playerOpt.isPresent()) {
                 Player player = playerOpt.get();
-                // Execute the friend command logic directly
-                plugin.getServer().getCommandManager().executeAsync(player, "friends");
+                // Execute the proxy command logic directly
+                plugin.getServer().getCommandManager().executeAsync(player, command);
             }
         } catch (Exception e) {
             e.printStackTrace();
