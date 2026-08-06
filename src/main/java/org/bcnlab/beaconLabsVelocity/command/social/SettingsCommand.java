@@ -47,7 +47,7 @@ public class SettingsCommand implements SimpleCommand {
                 e.printStackTrace();
             }
         } else {
-            player.sendMessage(plugin.getPrefix().append(Component.text("You must be connected to a server.", NamedTextColor.RED)));
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("You must be connected to a server.", NamedTextColor.RED)));
         }
     }
 }

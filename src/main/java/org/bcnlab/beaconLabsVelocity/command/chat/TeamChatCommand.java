@@ -33,7 +33,7 @@ public class TeamChatCommand implements SimpleCommand {
 
         // Check if source is a player
         if (!(source instanceof Player)) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("Only players can use team chat.", NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("Only players can use team chat.", NamedTextColor.RED)));
             return;
         }
 
@@ -41,7 +41,7 @@ public class TeamChatCommand implements SimpleCommand {
 
         // Check for message content
         if (args.length == 0) {
-            sender.sendMessage(plugin.getPrefix().append(Component.text("Usage: /teamchat <message>", NamedTextColor.RED)));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Usage: /teamchat <message>", NamedTextColor.RED)));
             return;
         }
 

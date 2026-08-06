@@ -117,39 +117,39 @@ public class IpInfoCommand implements SimpleCommand {
         
         Component header = Component.text()
             .append(Component.text("✦ ", NamedTextColor.GOLD))
-            .append(Component.text("IP INTELLIGENCE: ", NamedTextColor.YELLOW).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD))
+            .append(Component.text("IP INTELLIGENCE: ", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD))
             .append(Component.text(ip, NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD))
             .append(Component.text(" ✦", NamedTextColor.GOLD))
             .build();
         src.sendMessage(header);
         
-        src.sendMessage(Component.text("» ABUSE DB STATUS", NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD));
+        src.sendMessage(Component.text("» ABUSE DB STATUS", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD));
 
         NamedTextColor scoreColor = result.confidenceScore >= 90 ? NamedTextColor.RED : (result.confidenceScore > 0 ? NamedTextColor.GOLD : NamedTextColor.GREEN);
-        src.sendMessage(Component.text("  Confidence Score: ", NamedTextColor.YELLOW)
+        src.sendMessage(Component.text("  Confidence Score: ", NamedTextColor.GOLD)
             .append(Component.text(result.confidenceScore + "%", scoreColor)));
             
-        src.sendMessage(Component.text("  Usage Type: ", NamedTextColor.YELLOW)
-            .append(Component.text(result.ipData != null && result.ipData.usageType != null && !result.ipData.usageType.isEmpty() ? result.ipData.usageType : "Unknown", NamedTextColor.WHITE)));
+        src.sendMessage(Component.text("  Usage Type: ", NamedTextColor.GOLD)
+            .append(Component.text(result.ipData != null && result.ipData.usageType != null && !result.ipData.usageType.isEmpty() ? result.ipData.usageType : "Unknown", NamedTextColor.GRAY)));
 
         if (result.ipData != null) {
-            src.sendMessage(Component.text("  ISP: ", NamedTextColor.YELLOW).append(Component.text(result.ipData.isp.isEmpty() ? "Unknown" : result.ipData.isp, NamedTextColor.WHITE)));
-            src.sendMessage(Component.text("  Domain: ", NamedTextColor.YELLOW).append(Component.text(result.ipData.domain.isEmpty() ? "None" : result.ipData.domain, NamedTextColor.WHITE)));
-            src.sendMessage(Component.text("  Country: ", NamedTextColor.YELLOW).append(Component.text((result.ipData.countryName.isEmpty() ? "Unknown" : result.ipData.countryName) + (result.ipData.countryCode.isEmpty() ? "" : " (" + result.ipData.countryCode + ")"), NamedTextColor.WHITE)));
-            src.sendMessage(Component.text("  Is Tor: ", NamedTextColor.YELLOW).append(Component.text(result.ipData.isTor ? "Yes" : "No", result.ipData.isTor ? NamedTextColor.RED : NamedTextColor.GREEN)));
-            src.sendMessage(Component.text("  Total Reports: ", NamedTextColor.YELLOW).append(Component.text(result.ipData.totalReports, NamedTextColor.WHITE)));
+            src.sendMessage(Component.text("  ISP: ", NamedTextColor.GOLD).append(Component.text(result.ipData.isp.isEmpty() ? "Unknown" : result.ipData.isp, NamedTextColor.GRAY)));
+            src.sendMessage(Component.text("  Domain: ", NamedTextColor.GOLD).append(Component.text(result.ipData.domain.isEmpty() ? "None" : result.ipData.domain, NamedTextColor.GRAY)));
+            src.sendMessage(Component.text("  Country: ", NamedTextColor.GOLD).append(Component.text((result.ipData.countryName.isEmpty() ? "Unknown" : result.ipData.countryName) + (result.ipData.countryCode.isEmpty() ? "" : " (" + result.ipData.countryCode + ")"), NamedTextColor.GRAY)));
+            src.sendMessage(Component.text("  Is Tor: ", NamedTextColor.GOLD).append(Component.text(result.ipData.isTor ? "Yes" : "No", result.ipData.isTor ? NamedTextColor.RED : NamedTextColor.GREEN)));
+            src.sendMessage(Component.text("  Total Reports: ", NamedTextColor.GOLD).append(Component.text(result.ipData.totalReports, NamedTextColor.GRAY)));
             if (!result.ipData.lastReportedAt.isEmpty()) {
-                src.sendMessage(Component.text("  Last Reported: ", NamedTextColor.YELLOW).append(Component.text(result.ipData.lastReportedAt, NamedTextColor.WHITE)));
+                src.sendMessage(Component.text("  Last Reported: ", NamedTextColor.GOLD).append(Component.text(result.ipData.lastReportedAt, NamedTextColor.GRAY)));
             }
         }
 
         src.sendMessage(Component.empty());
-        src.sendMessage(Component.text("» LOCAL OVERRIDES", NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD));
+        src.sendMessage(Component.text("» LOCAL OVERRIDES", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD));
         
-        src.sendMessage(Component.text("  Whitelisted: ", NamedTextColor.YELLOW)
+        src.sendMessage(Component.text("  Whitelisted: ", NamedTextColor.GOLD)
             .append(Component.text(result.whitelisted ? "Yes" : "No", result.whitelisted ? NamedTextColor.GREEN : NamedTextColor.GRAY)));
             
-        src.sendMessage(Component.text("  Blacklisted: ", NamedTextColor.YELLOW)
+        src.sendMessage(Component.text("  Blacklisted: ", NamedTextColor.GOLD)
             .append(Component.text(result.blacklisted ? "Yes" : "No", result.blacklisted ? NamedTextColor.RED : NamedTextColor.GRAY)));
             
         String actionStr = "ALLOWED";
@@ -159,10 +159,10 @@ public class IpInfoCommand implements SimpleCommand {
             actionColor = NamedTextColor.RED;
         } else if (result.action == AntiBotService.DefenseAction.SCREEN) {
             actionStr = "SCREENED";
-            actionColor = NamedTextColor.YELLOW;
+            actionColor = NamedTextColor.GOLD;
         }
             
-        src.sendMessage(Component.text("  Action Taken: ", NamedTextColor.YELLOW)
+        src.sendMessage(Component.text("  Action Taken: ", NamedTextColor.GOLD)
             .append(Component.text(actionStr, actionColor)));
             
         if (playerStatsService != null) {
@@ -172,7 +172,7 @@ public class IpInfoCommand implements SimpleCommand {
                 src.sendMessage(Component.text("» KNOWN ACCOUNTS ON IP", NamedTextColor.DARK_AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD));
                 for (PlayerStatsService.PlayerData pd : playersWithSameIp) {
                     boolean isOnline = server.getPlayer(pd.getPlayerId()).isPresent();
-                    NamedTextColor nameColor = isOnline ? NamedTextColor.GREEN : NamedTextColor.WHITE;
+                    NamedTextColor nameColor = isOnline ? NamedTextColor.GREEN : NamedTextColor.GRAY;
                     
                     Component playerComp = Component.text(pd.getPlayerName(), nameColor);
                     if (isOnline) {
@@ -182,7 +182,7 @@ public class IpInfoCommand implements SimpleCommand {
                     Component entry = Component.text("  • ", NamedTextColor.GRAY)
                         .append(playerComp
                             .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/info " + pd.getPlayerName()))
-                            .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Click to view player info", NamedTextColor.YELLOW)))
+                            .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Click to view player info", NamedTextColor.GOLD)))
                         );
                         
                     if (isOnline) {

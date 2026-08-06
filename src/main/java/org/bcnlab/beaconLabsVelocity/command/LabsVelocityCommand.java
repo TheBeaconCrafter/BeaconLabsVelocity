@@ -19,9 +19,9 @@ public class LabsVelocityCommand implements SimpleCommand {
         CommandSource source = invocation.source();
         source.sendMessage(
                 plugin.getPrefix()
-                        .append(Component.text("BeaconLabsVelocity Version ", NamedTextColor.RED))
+                        .append(Component.text("BeaconLabsVelocity Version ", NamedTextColor.GRAY))
                         .append(Component.text(plugin.getVersion() + " ", NamedTextColor.GOLD))
-                        .append(Component.text("by ItsBeacon", NamedTextColor.RED))
+                        .append(Component.text("by ItsBeacon", NamedTextColor.GRAY))
         );
     }
 

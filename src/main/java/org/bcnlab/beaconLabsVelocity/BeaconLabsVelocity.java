@@ -66,6 +66,7 @@ public class BeaconLabsVelocity {
     private ConfigurationNode config;
 
     private String prefix;
+    private String legacyPrefix;
     private final String version = "1.8.0";
 
     @Inject
@@ -101,31 +102,31 @@ public class BeaconLabsVelocity {
 
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
-        Path configFile = dataDirectory.resolve("config.yml");
-
         try {
-            if (!Files.exists(configFile)) {
+            if (!Files.exists(dataDirectory)) {
                 Files.createDirectories(dataDirectory);
-                Files.copy(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("config.yml")), configFile);
             }
-
+            java.io.File configFile = new java.io.File(dataDirectory.toFile(), "config.yml");
+            if (!configFile.exists()) {
+                java.nio.file.Files.copy(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("config.yml")), configFile.toPath());
+            }
             ConfigurationLoader<?> loader = YamlConfigurationLoader.builder()
-                    .path(configFile)
+                    .path(configFile.toPath())
                     .build();
-
             config = loader.load();
-            
-            // Make sure config is not null before accessing it
             if (config != null) {
-                prefix = config.node("prefix").getString("&6BeaconLabs &8» ");
+                prefix = config.node("prefix").getString("<gold>BeaconLabs</gold> <dark_gray>»</dark_gray> ");
+                legacyPrefix = config.node("legacy-prefix").getString("&6BeaconLabs &8» &7");
             } else {
                 logger.error("Failed to load config: Configuration is null");
                 prefix = "&4ConfigError &8» ";
+                legacyPrefix = "&4ConfigError &8» &7";
             }
 
         } catch (IOException e) {
             logger.error("Failed to load config!", e);
             prefix = "&4ConfigError &8» ";
+            legacyPrefix = "&4ConfigError &8» &7";
         }
 
         // PacketEvents (bundled) - load early so it's ready for legal book GUI
@@ -296,7 +297,13 @@ public class BeaconLabsVelocity {
         
         server.getChannelRegistrar().register(org.bcnlab.beaconLabsVelocity.listener.ProxyCommandListener.CHANNEL);
         server.getEventManager().register(this, new org.bcnlab.beaconLabsVelocity.listener.ProxyCommandListener(this));
+        
         server.getChannelRegistrar().register(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:visual_state"));
+        server.getChannelRegistrar().register(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:info_dialog"));
+        server.getChannelRegistrar().register(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:report_dialog"));
+        
+        server.getEventManager().register(this, new org.bcnlab.beaconLabsVelocity.listener.ReportDialogListener(this));
+        server.getChannelRegistrar().register(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:report_dialog"));
 
         fileChatLogger = new FileChatLogger(getDataDirectory().toString());
         server.getEventManager().register(this, fileChatLogger);
@@ -357,7 +364,7 @@ public class BeaconLabsVelocity {
                     .build();
             config = loader.load();
             prefix = config != null
-                    ? config.node("prefix").getString("&6BeaconLabs &8» ")
+                    ? config.node("prefix").getString("<gold>BeaconLabs</gold> <dark_gray>»</dark_gray> ")
                     : "&4ConfigError &8» ";
             logger.info("BeaconLabsVelocity config.yml reloaded (includes f3-brand).");
         } catch (IOException e) {
@@ -382,7 +389,21 @@ public class BeaconLabsVelocity {
     }
 
     public Component getPrefix() {
-        return ColorParser.parse(prefix);
+        return MiniMessage.miniMessage().deserialize(prefix);
+    }
+    
+    public Component getPrefix(com.velocitypowered.api.command.CommandSource source) {
+        if (source instanceof com.velocitypowered.api.proxy.Player player) {
+            if (server.getPluginManager().isLoaded("viaversion")) {
+                try {
+                    int protocol = com.viaversion.viaversion.api.Via.getAPI().getPlayerVersion(player.getUniqueId());
+                    if (protocol < 735) {
+                        return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand().deserialize(legacyPrefix);
+                    }
+                } catch (Exception e) {}
+            }
+        }
+        return MiniMessage.miniMessage().deserialize(prefix);
     }
 
     public String getVersion() {

@@ -1,4 +1,5 @@
 prefix: "<gradient:gold:yellow>BeaconLabs</gradient> <dark_gray>»</dark_gray> "
+legacy-prefix: "&6BeaconLabs &8» &r"
 lobby-server: "lobby"
 limbo-server: "limbo"
 

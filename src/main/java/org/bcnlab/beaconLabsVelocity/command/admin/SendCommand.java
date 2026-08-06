@@ -37,12 +37,12 @@ public class SendCommand implements SimpleCommand {
         String[] args = invocation.arguments();
 
         if (!source.hasPermission(PERMISSION)) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("You don't have permission to use this command.", NamedTextColor.RED)));
             return;
         }
         if (args.length < 2) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("Usage: /send * <server> or /send <player> <server>", NamedTextColor.RED)));
             return;
         }
@@ -51,7 +51,7 @@ public class SendCommand implements SimpleCommand {
         String serverName = args[1];
         Optional<RegisteredServer> registeredServer = server.getServer(serverName);
         if (registeredServer.isEmpty()) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("Unknown server: " + serverName, NamedTextColor.RED)));
             return;
         }
@@ -59,7 +59,7 @@ public class SendCommand implements SimpleCommand {
         if ("*".equals(target) || "all".equalsIgnoreCase(target)) {
             if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
                 plugin.getCrossProxyService().publishSendAll(serverName);
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Sending all players on the network to " + serverName + "...", NamedTextColor.GREEN)));
             } else {
                 int count = 0;
@@ -67,7 +67,7 @@ public class SendCommand implements SimpleCommand {
                     p.createConnectionRequest(registeredServer.get()).connectWithIndication();
                     count++;
                 }
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Sent " + count + " player(s) to " + serverName + ".", NamedTextColor.GREEN)));
             }
             return;
@@ -78,7 +78,7 @@ public class SendCommand implements SimpleCommand {
             if (executor.getCurrentServer().isPresent()) {
                 target = executor.getCurrentServer().get().getServerInfo().getName();
             } else {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("You are not connected to a server.", NamedTextColor.RED)));
                 return;
             }
@@ -90,7 +90,7 @@ public class SendCommand implements SimpleCommand {
             String srcServerName = sourceServerOpt.get().getServerInfo().getName();
             if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
                 plugin.getCrossProxyService().publishSendServer(srcServerName, serverName);
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Sending all players on server '" + srcServerName + "' to '" + serverName + "' across the network...", NamedTextColor.GREEN)));
             } else {
                 int count = 0;
@@ -100,7 +100,7 @@ public class SendCommand implements SimpleCommand {
                         count++;
                     }
                 }
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Sent " + count + " player(s) from " + srcServerName + " to " + serverName + ".", NamedTextColor.GREEN)));
             }
             return;
@@ -111,7 +111,7 @@ public class SendCommand implements SimpleCommand {
         if (localPlayer.isPresent()) {
             Player p = localPlayer.get();
             p.createConnectionRequest(registeredServer.get()).connectWithIndication();
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("Sent " + p.getUsername() + " to " + serverName + ".", NamedTextColor.GREEN)));
             return;
         }
@@ -125,13 +125,13 @@ public class SendCommand implements SimpleCommand {
             }
             if (uuid != null) {
                 plugin.getCrossProxyService().publishSendPlayer(uuid, serverName);
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Sent " + target + " to " + serverName + " (cross-proxy).", NamedTextColor.GREEN)));
                 return;
             }
         }
 
-        source.sendMessage(plugin.getPrefix().append(
+        source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("Player or server not found: " + target, NamedTextColor.RED)));
     }
 

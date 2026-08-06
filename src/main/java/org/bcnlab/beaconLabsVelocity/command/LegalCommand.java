@@ -35,7 +35,7 @@ public class LegalCommand implements SimpleCommand {
     @Override
     public void execute(Invocation invocation) {
         if (!legalService.isEnabled()) {
-            invocation.source().sendMessage(plugin.getPrefix().append(
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                     Component.text("Legal feature is disabled.", NamedTextColor.RED)));
             return;
         }
@@ -45,35 +45,35 @@ public class LegalCommand implements SimpleCommand {
         // /legal reset [confirm] - console or player with permission
         if (args.length >= 1 && "reset".equalsIgnoreCase(args[0])) {
             if (!invocation.source().hasPermission(PERMISSION_RESET)) {
-                invocation.source().sendMessage(plugin.getPrefix().append(
+                invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                         Component.text("You do not have permission to reset legal acceptance.", NamedTextColor.RED)));
                 return;
             }
             if (args.length >= 2 && "confirm".equalsIgnoreCase(args[1])) {
-                invocation.source().sendMessage(plugin.getPrefix().append(
-                        Component.text("Resetting legal acceptance for everyone...", NamedTextColor.YELLOW)));
+                invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
+                        Component.text("Resetting legal acceptance for everyone...", NamedTextColor.GOLD)));
                 legalService.resetAllAcceptancesAsync().thenAccept(count -> {
                     plugin.getServer().getScheduler().buildTask(plugin, () -> {
                         if (count >= 0) {
-                            invocation.source().sendMessage(plugin.getPrefix().append(
+                            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                                     Component.text("Legal acceptance has been reset for " + count + " player(s). Everyone must accept again.", NamedTextColor.GREEN)));
                         } else {
-                            invocation.source().sendMessage(plugin.getPrefix().append(
+                            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                                     Component.text("Failed to reset legal acceptance. Check the console.", NamedTextColor.RED)));
                         }
                     }).schedule();
                 });
             } else {
-                invocation.source().sendMessage(plugin.getPrefix().append(
-                        Component.text("This will clear legal acceptance for everyone. Run ", NamedTextColor.YELLOW))
+                invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
+                        Component.text("This will clear legal acceptance for everyone. Run ", NamedTextColor.GOLD))
                         .append(Component.text("/legal reset confirm", NamedTextColor.GOLD))
-                        .append(Component.text(" to confirm.", NamedTextColor.YELLOW)));
+                        .append(Component.text(" to confirm.", NamedTextColor.GOLD)));
             }
             return;
         }
 
         if (!(invocation.source() instanceof Player player)) {
-            invocation.source().sendMessage(plugin.getPrefix().append(
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                     Component.text("Only players can use this command.", NamedTextColor.RED)));
             return;
         }
@@ -86,10 +86,10 @@ public class LegalCommand implements SimpleCommand {
                 plugin.getServer().getScheduler().buildTask(plugin, () -> {
                     if (ok) {
                         plugin.getLogger().info("User {} accepted the terms", player.getUsername());
-                        player.sendMessage(plugin.getPrefix().append(
+                        player.sendMessage(plugin.getPrefix(player).append(
                                 Component.text("You have accepted the Terms of Service and Privacy Policy. Thank you!", NamedTextColor.GREEN)));
                     } else {
-                        player.sendMessage(plugin.getPrefix().append(
+                        player.sendMessage(plugin.getPrefix(player).append(
                                 Component.text("Could not save acceptance. Please try again or contact an administrator.", NamedTextColor.RED)));
                     }
                 }).schedule();

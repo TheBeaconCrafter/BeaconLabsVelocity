@@ -44,10 +44,10 @@ public class LegalListener {
                 plugin.getServer().getScheduler().buildTask(plugin, () -> {
                     if (!player.isActive()) return;
                     legalService.showLegalTo(player);
-                    player.sendMessage(plugin.getPrefix().append(
-                            net.kyori.adventure.text.Component.text("Type ", net.kyori.adventure.text.format.NamedTextColor.YELLOW))
+                    player.sendMessage(plugin.getPrefix(player).append(
+                            net.kyori.adventure.text.Component.text("Type ", net.kyori.adventure.text.format.NamedTextColor.GOLD))
                             .append(net.kyori.adventure.text.Component.text("/legal accept", net.kyori.adventure.text.format.NamedTextColor.GREEN))
-                            .append(net.kyori.adventure.text.Component.text(" to accept and continue.", net.kyori.adventure.text.format.NamedTextColor.YELLOW)));
+                            .append(net.kyori.adventure.text.Component.text(" to accept and continue.", net.kyori.adventure.text.format.NamedTextColor.GOLD)));
 
                     if (legalService.isEnforceAccept()) {
                         var task = plugin.getServer().getScheduler().buildTask(plugin, () -> {

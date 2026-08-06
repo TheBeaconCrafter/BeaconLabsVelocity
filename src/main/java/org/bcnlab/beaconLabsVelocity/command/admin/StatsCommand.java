@@ -31,21 +31,21 @@ public class StatsCommand implements SimpleCommand {
 
             sendDivider(src, NamedTextColor.GOLD);
             src.sendMessage(Component.text("✦ ", NamedTextColor.GOLD)
-                    .append(Component.text("NETWORK STATS", NamedTextColor.YELLOW).decorate(TextDecoration.BOLD))
+                    .append(Component.text("NETWORK STATS", NamedTextColor.GOLD).decorate(TextDecoration.BOLD))
                     .append(Component.text(" ✦", NamedTextColor.GOLD)));
             src.sendMessage(Component.empty());
 
-            src.sendMessage(Component.text("» Today's Joins", NamedTextColor.YELLOW).decorate(TextDecoration.BOLD));
-            src.sendMessage(Component.text("  Total: ", NamedTextColor.GRAY).append(Component.text(daily.totalJoins, NamedTextColor.AQUA)));
-            src.sendMessage(Component.text("  Unique: ", NamedTextColor.GRAY).append(Component.text(daily.uniqueJoins, NamedTextColor.AQUA)));
-            src.sendMessage(Component.text("  Screened: ", NamedTextColor.GRAY).append(Component.text(daily.screenedPlayers, NamedTextColor.AQUA)));
+            src.sendMessage(Component.text("» Today's Joins", NamedTextColor.GOLD).decorate(TextDecoration.BOLD));
+            src.sendMessage(Component.text("  Total: ", NamedTextColor.GRAY).append(Component.text(daily.totalJoins, NamedTextColor.GOLD)));
+            src.sendMessage(Component.text("  Unique: ", NamedTextColor.GRAY).append(Component.text(daily.uniqueJoins, NamedTextColor.GOLD)));
+            src.sendMessage(Component.text("  Screened: ", NamedTextColor.GRAY).append(Component.text(daily.screenedPlayers, NamedTextColor.GOLD)));
             src.sendMessage(Component.empty());
 
-            src.sendMessage(Component.text("» Monthly Playtime", NamedTextColor.YELLOW).decorate(TextDecoration.BOLD));
-            src.sendMessage(Component.text("  Cumulative: ", NamedTextColor.GRAY).append(Component.text(PlayerStatsService.formatPlaytime(monthly.cumulativePlaytime), NamedTextColor.AQUA)));
-            src.sendMessage(Component.text("  Top Player: ", NamedTextColor.GRAY).append(Component.text(monthly.topPlayerName, NamedTextColor.AQUA))
+            src.sendMessage(Component.text("» Monthly Playtime", NamedTextColor.GOLD).decorate(TextDecoration.BOLD));
+            src.sendMessage(Component.text("  Cumulative: ", NamedTextColor.GRAY).append(Component.text(PlayerStatsService.formatPlaytime(monthly.cumulativePlaytime), NamedTextColor.GOLD)));
+            src.sendMessage(Component.text("  Top Player: ", NamedTextColor.GRAY).append(Component.text(monthly.topPlayerName, NamedTextColor.GOLD))
                     .append(Component.text(" (", NamedTextColor.GRAY))
-                    .append(Component.text(PlayerStatsService.formatPlaytime(monthly.topPlayerPlaytime), NamedTextColor.AQUA))
+                    .append(Component.text(PlayerStatsService.formatPlaytime(monthly.topPlayerPlaytime), NamedTextColor.GOLD))
                     .append(Component.text(")", NamedTextColor.GRAY)));
 
             sendDivider(src, NamedTextColor.GOLD);

@@ -27,8 +27,8 @@ public class MessageService {
     // When last message was from another proxy: recipient -> that sender's username (for /r)
     private final Map<UUID, String> lastSenderUsernameByRecipient = new ConcurrentHashMap<>();
       // Format for messages with brackets around player sections
-    private final String outgoingFormat = "<dark_gray>[<gray>You <dark_gray>-> %s<gray>%s<dark_gray>]: <white>%s";  // Args: prefix, name, message
-    private final String incomingFormat = "<dark_gray>[%s<gray>%s <dark_gray>-> <gray>You<dark_gray>]: <white>%s"; // Args: prefix, name, message
+    private final String outgoingFormat = "<dark_gray>[<gray>You <dark_gray>-> %s<gray>%s<dark_gray>]: <gray>%s";  // Args: prefix, name, message
+    private final String incomingFormat = "<dark_gray>[%s<gray>%s <dark_gray>-> <gray>You<dark_gray>]: <gray>%s"; // Args: prefix, name, message
 
     public MessageService(BeaconLabsVelocity plugin, ProxyServer server, Logger logger) {
         this.plugin = plugin;
@@ -128,7 +128,7 @@ public class MessageService {
      */
     public boolean sendPrivateMessage(Player sender, Player recipient, String message) {
         if (sender.equals(recipient)) {
-            sender.sendMessage(plugin.getPrefix().append(Component.text("You cannot message yourself!", NamedTextColor.RED)));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("You cannot message yourself!", NamedTextColor.RED)));
             return false;
         }
 

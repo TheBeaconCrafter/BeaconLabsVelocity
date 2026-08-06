@@ -35,7 +35,7 @@ public class ProxyWhitelistCommand implements SimpleCommand {
         
         // Check permission
         if (!source.hasPermission(WHITELIST_PERMISSION)) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("You don't have permission to use this command.", NamedTextColor.RED)
             ));
             return;
@@ -57,7 +57,7 @@ public class ProxyWhitelistCommand implements SimpleCommand {
                 break;
             case "add":
                 if (args.length < 2) {
-                    source.sendMessage(plugin.getPrefix().append(
+                    source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Please specify a player name.", NamedTextColor.RED)
                     ));
                     return;
@@ -68,7 +68,7 @@ public class ProxyWhitelistCommand implements SimpleCommand {
             case "del":
             case "delete":
                 if (args.length < 2) {
-                    source.sendMessage(plugin.getPrefix().append(
+                    source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Please specify a player name.", NamedTextColor.RED)
                     ));
                     return;
@@ -88,15 +88,15 @@ public class ProxyWhitelistCommand implements SimpleCommand {
     }
     
     private void sendUsage(CommandSource source) {
-        source.sendMessage(plugin.getPrefix().append(
+        source.sendMessage(plugin.getPrefix(source).append(
             Component.text("Whitelist Commands:", NamedTextColor.GOLD)
         ));
-        source.sendMessage(Component.text("  /proxywhitelist on - Enable the whitelist", NamedTextColor.YELLOW));
-        source.sendMessage(Component.text("  /proxywhitelist off - Disable the whitelist", NamedTextColor.YELLOW));
-        source.sendMessage(Component.text("  /proxywhitelist add <player> - Add a player to the whitelist", NamedTextColor.YELLOW));
-        source.sendMessage(Component.text("  /proxywhitelist remove <player> - Remove a player from the whitelist", NamedTextColor.YELLOW));
-        source.sendMessage(Component.text("  /proxywhitelist list - List all whitelisted players", NamedTextColor.YELLOW));
-        source.sendMessage(Component.text("  /proxywhitelist status - Check if whitelist is enabled", NamedTextColor.YELLOW));
+        source.sendMessage(Component.text("  /proxywhitelist on - Enable the whitelist", NamedTextColor.GOLD));
+        source.sendMessage(Component.text("  /proxywhitelist off - Disable the whitelist", NamedTextColor.GOLD));
+        source.sendMessage(Component.text("  /proxywhitelist add <player> - Add a player to the whitelist", NamedTextColor.GOLD));
+        source.sendMessage(Component.text("  /proxywhitelist remove <player> - Remove a player from the whitelist", NamedTextColor.GOLD));
+        source.sendMessage(Component.text("  /proxywhitelist list - List all whitelisted players", NamedTextColor.GOLD));
+        source.sendMessage(Component.text("  /proxywhitelist status - Check if whitelist is enabled", NamedTextColor.GOLD));
     }
     
     private void setWhitelistEnabled(boolean enabled, CommandSource source) {
@@ -104,7 +104,7 @@ public class ProxyWhitelistCommand implements SimpleCommand {
         
         String status = enabled ? "enabled" : "disabled";
         if (changed) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("Whitelist has been " + status + ".", NamedTextColor.GREEN)
             ));
             
@@ -121,8 +121,8 @@ public class ProxyWhitelistCommand implements SimpleCommand {
             String sourceName = source instanceof Player ? ((Player) source).getUsername() : "Console";
             plugin.getLogger().info("Whitelist {} by {}", status, sourceName);
         } else {
-            source.sendMessage(plugin.getPrefix().append(
-                Component.text("Whitelist was already " + status + ".", NamedTextColor.YELLOW)
+            source.sendMessage(plugin.getPrefix(source).append(
+                Component.text("Whitelist was already " + status + ".", NamedTextColor.GOLD)
             ));
         }
     }
@@ -133,13 +133,13 @@ public class ProxyWhitelistCommand implements SimpleCommand {
     private void kickNonWhitelistedPlayers(CommandSource source) {
         whitelistService.kickNonWhitelistedPlayers().thenAccept(kickCount -> {
             if (kickCount > 0) {
-                source.sendMessage(plugin.getPrefix().append(
-                    Component.text("Kicked " + kickCount + " non-whitelisted players.", NamedTextColor.YELLOW)
+                source.sendMessage(plugin.getPrefix(source).append(
+                    Component.text("Kicked " + kickCount + " non-whitelisted players.", NamedTextColor.GOLD)
                 ));
             }
         }).exceptionally(e -> {
             plugin.getLogger().error("Error kicking non-whitelisted players", e);
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("An error occurred while kicking non-whitelisted players.", NamedTextColor.RED)
             ));
             return null;
@@ -152,19 +152,19 @@ public class ProxyWhitelistCommand implements SimpleCommand {
         
         whitelistService.addPlayer(playerName, addedBy).thenAccept(success -> {
             if (success) {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("Added player ", NamedTextColor.GREEN)
                         .append(Component.text(playerName, NamedTextColor.GOLD))
                         .append(Component.text(" to the whitelist.", NamedTextColor.GREEN))
                 ));
             } else {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("Failed to add player to whitelist.", NamedTextColor.RED)
                 ));
             }
         }).exceptionally(e -> {
             plugin.getLogger().error("Error adding player to whitelist", e);
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("An error occurred while adding player to whitelist.", NamedTextColor.RED)
             ));
             return null;
@@ -174,7 +174,7 @@ public class ProxyWhitelistCommand implements SimpleCommand {
     private void removePlayer(CommandSource source, String playerName) {
         whitelistService.removePlayer(playerName).thenAccept(success -> {
             if (success) {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("Removed player ", NamedTextColor.GREEN)
                         .append(Component.text(playerName, NamedTextColor.GOLD))
                         .append(Component.text(" from the whitelist.", NamedTextColor.GREEN))
@@ -194,23 +194,23 @@ public class ProxyWhitelistCommand implements SimpleCommand {
                         player.disconnect(kickMessage);
                         
                         // Notify source
-                        source.sendMessage(plugin.getPrefix().append(
-                            Component.text("Kicked player ", NamedTextColor.YELLOW)
+                        source.sendMessage(plugin.getPrefix(source).append(
+                            Component.text("Kicked player ", NamedTextColor.GOLD)
                                 .append(Component.text(playerName, NamedTextColor.GOLD))
-                                .append(Component.text(" as they are no longer whitelisted.", NamedTextColor.YELLOW))
+                                .append(Component.text(" as they are no longer whitelisted.", NamedTextColor.GOLD))
                         ));
                     });
                 }
             } else {
-                source.sendMessage(plugin.getPrefix().append(
-                    Component.text("Player ", NamedTextColor.YELLOW)
+                source.sendMessage(plugin.getPrefix(source).append(
+                    Component.text("Player ", NamedTextColor.GOLD)
                         .append(Component.text(playerName, NamedTextColor.GOLD))
-                        .append(Component.text(" was not found in the whitelist.", NamedTextColor.YELLOW))
+                        .append(Component.text(" was not found in the whitelist.", NamedTextColor.GOLD))
                 ));
             }
         }).exceptionally(e -> {
             plugin.getLogger().error("Error removing player from whitelist", e);
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("An error occurred while removing player from whitelist.", NamedTextColor.RED)
             ));
             return null;
@@ -219,12 +219,12 @@ public class ProxyWhitelistCommand implements SimpleCommand {
     
     private void listPlayers(CommandSource source) {
         whitelistService.getWhitelistedPlayers().thenAccept(players -> {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("Whitelisted players (" + players.size() + "):", NamedTextColor.GOLD)
             ));
             
             if (players.isEmpty()) {
-                source.sendMessage(Component.text("  No players are whitelisted.", NamedTextColor.YELLOW));
+                source.sendMessage(Component.text("  No players are whitelisted.", NamedTextColor.GOLD));
             } else {
                 // Sort alphabetically
                 Collections.sort(players, String.CASE_INSENSITIVE_ORDER);
@@ -239,19 +239,19 @@ public class ProxyWhitelistCommand implements SimpleCommand {
                     
                     // Every 5 players, start a new line
                     if ((i + 1) % 5 == 0 && i < players.size() - 1) {
-                        source.sendMessage(Component.text("  " + builder, NamedTextColor.YELLOW));
+                        source.sendMessage(Component.text("  " + builder, NamedTextColor.GOLD));
                         builder = new StringBuilder();
                     }
                 }
                 
                 // Send any remaining players
                 if (builder.length() > 0) {
-                    source.sendMessage(Component.text("  " + builder, NamedTextColor.YELLOW));
+                    source.sendMessage(Component.text("  " + builder, NamedTextColor.GOLD));
                 }
             }
         }).exceptionally(e -> {
             plugin.getLogger().error("Error listing whitelisted players", e);
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("An error occurred while retrieving whitelisted players.", NamedTextColor.RED)
             ));
             return null;
@@ -263,7 +263,7 @@ public class ProxyWhitelistCommand implements SimpleCommand {
         String status = enabled ? "enabled" : "disabled";
         NamedTextColor color = enabled ? NamedTextColor.GREEN : NamedTextColor.RED;
         
-        source.sendMessage(plugin.getPrefix().append(
+        source.sendMessage(plugin.getPrefix(source).append(
             Component.text("Whitelist is currently ", NamedTextColor.GOLD)
                 .append(Component.text(status, color))
                 .append(Component.text(".", NamedTextColor.GOLD))
@@ -272,7 +272,7 @@ public class ProxyWhitelistCommand implements SimpleCommand {
         if (enabled) {
             // Also show bypass permission
             source.sendMessage(Component.text("  Bypass permission: ", NamedTextColor.GOLD)
-                .append(Component.text(whitelistService.getBypassPermission(), NamedTextColor.YELLOW)));
+                .append(Component.text(whitelistService.getBypassPermission(), NamedTextColor.GOLD)));
         }
     }
 

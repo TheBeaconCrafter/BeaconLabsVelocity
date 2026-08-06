@@ -43,21 +43,21 @@ public class ServerGuardCommand implements SimpleCommand {    private final Beac
         String[] args = invocation.arguments();
           // Check permission
         if (!source.hasPermission(usePermission)) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("You don't have permission to use this command.", NamedTextColor.RED)
             ));
             return;
         }        // Check if we're reloading the configuration
         if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
             if (!source.hasPermission(reloadPermission)) {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("You don't have permission to reload the server guard configuration.", NamedTextColor.RED)
                 ));
                 return;
             }
             
             guardService.loadConfig();
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("Server guard configuration reloaded.", NamedTextColor.GREEN)
             ));
             return;
@@ -92,10 +92,10 @@ public class ServerGuardCommand implements SimpleCommand {    private final Beac
                     }
                 } else {
                     // Neither server nor player found
-                    source.sendMessage(plugin.getPrefix().append(
+                    source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Unknown server or player: ", NamedTextColor.RED)
                     ).append(
-                        Component.text(args[0], NamedTextColor.YELLOW)
+                        Component.text(args[0], NamedTextColor.GOLD)
                     ));
                     return;
                 }
@@ -127,33 +127,33 @@ public class ServerGuardCommand implements SimpleCommand {    private final Beac
      * Show command usage information
      */
     private void showUsage(CommandSource source) {
-        source.sendMessage(plugin.getPrefix().append(
-            Component.text("Server Guard Commands:", NamedTextColor.YELLOW, TextDecoration.BOLD)
+        source.sendMessage(plugin.getPrefix(source).append(
+            Component.text("Server Guard Commands:", NamedTextColor.GOLD, TextDecoration.BOLD)
         ));
         
         source.sendMessage(Component.text("» ", NamedTextColor.GRAY)
             .append(Component.text("/serverguard", NamedTextColor.GOLD))
-            .append(Component.text(" - Check your access to all servers", NamedTextColor.WHITE))
+            .append(Component.text(" - Check your access to all servers", NamedTextColor.GRAY))
         );
         
         source.sendMessage(Component.text("» ", NamedTextColor.GRAY)
             .append(Component.text("/serverguard <server>", NamedTextColor.GOLD))
-            .append(Component.text(" - Check your access to a specific server", NamedTextColor.WHITE))
+            .append(Component.text(" - Check your access to a specific server", NamedTextColor.GRAY))
         );
         
         source.sendMessage(Component.text("» ", NamedTextColor.GRAY)
             .append(Component.text("/serverguard <player>", NamedTextColor.GOLD))
-            .append(Component.text(" - Check a player's access to all servers", NamedTextColor.WHITE))
+            .append(Component.text(" - Check a player's access to all servers", NamedTextColor.GRAY))
         );
         
         source.sendMessage(Component.text("» ", NamedTextColor.GRAY)
             .append(Component.text("/serverguard <player> <server>", NamedTextColor.GOLD))
-            .append(Component.text(" - Check a player's access to a specific server", NamedTextColor.WHITE))
+            .append(Component.text(" - Check a player's access to a specific server", NamedTextColor.GRAY))
         );
           if (source.hasPermission(reloadPermission)) {
             source.sendMessage(Component.text("» ", NamedTextColor.GRAY)
                 .append(Component.text("/serverguard reload", NamedTextColor.GOLD))
-                .append(Component.text(" - Reload server guard configuration", NamedTextColor.WHITE))
+                .append(Component.text(" - Reload server guard configuration", NamedTextColor.GRAY))
             );
         }
     }
@@ -164,10 +164,10 @@ public class ServerGuardCommand implements SimpleCommand {    private final Beac
     private void showAllServersForPlayer(CommandSource source, Player player) {
         String defaultAction = guardService.isDefaultAllow() ? "ALLOW" : "BLOCK";
         
-        source.sendMessage(plugin.getPrefix().append(
-            Component.text("Server Guard Status for ", NamedTextColor.YELLOW)
+        source.sendMessage(plugin.getPrefix(source).append(
+            Component.text("Server Guard Status for ", NamedTextColor.GOLD)
         ).append(
-            Component.text(player.getUsername(), NamedTextColor.AQUA)
+            Component.text(player.getUsername(), NamedTextColor.GOLD)
         ));
         
         source.sendMessage(Component.text("Default action: ", NamedTextColor.GRAY)
@@ -180,7 +180,7 @@ public class ServerGuardCommand implements SimpleCommand {    private final Beac
         for (String serverName : servers) {
             ServerGuardService.GuardStatus status = guardService.getServerStatus(player, serverName);
             
-            Component statusComponent = Component.text(serverName, NamedTextColor.YELLOW)
+            Component statusComponent = Component.text(serverName, NamedTextColor.GOLD)
                 .append(Component.text(": ", NamedTextColor.GRAY))
                 .append(Component.text(status.getAction().toString(),
                     status.getAction() == ServerGuardService.GuardAction.ALLOW ? 
@@ -203,16 +203,16 @@ public class ServerGuardCommand implements SimpleCommand {    private final Beac
     private void showServerStatus(CommandSource source, Player player, String serverName) {
         ServerGuardService.GuardStatus status = guardService.getServerStatus(player, serverName);
         
-        source.sendMessage(plugin.getPrefix().append(
-            Component.text("Server Guard Status:", NamedTextColor.YELLOW)
+        source.sendMessage(plugin.getPrefix(source).append(
+            Component.text("Server Guard Status:", NamedTextColor.GOLD)
         ));
         
         source.sendMessage(Component.text("Player: ", NamedTextColor.GRAY)
-            .append(Component.text(player.getUsername(), NamedTextColor.AQUA))
+            .append(Component.text(player.getUsername(), NamedTextColor.GOLD))
         );
         
         source.sendMessage(Component.text("Server: ", NamedTextColor.GRAY)
-            .append(Component.text(serverName, NamedTextColor.YELLOW))
+            .append(Component.text(serverName, NamedTextColor.GOLD))
         );
         
         source.sendMessage(Component.text("Access: ", NamedTextColor.GRAY)
@@ -223,7 +223,7 @@ public class ServerGuardCommand implements SimpleCommand {    private final Beac
         );
         
         source.sendMessage(Component.text("Reason: ", NamedTextColor.GRAY)
-            .append(Component.text(status.getReason(), NamedTextColor.WHITE))
+            .append(Component.text(status.getReason(), NamedTextColor.GRAY))
         );
         
         if (status.getPermission() != null) {
@@ -241,10 +241,10 @@ public class ServerGuardCommand implements SimpleCommand {    private final Beac
     private void showAllServersForDefaultPlayer(CommandSource source) {
         String defaultAction = guardService.isDefaultAllow() ? "ALLOW" : "BLOCK";
         
-        source.sendMessage(plugin.getPrefix().append(
-            Component.text("Server Guard Status for ", NamedTextColor.YELLOW)
+        source.sendMessage(plugin.getPrefix(source).append(
+            Component.text("Server Guard Status for ", NamedTextColor.GOLD)
         ).append(
-            Component.text("DEFAULT PLAYER", NamedTextColor.AQUA, TextDecoration.BOLD)
+            Component.text("DEFAULT PLAYER", NamedTextColor.GOLD, TextDecoration.BOLD)
         ));
         
         source.sendMessage(Component.text("Default action: ", NamedTextColor.GRAY)
@@ -258,7 +258,7 @@ public class ServerGuardCommand implements SimpleCommand {    private final Beac
             // Create a mock player status (no permissions)
             ServerGuardService.GuardStatus status = guardService.getDefaultPlayerStatus(serverName);
             
-            Component statusComponent = Component.text(serverName, NamedTextColor.YELLOW)
+            Component statusComponent = Component.text(serverName, NamedTextColor.GOLD)
                 .append(Component.text(": ", NamedTextColor.GRAY))
                 .append(Component.text(status.getAction().toString(),
                     status.getAction() == ServerGuardService.GuardAction.ALLOW ? 

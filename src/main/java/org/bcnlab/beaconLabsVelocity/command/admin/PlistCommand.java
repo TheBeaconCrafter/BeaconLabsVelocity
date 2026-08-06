@@ -32,7 +32,7 @@ public class PlistCommand implements SimpleCommand {
         String[] args = invocation.arguments();
 
         if (!source.hasPermission(PERMISSION)) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("You don't have permission to use this command.", NamedTextColor.RED)));
             return;
         }
@@ -61,19 +61,19 @@ public class PlistCommand implements SimpleCommand {
         if (filterServer != null) {
             List<Map.Entry<String, String>> onServer = serverToPlayers.get(filterServer);
             if (onServer == null || onServer.isEmpty()) {
-                source.sendMessage(plugin.getPrefix().append(
-                        Component.text("No players on server '" + filterServer + "' across the network.", NamedTextColor.YELLOW)));
+                source.sendMessage(plugin.getPrefix(source).append(
+                        Component.text("No players on server '" + filterServer + "' across the network.", NamedTextColor.GOLD)));
                 return;
             }
             String names = onServer.stream().map(Map.Entry::getKey).sorted(String.CASE_INSENSITIVE_ORDER).collect(Collectors.joining(", "));
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("[" + filterServer + "] ", NamedTextColor.GREEN))
                     .append(Component.text("(" + onServer.size() + "): ", NamedTextColor.GRAY))
-                    .append(Component.text(names, NamedTextColor.WHITE)));
+                    .append(Component.text(names, NamedTextColor.GRAY)));
             return;
         }
 
-        source.sendMessage(plugin.getPrefix().append(
+        source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("Players across all proxies (" + total + "):", NamedTextColor.GOLD)));
         for (Map.Entry<String, List<Map.Entry<String, String>>> entry : serverToPlayers.entrySet()) {
             String serverName = entry.getKey();
@@ -83,7 +83,7 @@ public class PlistCommand implements SimpleCommand {
                     .append(Component.text(serverName, NamedTextColor.GREEN))
                     .append(Component.text("] ", NamedTextColor.DARK_GRAY))
                     .append(Component.text("(" + players.size() + "): ", NamedTextColor.GRAY))
-                    .append(Component.text(names, NamedTextColor.WHITE)));
+                    .append(Component.text(names, NamedTextColor.GRAY)));
         }
     }
 
@@ -96,23 +96,23 @@ public class PlistCommand implements SimpleCommand {
         if (filterServer != null) {
             List<String> onServer = serverToPlayers.get(filterServer);
             if (onServer == null || onServer.isEmpty()) {
-                source.sendMessage(plugin.getPrefix().append(
-                        Component.text("No players on server '" + filterServer + "'.", NamedTextColor.YELLOW)));
+                source.sendMessage(plugin.getPrefix(source).append(
+                        Component.text("No players on server '" + filterServer + "'.", NamedTextColor.GOLD)));
                 return;
             }
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("[" + filterServer + "] (" + onServer.size() + "): ", NamedTextColor.GREEN))
-                    .append(Component.text(String.join(", ", onServer), NamedTextColor.WHITE)));
+                    .append(Component.text(String.join(", ", onServer), NamedTextColor.GRAY)));
             return;
         }
         int total = serverToPlayers.values().stream().mapToInt(List::size).sum();
-        source.sendMessage(plugin.getPrefix().append(
+        source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("Players on this proxy (" + total + "):", NamedTextColor.GOLD)));
         serverToPlayers.forEach((s, names) -> source.sendMessage(
                 Component.text("  [", NamedTextColor.DARK_GRAY)
                         .append(Component.text(s, NamedTextColor.GREEN))
                         .append(Component.text("] (" + names.size() + "): ", NamedTextColor.GRAY))
-                        .append(Component.text(String.join(", ", names), NamedTextColor.WHITE))));
+                        .append(Component.text(String.join(", ", names), NamedTextColor.GRAY))));
     }
 
     @Override

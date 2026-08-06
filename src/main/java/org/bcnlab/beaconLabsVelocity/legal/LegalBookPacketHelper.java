@@ -184,7 +184,7 @@ public final class LegalBookPacketHelper {
                 String tosLink = tos.node("link").getString("");
                 if (!tosLink.isEmpty()) {
                     page1 = page1.append(Component.text("Terms of Service: ", NamedTextColor.GRAY))
-                            .append(Component.text("[Open Link]", NamedTextColor.AQUA)
+                            .append(Component.text("[Open Link]", NamedTextColor.GOLD)
                                     .clickEvent(ClickEvent.openUrl(tosLink))
                                     .hoverEvent(HoverEvent.showText(Component.text(tosLink, NamedTextColor.GRAY))));
                 } else {
@@ -197,7 +197,7 @@ public final class LegalBookPacketHelper {
                 String privacyLink = privacy.node("link").getString("");
                 if (!privacyLink.isEmpty()) {
                     page1 = page1.append(Component.text("Privacy Policy: ", NamedTextColor.GRAY))
-                            .append(Component.text("[Open Link]", NamedTextColor.AQUA)
+                            .append(Component.text("[Open Link]", NamedTextColor.GOLD)
                                     .clickEvent(ClickEvent.openUrl(privacyLink))
                                     .hoverEvent(HoverEvent.showText(Component.text(privacyLink, NamedTextColor.GRAY))));
                 } else {

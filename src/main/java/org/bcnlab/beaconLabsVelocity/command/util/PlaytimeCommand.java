@@ -51,7 +51,7 @@ public class PlaytimeCommand implements SimpleCommand {
             
             Player player = (Player) source;
             if (!player.hasPermission("beaconlabs.command.playtime")) {
-                source.sendMessage(plugin.getPrefix().append(Component.text("You don't have permission to use this command.", NamedTextColor.RED)));
+                source.sendMessage(plugin.getPrefix(source).append(Component.text("You don't have permission to use this command.", NamedTextColor.RED)));
                 return;
             }
             
@@ -64,7 +64,7 @@ public class PlaytimeCommand implements SimpleCommand {
         // Handle special subcommands
         if (subcommand.equals("top")) {
             if (!source.hasPermission("beaconlabs.command.playtime.top")) {
-                source.sendMessage(plugin.getPrefix().append(Component.text("You don't have permission to view the top playtime list.", NamedTextColor.RED)));
+                source.sendMessage(plugin.getPrefix(source).append(Component.text("You don't have permission to view the top playtime list.", NamedTextColor.RED)));
                 return;
             }
             
@@ -85,7 +85,7 @@ public class PlaytimeCommand implements SimpleCommand {
         
         // View another player's playtime
         if (!source.hasPermission("beaconlabs.command.playtime.others")) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("You don't have permission to view others' playtime.", NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("You don't have permission to view others' playtime.", NamedTextColor.RED)));
             return;
         }
         
@@ -111,7 +111,7 @@ public class PlaytimeCommand implements SimpleCommand {
             if (offlineUuid != null) {
                 showPlayerPlaytime(source, offlineUuid, targetName);
             } else {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("Player not found: " + targetName, NamedTextColor.RED)
                 ));
             }
@@ -127,7 +127,7 @@ public class PlaytimeCommand implements SimpleCommand {
         
         source.sendMessage(Component.text()
             .append(plugin.getPrefix())
-            .append(Component.text(playerName + "'s Playtime: ", NamedTextColor.YELLOW))
+            .append(Component.text(playerName + "'s Playtime: ", NamedTextColor.GOLD))
             .append(Component.text(formattedPlaytime, NamedTextColor.GREEN))
             .build()
         );
@@ -166,9 +166,9 @@ public class PlaytimeCommand implements SimpleCommand {
             
             source.sendMessage(Component.text()
                 .append(Component.text("#" + rank + " ", rankColor).decorate(TextDecoration.BOLD))
-                .append(Component.text(entry.getPlayerName(), NamedTextColor.WHITE))
+                .append(Component.text(entry.getPlayerName(), NamedTextColor.GRAY))
                 .append(Component.text(" - ", NamedTextColor.GRAY))
-                .append(Component.text(entry.getFormattedPlaytime(), NamedTextColor.AQUA))
+                .append(Component.text(entry.getFormattedPlaytime(), NamedTextColor.GOLD))
                 .build()
             );
             

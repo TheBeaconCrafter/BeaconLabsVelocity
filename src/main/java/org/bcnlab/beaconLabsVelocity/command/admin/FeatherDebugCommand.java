@@ -57,7 +57,7 @@ public class FeatherDebugCommand implements SimpleCommand {
             source.sendMessage(Component.text("[Feather debug] ON. When a Feather player joins, player name, platform, and enabled mods will be logged to console.", NamedTextColor.GREEN));
             plugin.getLogger().info("[Feather debug] Logging enabled. Feather PlayerHelloEvent details will be logged on join.");
         } else {
-            source.sendMessage(Component.text("[Feather debug] OFF.", NamedTextColor.YELLOW));
+            source.sendMessage(Component.text("[Feather debug] OFF.", NamedTextColor.GOLD));
             plugin.getLogger().info("[Feather debug] Logging disabled.");
         }
     }

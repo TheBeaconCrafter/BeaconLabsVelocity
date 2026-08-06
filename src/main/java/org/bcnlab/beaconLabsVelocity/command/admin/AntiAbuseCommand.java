@@ -65,10 +65,10 @@ public class AntiAbuseCommand implements SimpleCommand {
                 int req = antiBotService.getRequestsToday();
                 sendDivider(src, NamedTextColor.GOLD);
                 src.sendMessage(Component.text("✦ ", NamedTextColor.GOLD)
-                    .append(Component.text("ABUSEIPDB QUOTA", NamedTextColor.YELLOW).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD))
+                    .append(Component.text("ABUSEIPDB QUOTA", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD))
                     .append(Component.text(" ✦", NamedTextColor.GOLD)));
                 src.sendMessage(Component.empty());
-                src.sendMessage(Component.text("  Requests Today: ", NamedTextColor.YELLOW).append(Component.text(req, NamedTextColor.AQUA)));
+                src.sendMessage(Component.text("  Requests Today: ", NamedTextColor.GOLD).append(Component.text(req, NamedTextColor.GOLD)));
                 sendDivider(src, NamedTextColor.GOLD);
                 break;
             case "status":
@@ -91,14 +91,14 @@ public class AntiAbuseCommand implements SimpleCommand {
         if (args.length < 2) {
             sendDivider(src, NamedTextColor.GOLD);
             src.sendMessage(Component.text("✦ ", NamedTextColor.GOLD)
-                .append(Component.text("ABUSE DEFENSE MODE", NamedTextColor.YELLOW).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD))
+                .append(Component.text("ABUSE DEFENSE MODE", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD))
                 .append(Component.text(" ✦", NamedTextColor.GOLD)));
             
             src.sendMessage(Component.empty());
-            src.sendMessage(Component.text("» CURRENT: ", NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
+            src.sendMessage(Component.text("» CURRENT: ", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
                 .append(Component.text(abuseConfig.getDefenseMode().toUpperCase(), NamedTextColor.GREEN)));
-            src.sendMessage(Component.text("  Usage: ", NamedTextColor.YELLOW)
-                .append(Component.text("/aa mode <normal|elevated|attack>", NamedTextColor.WHITE)));
+            src.sendMessage(Component.text("  Usage: ", NamedTextColor.GOLD)
+                .append(Component.text("/aa mode <normal|elevated|attack>", NamedTextColor.GRAY)));
             sendDivider(src, NamedTextColor.GOLD);
             return;
         }
@@ -107,7 +107,7 @@ public class AntiAbuseCommand implements SimpleCommand {
         if (mode.equals("normal") || mode.equals("elevated") || mode.equals("attack")) {
             abuseConfig.setDefenseMode(mode);
             String issuerName = (src instanceof Player) ? ((Player) src).getUsername() : "Console";
-            Component comp = plugin.getPrefix().append(Component.text("Abuse Defense Mode updated to: ", NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
+            Component comp = plugin.getPrefix().append(Component.text("Abuse Defense Mode updated to: ", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
                 .append(Component.text(mode.toUpperCase(), NamedTextColor.GREEN))
                 .append(Component.text(" by " + issuerName, NamedTextColor.GRAY)));
             
@@ -127,16 +127,16 @@ public class AntiAbuseCommand implements SimpleCommand {
     private void sendHelp(CommandSource src) {
         sendDivider(src, NamedTextColor.GOLD);
         src.sendMessage(Component.text("✦ ", NamedTextColor.GOLD)
-            .append(Component.text("ANTI-ABUSE COMMANDS", NamedTextColor.YELLOW).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD))
+            .append(Component.text("ANTI-ABUSE COMMANDS", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD))
             .append(Component.text(" ✦", NamedTextColor.GOLD)));
         
         src.sendMessage(Component.empty());
-        src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa whitelist <ip/player> [true/false]", NamedTextColor.AQUA)));
-        src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa blacklist <ip/player> [true/false]", NamedTextColor.AQUA)));
-        src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa history [page]", NamedTextColor.AQUA).append(Component.text(" - View past blocked players", NamedTextColor.GRAY))));
-        src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa requests", NamedTextColor.AQUA).append(Component.text(" - View AbuseIPDB daily requests", NamedTextColor.GRAY))));
-        src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa status", NamedTextColor.AQUA).append(Component.text(" - View AntiBot database stats", NamedTextColor.GRAY))));
-        src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa mode <normal|elevated|attack>", NamedTextColor.AQUA).append(Component.text(" - Change defense level", NamedTextColor.GRAY))));
+        src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa whitelist <ip/player> [true/false]", NamedTextColor.GOLD)));
+        src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa blacklist <ip/player> [true/false]", NamedTextColor.GOLD)));
+        src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa history [page]", NamedTextColor.GOLD).append(Component.text(" - View past blocked players", NamedTextColor.GRAY))));
+        src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa requests", NamedTextColor.GOLD).append(Component.text(" - View AbuseIPDB daily requests", NamedTextColor.GRAY))));
+        src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa status", NamedTextColor.GOLD).append(Component.text(" - View AntiBot database stats", NamedTextColor.GRAY))));
+        src.sendMessage(Component.text("  • ", NamedTextColor.GRAY).append(Component.text("/aa mode <normal|elevated|attack>", NamedTextColor.GOLD).append(Component.text(" - Change defense level", NamedTextColor.GRAY))));
         sendDivider(src, NamedTextColor.GOLD);
     }
 
@@ -205,9 +205,9 @@ public class AntiAbuseCommand implements SimpleCommand {
                             
                             String timeStr = lastSeen != null ? sdf.format(lastSeen) : "Unknown";
                             
-                            Component nameComp = Component.text(pName, NamedTextColor.WHITE)
+                            Component nameComp = Component.text(pName, NamedTextColor.GRAY)
                                 .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/info " + pName))
-                                .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Click to view player info", NamedTextColor.YELLOW)));
+                                .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Click to view player info", NamedTextColor.GOLD)));
                                 
                             Component prefixComp = Component.text("  • ", NamedTextColor.DARK_GRAY);
                             
@@ -217,7 +217,7 @@ public class AntiAbuseCommand implements SimpleCommand {
                                 if (seconds >= 3600) ptStr = (seconds / 3600) + "h " + ((seconds % 3600) / 60) + "m";
                                 
                                 prefixComp = prefixComp.append(Component.text("⚠ ", NamedTextColor.RED)
-                                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Was not immediately kicked. Playtime: " + ptStr, NamedTextColor.YELLOW))));
+                                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Was not immediately kicked. Playtime: " + ptStr, NamedTextColor.GOLD))));
                             }
                                 
                             src.sendMessage(prefixComp
@@ -231,11 +231,11 @@ public class AntiAbuseCommand implements SimpleCommand {
                 src.sendMessage(Component.empty());
                 Component footer = Component.text("  Page " + actualPage + " of " + maxPage, NamedTextColor.GRAY);
                 if (actualPage > 1) {
-                    footer = footer.append(Component.text(" [«]", NamedTextColor.AQUA)
+                    footer = footer.append(Component.text(" [«]", NamedTextColor.GOLD)
                         .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/aa history " + (actualPage - 1))));
                 }
                 if (actualPage < maxPage) {
-                    footer = footer.append(Component.text(" [»]", NamedTextColor.AQUA)
+                    footer = footer.append(Component.text(" [»]", NamedTextColor.GOLD)
                         .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/aa history " + (actualPage + 1))));
                 }
                 src.sendMessage(footer);
@@ -310,15 +310,15 @@ public class AntiAbuseCommand implements SimpleCommand {
 
         if (isWhitelist) {
             antiBotService.setWhitelist(targetIp, state);
-            src.sendMessage(plugin.getPrefix().append(Component.text("Whitelist for ", NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
-                .append(Component.text(targetIp, NamedTextColor.YELLOW))
-                .append(Component.text(" set to ", NamedTextColor.AQUA))
+            src.sendMessage(plugin.getPrefix().append(Component.text("Whitelist for ", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
+                .append(Component.text(targetIp, NamedTextColor.GOLD))
+                .append(Component.text(" set to ", NamedTextColor.GOLD))
                 .append(Component.text(state ? "TRUE" : "FALSE", state ? NamedTextColor.GREEN : NamedTextColor.RED))));
         } else {
             antiBotService.setBlacklist(targetIp, state);
-            src.sendMessage(plugin.getPrefix().append(Component.text("Blacklist for ", NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
-                .append(Component.text(targetIp, NamedTextColor.YELLOW))
-                .append(Component.text(" set to ", NamedTextColor.AQUA))
+            src.sendMessage(plugin.getPrefix().append(Component.text("Blacklist for ", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
+                .append(Component.text(targetIp, NamedTextColor.GOLD))
+                .append(Component.text(" set to ", NamedTextColor.GOLD))
                 .append(Component.text(state ? "TRUE" : "FALSE", state ? NamedTextColor.RED : NamedTextColor.GREEN))));
         }
     }
@@ -366,10 +366,10 @@ public class AntiAbuseCommand implements SimpleCommand {
                     for (String ip : ips) {
                         Component removeBtn = Component.text("[Remove]", NamedTextColor.RED)
                             .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/aa " + cmdType + " " + ip + " false"))
-                            .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Click to remove", NamedTextColor.YELLOW)));
+                            .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Click to remove", NamedTextColor.GOLD)));
                         
                         src.sendMessage(Component.text("  • ", NamedTextColor.GRAY)
-                            .append(Component.text(ip, NamedTextColor.WHITE))
+                            .append(Component.text(ip, NamedTextColor.GRAY))
                             .append(Component.text(" "))
                             .append(removeBtn));
                     }
@@ -378,11 +378,11 @@ public class AntiAbuseCommand implements SimpleCommand {
                 src.sendMessage(Component.empty());
                 Component footer = Component.text("  Page " + actualPage + " of " + maxPage, NamedTextColor.GRAY);
                 if (actualPage > 1) {
-                    footer = footer.append(Component.text(" [«]", NamedTextColor.AQUA)
+                    footer = footer.append(Component.text(" [«]", NamedTextColor.GOLD)
                         .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/aa " + cmdType + " " + (actualPage - 1))));
                 }
                 if (actualPage < maxPage) {
-                    footer = footer.append(Component.text(" [»]", NamedTextColor.AQUA)
+                    footer = footer.append(Component.text(" [»]", NamedTextColor.GOLD)
                         .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/aa " + cmdType + " " + (actualPage + 1))));
                 }
                 src.sendMessage(footer);
@@ -414,15 +414,15 @@ public class AntiAbuseCommand implements SimpleCommand {
                     
                     sendDivider(src, NamedTextColor.GOLD);
                     src.sendMessage(Component.text("✦ ", NamedTextColor.GOLD)
-                        .append(Component.text("ANTIBOT CACHE STATUS", NamedTextColor.YELLOW).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD))
+                        .append(Component.text("ANTIBOT CACHE STATUS", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD))
                         .append(Component.text(" ✦", NamedTextColor.GOLD)));
                     
                     src.sendMessage(Component.empty());
-                    src.sendMessage(Component.text("» STATISTICS", NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD));
-                    src.sendMessage(Component.text("  Total IPs Cached: ", NamedTextColor.YELLOW).append(Component.text(total, NamedTextColor.WHITE)));
-                    src.sendMessage(Component.text("  Whitelisted: ", NamedTextColor.YELLOW).append(Component.text(whitelisted, NamedTextColor.GREEN)));
-                    src.sendMessage(Component.text("  Blacklisted (Manual): ", NamedTextColor.YELLOW).append(Component.text(blacklisted, NamedTextColor.RED)));
-                    src.sendMessage(Component.text("  Blocked (High Score >= 90): ", NamedTextColor.YELLOW).append(Component.text(highScore, NamedTextColor.RED)));
+                    src.sendMessage(Component.text("» STATISTICS", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD));
+                    src.sendMessage(Component.text("  Total IPs Cached: ", NamedTextColor.GOLD).append(Component.text(total, NamedTextColor.GRAY)));
+                    src.sendMessage(Component.text("  Whitelisted: ", NamedTextColor.GOLD).append(Component.text(whitelisted, NamedTextColor.GREEN)));
+                    src.sendMessage(Component.text("  Blacklisted (Manual): ", NamedTextColor.GOLD).append(Component.text(blacklisted, NamedTextColor.RED)));
+                    src.sendMessage(Component.text("  Blocked (High Score >= 90): ", NamedTextColor.GOLD).append(Component.text(highScore, NamedTextColor.RED)));
                     sendDivider(src, NamedTextColor.GOLD);
                 }
             }

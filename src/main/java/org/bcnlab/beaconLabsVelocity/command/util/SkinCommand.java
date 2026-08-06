@@ -23,7 +23,7 @@ public class SkinCommand implements SimpleCommand {
         String[] args = invocation.arguments();
         
         if (args.length != 1) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("Usage: /skin <player>", NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("Usage: /skin <player>", NamedTextColor.RED)));
             return;
         }
 
@@ -31,7 +31,7 @@ public class SkinCommand implements SimpleCommand {
 
         // Check permission if trying to view someone else's skin
         if (source instanceof Player && !((Player) source).getUsername().equalsIgnoreCase(targetName) && !source.hasPermission("beaconlabs.command.skin.other")) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("You don't have permission to view other players' skins.", NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("You don't have permission to view other players' skins.", NamedTextColor.RED)));
             return;
         }
         

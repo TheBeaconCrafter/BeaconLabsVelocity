@@ -42,6 +42,7 @@ public class AdminCommandRegistrar {
         commandManager.register("proxies", new ProxiesCommand(plugin));
         commandManager.register("featherdebug", new FeatherDebugCommand(plugin, server));
         commandManager.register("info", new InfoCommand(server, service, plugin, config));
+        commandManager.register("ig", new IgCommand(server, service, plugin, config));
         // IP history command - only register if PlayerStatsService is available
         if (plugin.getPlayerStatsService() != null) {
             commandManager.register("ips", new IpsCommand(server, plugin.getPlayerStatsService(), service, plugin));

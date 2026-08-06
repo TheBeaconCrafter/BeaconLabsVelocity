@@ -33,20 +33,20 @@ public class ProxyCommand implements SimpleCommand {
             String proxyId = plugin.getCrossProxyService() != null
                     ? plugin.getCrossProxyService().getProxyId()
                     : "—";
-            invocation.source().sendMessage(plugin.getPrefix()
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source())
                     .append(Component.text("You are connected to proxy: ", NamedTextColor.GRAY))
-                    .append(Component.text(proxyId, NamedTextColor.AQUA)));
+                    .append(Component.text(proxyId, NamedTextColor.GOLD)));
             return;
         }
 
         // /proxy <proxyid> - transfer self (player only)
         if (!invocation.source().hasPermission(PERMISSION_TRANSFER)) {
-            invocation.source().sendMessage(plugin.getPrefix().append(
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                     Component.text("You don't have permission to transfer to another proxy.", NamedTextColor.RED)));
             return;
         }
         if (!(invocation.source() instanceof Player)) {
-            invocation.source().sendMessage(plugin.getPrefix().append(
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                     Component.text("Only players can transfer to another proxy.", NamedTextColor.RED)));
             return;
         }
@@ -56,25 +56,25 @@ public class ProxyCommand implements SimpleCommand {
         CrossProxyService cross = plugin.getCrossProxyService();
 
         if (cross == null || !cross.isEnabled()) {
-            invocation.source().sendMessage(plugin.getPrefix().append(
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                     Component.text("Cross-proxy is disabled.", NamedTextColor.RED)));
             return;
         }
         if (targetProxyId.equalsIgnoreCase(cross.getProxyId())) {
-            invocation.source().sendMessage(plugin.getPrefix().append(
-                    Component.text("You are already on this proxy.", NamedTextColor.YELLOW)));
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
+                    Component.text("You are already on this proxy.", NamedTextColor.GOLD)));
             return;
         }
 
         if (!cross.getProxyIds().contains(targetProxyId)) {
-            invocation.source().sendMessage(plugin.getPrefix().append(
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                     Component.text("Unknown proxy: " + targetProxyId, NamedTextColor.RED)));
             return;
         }
 
         String hostname = cross.getProxyHostname(targetProxyId);
         if (hostname == null || hostname.isEmpty()) {
-            invocation.source().sendMessage(plugin.getPrefix().append(
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                     Component.text("Target proxy has no public-hostname set.", NamedTextColor.RED)));
             return;
         }
@@ -86,10 +86,10 @@ public class ProxyCommand implements SimpleCommand {
 
         Optional<String> err = cross.performTransferToHost(player, hostname);
         if (err.isEmpty()) {
-            invocation.source().sendMessage(plugin.getPrefix().append(
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                     Component.text("Transferring you to proxy " + targetProxyId + "...", NamedTextColor.GREEN)));
         } else {
-            invocation.source().sendMessage(plugin.getPrefix().append(
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                     Component.text(err.get(), NamedTextColor.RED)));
         }
     }

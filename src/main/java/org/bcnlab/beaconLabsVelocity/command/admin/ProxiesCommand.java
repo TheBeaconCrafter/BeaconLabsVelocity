@@ -41,12 +41,12 @@ public class ProxiesCommand implements SimpleCommand {
 
         if (args.length > 0 && "debug".equalsIgnoreCase(args[0])) {
             if (!source.hasPermission(PERMISSION_DEBUG)) {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("You don't have permission to use this command.", NamedTextColor.RED)));
                 return;
             }
             if (plugin.getCrossProxyService() == null) {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Cross-proxy service is not available.", NamedTextColor.RED)));
                 return;
             }
@@ -55,19 +55,19 @@ public class ProxiesCommand implements SimpleCommand {
                 source.sendMessage(Component.text(line, NamedTextColor.GRAY));
                 plugin.getLogger().info("[proxies debug] " + line);
             }
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("Debug output also written to console/log.", NamedTextColor.DARK_GRAY)));
             return;
         }
 
         if (args.length > 0 && "info".equalsIgnoreCase(args[0])) {
             if (!source.hasPermission(PERMISSION)) {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("You don't have permission to use this command.", NamedTextColor.RED)));
                 return;
             }
             if (args.length < 2) {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Usage: /proxies info <proxy>", NamedTextColor.RED)));
                 return;
             }
@@ -77,12 +77,12 @@ public class ProxiesCommand implements SimpleCommand {
 
         if (args.length > 0 && "send".equalsIgnoreCase(args[0])) {
             if (!source.hasPermission(PERMISSION_SEND)) {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("You don't have permission to use this command.", NamedTextColor.RED)));
                 return;
             }
             if (args.length < 3) {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Usage: /proxies send <player|server|proxy|*> <proxy>", NamedTextColor.RED)));
                 return;
             }
@@ -91,69 +91,69 @@ public class ProxiesCommand implements SimpleCommand {
         }
 
         if (!source.hasPermission(PERMISSION)) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("You don't have permission to use this command.", NamedTextColor.RED)));
             return;
         }
 
         if (plugin.getCrossProxyService() == null || !plugin.getCrossProxyService().isEnabled()) {
-            source.sendMessage(plugin.getPrefix().append(
-                    Component.text("Cross-proxy is disabled. Only this proxy is active.", NamedTextColor.YELLOW)));
+            source.sendMessage(plugin.getPrefix(source).append(
+                    Component.text("Cross-proxy is disabled. Only this proxy is active.", NamedTextColor.GOLD)));
             if (plugin.getCrossProxyService() != null) {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("This proxy ID: ", NamedTextColor.GRAY))
-                        .append(Component.text(plugin.getCrossProxyService().getProxyId(), NamedTextColor.AQUA)));
+                        .append(Component.text(plugin.getCrossProxyService().getProxyId(), NamedTextColor.GOLD)));
             }
             return;
         }
 
         Set<String> proxyIds = plugin.getCrossProxyService().getProxyIds();
         if (proxyIds.isEmpty()) {
-            source.sendMessage(plugin.getPrefix().append(
-                    Component.text("No proxies registered. (Only this proxy: " + plugin.getCrossProxyService().getProxyId() + ")", NamedTextColor.YELLOW)));
+            source.sendMessage(plugin.getPrefix(source).append(
+                    Component.text("No proxies registered. (Only this proxy: " + plugin.getCrossProxyService().getProxyId() + ")", NamedTextColor.GOLD)));
             return;
         }
 
         String list = proxyIds.stream().sorted().collect(Collectors.joining(", "));
-        source.sendMessage(plugin.getPrefix().append(
+        source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("Connected proxies (" + proxyIds.size() + "): ", NamedTextColor.GOLD))
-                .append(Component.text(list, NamedTextColor.AQUA)));
+                .append(Component.text(list, NamedTextColor.GOLD)));
     }
 
     private void handleInfo(CommandSource source, String proxyId) {
         CrossProxyService cross = plugin.getCrossProxyService();
         if (cross == null || !cross.isEnabled()) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("Cross-proxy is disabled.", NamedTextColor.RED)));
             return;
         }
         Set<String> ids = cross.getProxyIds();
         if (!ids.contains(proxyId)) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("Unknown proxy: " + proxyId, NamedTextColor.RED)));
             return;
         }
         String hostname = cross.getProxyHostname(proxyId);
         int playerCount = cross.getPlayerListForProxy(proxyId).size();
-        source.sendMessage(plugin.getPrefix()
+        source.sendMessage(plugin.getPrefix(source)
                 .append(Component.text("Proxy ", NamedTextColor.GRAY))
-                .append(Component.text(proxyId, NamedTextColor.AQUA))
+                .append(Component.text(proxyId, NamedTextColor.GOLD))
                 .append(Component.text(" | Host: ", NamedTextColor.GRAY))
-                .append(Component.text(hostname != null && !hostname.isEmpty() ? hostname : "—", NamedTextColor.WHITE))
+                .append(Component.text(hostname != null && !hostname.isEmpty() ? hostname : "—", NamedTextColor.GRAY))
                 .append(Component.text(" | Players: ", NamedTextColor.GRAY))
-                .append(Component.text(playerCount, NamedTextColor.YELLOW)));
+                .append(Component.text(playerCount, NamedTextColor.GOLD)));
     }
 
     private void handleSend(CommandSource source, String selector, String targetProxyId) {
         CrossProxyService cross = plugin.getCrossProxyService();
         if (cross == null || !cross.isEnabled()) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("Cross-proxy is disabled.", NamedTextColor.RED)));
             return;
         }
         String hostname = cross.getProxyHostname(targetProxyId);
         if (hostname == null || hostname.isEmpty()) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("Target proxy '" + targetProxyId + "' has no public-hostname set in config.", NamedTextColor.RED)));
             return;
         }
@@ -165,7 +165,7 @@ public class ProxiesCommand implements SimpleCommand {
                 .collect(Collectors.toList());
 
         if (targets.isEmpty()) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text(targetProxyId.equalsIgnoreCase(cross.getProxyId())
                             ? "No players to transfer (all matched players are already on this proxy)."
                             : "No players matched '" + selector + "' or all are already on that proxy.", NamedTextColor.RED)));
@@ -185,7 +185,7 @@ public class ProxiesCommand implements SimpleCommand {
                     Optional<String> err = cross.performTransferToHost(p.get(), hostname);
                     if (err.isEmpty()) ok++;
                     else if (err.get().contains("version is too old")) versionTooOld++;
-                    else source.sendMessage(plugin.getPrefix().append(Component.text(p.get().getUsername() + ": " + err.get(), NamedTextColor.RED)));
+                    else source.sendMessage(plugin.getPrefix(source).append(Component.text(p.get().getUsername() + ": " + err.get(), NamedTextColor.RED)));
                 }
             } else {
                 cross.publishProxyTransferRequest(t.uuid, targetProxyId, t.backendServer);
@@ -196,8 +196,8 @@ public class ProxiesCommand implements SimpleCommand {
         Component result = plugin.getPrefix()
                 .append(Component.text("Transfer to " + targetProxyId + ": ", NamedTextColor.GOLD))
                 .append(Component.text(ok + " sent", NamedTextColor.GREEN));
-        if (versionTooOld > 0) result = result.append(Component.text(", " + versionTooOld + " (game version too old, need 1.20.5+)", NamedTextColor.YELLOW));
-        if (requestedOther > 0) result = result.append(Component.text(", " + requestedOther + " requested on other proxy", NamedTextColor.AQUA));
+        if (versionTooOld > 0) result = result.append(Component.text(", " + versionTooOld + " (game version too old, need 1.20.5+)", NamedTextColor.GOLD));
+        if (requestedOther > 0) result = result.append(Component.text(", " + requestedOther + " requested on other proxy", NamedTextColor.GOLD));
         result = result.append(Component.text(".", NamedTextColor.GOLD));
         source.sendMessage(result);
     }

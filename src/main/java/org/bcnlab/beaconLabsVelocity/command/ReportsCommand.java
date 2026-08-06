@@ -1,6 +1,8 @@
 package org.bcnlab.beaconLabsVelocity.command;
 
 import com.velocitypowered.api.command.CommandSource;
+import java.util.Optional;
+import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
@@ -55,14 +57,50 @@ public class ReportsCommand implements SimpleCommand {
         
         // Check for permission
         if (!source.hasPermission(PERMISSION)) {
-            source.sendMessage(plugin.getPrefix().append(
-                Component.text("You don't have permission to use this command.", NamedTextColor.RED)
+            source.sendMessage(plugin.getPrefix(source).append(
+                Component.text("You don't have permission to use this command.", NamedTextColor.GRAY)
             ));
             return;
         }
           // Handle subcommands
         if (args.length == 0) {
-            // Default behavior: show both open and in-progress reports
+            // Attempt to open GUI on backend if source is a player
+            if (source instanceof Player player) {
+                Optional<ServerConnection> connection = player.getCurrentServer();
+                if (connection.isPresent()) {
+                    // Fetch reports async and send them
+                    CompletableFuture<List<Report>> openReportsFuture = reportService.getReports(ReportStatus.OPEN, PAGE_SIZE * 5, 0); // fetch up to 50
+                    CompletableFuture<List<Report>> inProgressReportsFuture = reportService.getReports(ReportStatus.IN_PROGRESS, PAGE_SIZE * 5, 0);
+                    
+                    CompletableFuture.allOf(openReportsFuture, inProgressReportsFuture).thenRun(() -> {
+                        try {
+                            List<Report> reports = new ArrayList<>();
+                            reports.addAll(openReportsFuture.get());
+                            reports.addAll(inProgressReportsFuture.get());
+                            reports.sort((r1, r2) -> Long.compare(r2.getReportTime(), r1.getReportTime()));
+                            
+                            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                            java.io.DataOutputStream data = new java.io.DataOutputStream(out);
+                            data.writeUTF("REPORTS"); // command type
+                            data.writeInt(reports.size());
+                            for (Report r : reports) {
+                                data.writeInt(r.getId());
+                                data.writeUTF(r.getReporterName());
+                                data.writeUTF(r.getReportedName());
+                                data.writeUTF(r.getReason());
+                                data.writeUTF(r.getStatus().name());
+                            }
+                            
+                            connection.get().sendPluginMessage(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:report_dialog"), out.toByteArray());
+                        } catch (Exception e) {
+                            plugin.getLogger().warn("Failed to send report dialog data: " + e.getMessage());
+                            listActiveReports(source, 1); // fallback
+                        }
+                    });
+                    return; // Return immediately to avoid sending the chat message twice!
+                }
+            }
+            // Default behavior: show both open and in-progress reports in chat
             listActiveReports(source, 1);
             return;
         }
@@ -78,8 +116,8 @@ public class ReportsCommand implements SimpleCommand {
                     try {
                         status = ReportStatus.valueOf(statusArg);
                     } catch (IllegalArgumentException e) {
-                        source.sendMessage(plugin.getPrefix().append(
-                            Component.text("Invalid status. Use: OPEN, IN_PROGRESS, RESOLVED, REJECTED, or ALL", NamedTextColor.RED)
+                        source.sendMessage(plugin.getPrefix(source).append(
+                            Component.text("Invalid status. Use: OPEN, IN_PROGRESS, RESOLVED, REJECTED, or ALL", NamedTextColor.GRAY)
                         ));
                         return;
                     }
@@ -90,7 +128,7 @@ public class ReportsCommand implements SimpleCommand {
                             page = Integer.parseInt(args[2]);
                             if (page < 1) page = 1;
                         } catch (NumberFormatException e) {
-                            source.sendMessage(plugin.getPrefix().append(
+                            source.sendMessage(plugin.getPrefix(source).append(
                                 Component.text("Invalid page number.", NamedTextColor.RED)
                             ));
                             return;
@@ -106,7 +144,7 @@ public class ReportsCommand implements SimpleCommand {
                 
             case "view":
                 if (args.length < 2) {
-                    source.sendMessage(plugin.getPrefix().append(
+                    source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Please specify a report ID.", NamedTextColor.RED)
                     ));
                     return;
@@ -116,7 +154,7 @@ public class ReportsCommand implements SimpleCommand {
                 try {
                     reportId = Integer.parseInt(args[1]);
                 } catch (NumberFormatException e) {
-                    source.sendMessage(plugin.getPrefix().append(
+                    source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Invalid report ID. Must be a number.", NamedTextColor.RED)
                     ));
                     return;
@@ -128,7 +166,7 @@ public class ReportsCommand implements SimpleCommand {
                 
             case "player":
                 if (args.length < 2) {
-                    source.sendMessage(plugin.getPrefix().append(
+                    source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Please specify a player name.", NamedTextColor.RED)
                     ));
                     return;
@@ -140,7 +178,7 @@ public class ReportsCommand implements SimpleCommand {
                 
             case "status":
                 if (args.length < 3) {
-                    source.sendMessage(plugin.getPrefix().append(
+                    source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Usage: /reports status <id> <new-status> [note]", NamedTextColor.RED)
                     ));
                     return;
@@ -150,7 +188,7 @@ public class ReportsCommand implements SimpleCommand {
                 try {
                     statusReportId = Integer.parseInt(args[1]);
                 } catch (NumberFormatException e) {
-                    source.sendMessage(plugin.getPrefix().append(
+                    source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Invalid report ID. Must be a number.", NamedTextColor.RED)
                     ));
                     return;
@@ -161,7 +199,7 @@ public class ReportsCommand implements SimpleCommand {
                 try {
                     newStatus = ReportStatus.valueOf(statusArg);
                 } catch (IllegalArgumentException e) {
-                    source.sendMessage(plugin.getPrefix().append(
+                    source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Invalid status. Use: OPEN, IN_PROGRESS, RESOLVED, REJECTED", NamedTextColor.RED)
                     ));
                     return;
@@ -193,7 +231,7 @@ public class ReportsCommand implements SimpleCommand {
                     int viewReportId = Integer.parseInt(subCommand);
                     viewReport(source, viewReportId);
                 } catch (NumberFormatException e) {
-                    source.sendMessage(plugin.getPrefix().append(
+                    source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Unknown subcommand. Use /reports help for usage information.", NamedTextColor.RED)
                     ));
                 }
@@ -213,8 +251,8 @@ public class ReportsCommand implements SimpleCommand {
         
         reportService.getReports(status, PAGE_SIZE + 1, offset).thenAccept(reports -> {
             if (reports.isEmpty()) {
-                source.sendMessage(plugin.getPrefix().append(
-                    Component.text("No reports found.", NamedTextColor.YELLOW)
+                source.sendMessage(plugin.getPrefix(source).append(
+                    Component.text("No reports found.", NamedTextColor.GOLD)
                 ));
                 return;
             }
@@ -229,7 +267,7 @@ public class ReportsCommand implements SimpleCommand {
             // Build header based on status
             String statusDisplay = status != null ? status.getDisplayName() : "All";
             Component header = Component.text("Player Reports - " + statusDisplay, NamedTextColor.GOLD, TextDecoration.BOLD)
-                .append(Component.text(" (Page " + page + ")", NamedTextColor.YELLOW));
+                .append(Component.text(" (Page " + page + ")", NamedTextColor.GOLD));
                 
             source.sendMessage(Component.empty());
             source.sendMessage(header);
@@ -243,7 +281,7 @@ public class ReportsCommand implements SimpleCommand {
                         statusColor = NamedTextColor.RED;
                         break;
                     case IN_PROGRESS:
-                        statusColor = NamedTextColor.YELLOW;
+                        statusColor = NamedTextColor.GOLD;
                         break;
                     case RESOLVED:
                         statusColor = NamedTextColor.GREEN;
@@ -252,21 +290,21 @@ public class ReportsCommand implements SimpleCommand {
                         statusColor = NamedTextColor.GRAY;
                         break;
                     default:
-                        statusColor = NamedTextColor.WHITE;
+                        statusColor = NamedTextColor.GRAY;
                 }
                 
                 Component reportEntry = Component.text("#" + report.getId(), NamedTextColor.GOLD)
                     .append(Component.text(" [", NamedTextColor.DARK_GRAY))
                     .append(Component.text(report.getStatus().getDisplayName(), statusColor))
                     .append(Component.text("] ", NamedTextColor.DARK_GRAY))
-                    .append(Component.text(report.getReportedName(), NamedTextColor.WHITE))
+                    .append(Component.text(report.getReportedName(), NamedTextColor.GRAY))
                     .append(Component.text(" reported by ", NamedTextColor.GRAY))
-                    .append(Component.text(report.getReporterName(), NamedTextColor.WHITE))
+                    .append(Component.text(report.getReporterName(), NamedTextColor.GRAY))
                     .append(Component.text(" (", NamedTextColor.GRAY))
-                    .append(Component.text(formatTimeAgo(report.getReportTime()), NamedTextColor.AQUA))
+                    .append(Component.text(formatTimeAgo(report.getReportTime()), NamedTextColor.GOLD))
                     .append(Component.text(")", NamedTextColor.GRAY))
                     .clickEvent(ClickEvent.runCommand("/reports view " + report.getId()))
-                    .hoverEvent(HoverEvent.showText(Component.text("Click to view details", NamedTextColor.YELLOW)));
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to view details", NamedTextColor.GOLD)));
                 
                 source.sendMessage(reportEntry);
             }
@@ -276,9 +314,9 @@ public class ReportsCommand implements SimpleCommand {
             
             if (page > 1) {
                 footer = footer.append(
-                    Component.text("[Previous]", NamedTextColor.AQUA)
+                    Component.text("[Previous]", NamedTextColor.GOLD)
                         .clickEvent(ClickEvent.runCommand("/reports list " + (status != null ? status.name() : "ALL") + " " + (page - 1)))
-                        .hoverEvent(HoverEvent.showText(Component.text("Go to previous page", NamedTextColor.YELLOW)))
+                        .hoverEvent(HoverEvent.showText(Component.text("Go to previous page", NamedTextColor.GOLD)))
                 );
             } else {
                 footer = footer.append(Component.text("[Previous]", NamedTextColor.DARK_GRAY));
@@ -288,9 +326,9 @@ public class ReportsCommand implements SimpleCommand {
             
             if (hasNextPage) {
                 footer = footer.append(
-                    Component.text("[Next]", NamedTextColor.AQUA)
+                    Component.text("[Next]", NamedTextColor.GOLD)
                         .clickEvent(ClickEvent.runCommand("/reports list " + (status != null ? status.name() : "ALL") + " " + (page + 1)))
-                        .hoverEvent(HoverEvent.showText(Component.text("Go to next page", NamedTextColor.YELLOW)))
+                        .hoverEvent(HoverEvent.showText(Component.text("Go to next page", NamedTextColor.GOLD)))
                 );
             } else {
                 footer = footer.append(Component.text("[Next]", NamedTextColor.DARK_GRAY));
@@ -310,7 +348,7 @@ public class ReportsCommand implements SimpleCommand {
     private void viewReport(CommandSource source, int reportId) {
         reportService.getReport(reportId).thenAccept(report -> {
             if (report == null) {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("Report #" + reportId + " not found.", NamedTextColor.RED)
                 ));
                 return;
@@ -327,7 +365,7 @@ public class ReportsCommand implements SimpleCommand {
                     statusColor = NamedTextColor.RED;
                     break;
                 case IN_PROGRESS:
-                    statusColor = NamedTextColor.YELLOW;
+                    statusColor = NamedTextColor.GOLD;
                     break;
                 case RESOLVED:
                     statusColor = NamedTextColor.GREEN;
@@ -336,50 +374,50 @@ public class ReportsCommand implements SimpleCommand {
                     statusColor = NamedTextColor.GRAY;
                     break;
                 default:
-                    statusColor = NamedTextColor.WHITE;
+                    statusColor = NamedTextColor.GRAY;
             }
             
-            source.sendMessage(Component.text("Status: ", NamedTextColor.YELLOW)
+            source.sendMessage(Component.text("Status: ", NamedTextColor.GOLD)
                 .append(Component.text(report.getStatus().getDisplayName(), statusColor)));
             
             // Reported player with clickable name
-            Component reportedPlayer = Component.text("Reported: ", NamedTextColor.YELLOW)
-                .append(Component.text(report.getReportedName(), NamedTextColor.WHITE)
+            Component reportedPlayer = Component.text("Reported: ", NamedTextColor.GOLD)
+                .append(Component.text(report.getReportedName(), NamedTextColor.GRAY)
                     .clickEvent(ClickEvent.suggestCommand("/reports player " + report.getReportedName()))
-                    .hoverEvent(HoverEvent.showText(Component.text("Click to view all reports for this player", NamedTextColor.AQUA))));
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to view all reports for this player", NamedTextColor.GOLD))));
             
             source.sendMessage(reportedPlayer);
             
             // Reporter and server
-            source.sendMessage(Component.text("Reporter: ", NamedTextColor.YELLOW)
-                .append(Component.text(report.getReporterName(), NamedTextColor.WHITE)));
-            source.sendMessage(Component.text("Server: ", NamedTextColor.YELLOW)
-                .append(Component.text(report.getServerName(), NamedTextColor.WHITE)));
+            source.sendMessage(Component.text("Reporter: ", NamedTextColor.GOLD)
+                .append(Component.text(report.getReporterName(), NamedTextColor.GRAY)));
+            source.sendMessage(Component.text("Server: ", NamedTextColor.GOLD)
+                .append(Component.text(report.getServerName(), NamedTextColor.GRAY)));
             
             // Timestamps
             String reportTime = FORMATTER.format(Instant.ofEpochSecond(report.getReportTime()));
-            source.sendMessage(Component.text("Reported: ", NamedTextColor.YELLOW)
-                .append(Component.text(reportTime + " (" + formatTimeAgo(report.getReportTime()) + ")", NamedTextColor.WHITE)));
+            source.sendMessage(Component.text("Reported: ", NamedTextColor.GOLD)
+                .append(Component.text(reportTime + " (" + formatTimeAgo(report.getReportTime()) + ")", NamedTextColor.GRAY)));
             
             // Reason
-            source.sendMessage(Component.text("Reason: ", NamedTextColor.YELLOW)
-                .append(Component.text(report.getReason(), NamedTextColor.WHITE)));
+            source.sendMessage(Component.text("Reason: ", NamedTextColor.GOLD)
+                .append(Component.text(report.getReason(), NamedTextColor.GRAY)));
             
             // Resolution information if available
             if (report.getStatus() == ReportStatus.RESOLVED || report.getStatus() == ReportStatus.REJECTED) {
                 source.sendMessage(Component.empty());
                 source.sendMessage(Component.text("Resolution Information", NamedTextColor.GOLD));
-                source.sendMessage(Component.text("Handled by: ", NamedTextColor.YELLOW)
-                    .append(Component.text(report.getHandledByName() != null ? report.getHandledByName() : "N/A", NamedTextColor.WHITE)));
+                source.sendMessage(Component.text("Handled by: ", NamedTextColor.GOLD)
+                    .append(Component.text(report.getHandledByName() != null ? report.getHandledByName() : "N/A", NamedTextColor.GRAY)));
                 
                 if (report.getResolutionTime() != null) {
                     String resolutionTime = FORMATTER.format(Instant.ofEpochSecond(report.getResolutionTime()));
-                    source.sendMessage(Component.text("Resolved on: ", NamedTextColor.YELLOW)
-                        .append(Component.text(resolutionTime + " (" + formatTimeAgo(report.getResolutionTime()) + ")", NamedTextColor.WHITE)));
+                    source.sendMessage(Component.text("Resolved on: ", NamedTextColor.GOLD)
+                        .append(Component.text(resolutionTime + " (" + formatTimeAgo(report.getResolutionTime()) + ")", NamedTextColor.GRAY)));
                 }
                 
-                source.sendMessage(Component.text("Note: ", NamedTextColor.YELLOW)
-                    .append(Component.text(report.getResolutionNote() != null ? report.getResolutionNote() : "No notes provided", NamedTextColor.WHITE)));
+                source.sendMessage(Component.text("Note: ", NamedTextColor.GOLD)
+                    .append(Component.text(report.getResolutionNote() != null ? report.getResolutionNote() : "No notes provided", NamedTextColor.GRAY)));
             }
             
             // Action buttons if report is not resolved/rejected
@@ -392,9 +430,9 @@ public class ReportsCommand implements SimpleCommand {
                 
                 if (report.getStatus() == ReportStatus.OPEN) {
                     statusButtons = statusButtons.append(
-                        Component.text("[In Progress]", NamedTextColor.YELLOW)
+                        Component.text("[In Progress]", NamedTextColor.GOLD)
                             .clickEvent(ClickEvent.suggestCommand("/reports status " + reportId + " IN_PROGRESS "))
-                            .hoverEvent(HoverEvent.showText(Component.text("Mark as in progress", NamedTextColor.YELLOW)))
+                            .hoverEvent(HoverEvent.showText(Component.text("Mark as in progress", NamedTextColor.GOLD)))
                     );
                 } else {
                     statusButtons = statusButtons.append(
@@ -424,9 +462,9 @@ public class ReportsCommand implements SimpleCommand {
                 if (!report.getServerName().equalsIgnoreCase("Unknown")) {
                     statusButtons = statusButtons.append(Component.text(" "));
                     statusButtons = statusButtons.append(
-                        Component.text("[Server]", NamedTextColor.AQUA)
+                        Component.text("[Server]", NamedTextColor.GOLD)
                             .clickEvent(ClickEvent.runCommand("/server " + report.getServerName()))
-                            .hoverEvent(HoverEvent.showText(Component.text("Connect to " + report.getServerName(), NamedTextColor.AQUA)))
+                            .hoverEvent(HoverEvent.showText(Component.text("Connect to " + report.getServerName(), NamedTextColor.GOLD)))
                     );
                 }
                 
@@ -446,8 +484,8 @@ public class ReportsCommand implements SimpleCommand {
     private void listPlayerReports(CommandSource source, String playerName) {
         reportService.getPlayerReports(playerName).thenAccept(reports -> {
             if (reports.isEmpty()) {
-                source.sendMessage(plugin.getPrefix().append(
-                    Component.text("No reports found for player '" + playerName + "'.", NamedTextColor.YELLOW)
+                source.sendMessage(plugin.getPrefix(source).append(
+                    Component.text("No reports found for player '" + playerName + "'.", NamedTextColor.GOLD)
                 ));
                 return;
             }
@@ -464,7 +502,7 @@ public class ReportsCommand implements SimpleCommand {
                         statusColor = NamedTextColor.RED;
                         break;
                     case IN_PROGRESS:
-                        statusColor = NamedTextColor.YELLOW;
+                        statusColor = NamedTextColor.GOLD;
                         break;
                     case RESOLVED:
                         statusColor = NamedTextColor.GREEN;
@@ -473,25 +511,25 @@ public class ReportsCommand implements SimpleCommand {
                         statusColor = NamedTextColor.GRAY;
                         break;
                     default:
-                        statusColor = NamedTextColor.WHITE;
+                        statusColor = NamedTextColor.GRAY;
                 }
                 
                 Component reportEntry = Component.text("#" + report.getId(), NamedTextColor.GOLD)
                     .append(Component.text(" [", NamedTextColor.DARK_GRAY))
                     .append(Component.text(report.getStatus().getDisplayName(), statusColor))
                     .append(Component.text("] ", NamedTextColor.DARK_GRAY))
-                    .append(Component.text("by " + report.getReporterName() + ": ", NamedTextColor.WHITE))
-                    .append(Component.text(shortenReason(report.getReason()), NamedTextColor.YELLOW))
+                    .append(Component.text("by " + report.getReporterName() + ": ", NamedTextColor.GRAY))
+                    .append(Component.text(shortenReason(report.getReason()), NamedTextColor.GOLD))
                     .append(Component.text(" (" + formatTimeAgo(report.getReportTime()) + ")", NamedTextColor.GRAY))
                     .clickEvent(ClickEvent.runCommand("/reports view " + report.getId()))
-                    .hoverEvent(HoverEvent.showText(Component.text("Click to view details", NamedTextColor.YELLOW)));
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to view details", NamedTextColor.GOLD)));
                 
                 source.sendMessage(reportEntry);
             }
             
             source.sendMessage(Component.text("-------------------------------", NamedTextColor.DARK_GRAY));
-            source.sendMessage(Component.text("Total: ", NamedTextColor.YELLOW)
-                .append(Component.text(reports.size() + " reports", NamedTextColor.WHITE)));
+            source.sendMessage(Component.text("Total: ", NamedTextColor.GOLD)
+                .append(Component.text(reports.size() + " reports", NamedTextColor.GRAY)));
         });
     }
     
@@ -520,7 +558,7 @@ public class ReportsCommand implements SimpleCommand {
         // First get the current report to check if it exists
         reportService.getReport(reportId).thenAccept(report -> {
             if (report == null) {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("Report #" + reportId + " not found.", NamedTextColor.RED)
                 ));
                 return;
@@ -528,8 +566,8 @@ public class ReportsCommand implements SimpleCommand {
             
             // Don't update if the status is the same
             if (report.getStatus() == newStatus) {
-                source.sendMessage(plugin.getPrefix().append(
-                    Component.text("Report #" + reportId + " is already marked as " + newStatus.getDisplayName() + ".", NamedTextColor.YELLOW)
+                source.sendMessage(plugin.getPrefix(source).append(
+                    Component.text("Report #" + reportId + " is already marked as " + newStatus.getDisplayName() + ".", NamedTextColor.GOLD)
                 ));
                 return;
             }
@@ -537,14 +575,14 @@ public class ReportsCommand implements SimpleCommand {
             // Update the report status
             reportService.updateReportStatus(reportId, newStatus, staffUuid, staffName, note).thenAccept(success -> {
                 if (success) {
-                    source.sendMessage(plugin.getPrefix().append(
+                    source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Report #" + reportId + " status updated to " + newStatus.getDisplayName() + ".", NamedTextColor.GREEN)
                     ));
                     
                     // View the updated report
                     viewReport(source, reportId);
                 } else {
-                    source.sendMessage(plugin.getPrefix().append(
+                    source.sendMessage(plugin.getPrefix(source).append(
                         Component.text("Failed to update report status. Please try again.", NamedTextColor.RED)
                     ));
                 }
@@ -580,11 +618,11 @@ public class ReportsCommand implements SimpleCommand {
      */
     private void sendHelpLine(CommandSource source, String command, String description) {
         source.sendMessage(
-            Component.text(command, NamedTextColor.YELLOW)
+            Component.text(command, NamedTextColor.GOLD)
                 .clickEvent(ClickEvent.suggestCommand(command))
                 .hoverEvent(HoverEvent.showText(Component.text("Click to use this command", NamedTextColor.GRAY)))
                 .append(Component.text(" - ", NamedTextColor.GRAY))
-                .append(Component.text(description, NamedTextColor.WHITE))
+                .append(Component.text(description, NamedTextColor.GRAY))
         );
     }
     
@@ -643,8 +681,8 @@ public class ReportsCommand implements SimpleCommand {
                 reports.sort((r1, r2) -> Long.compare(r2.getReportTime(), r1.getReportTime()));
                 
                 if (reports.isEmpty()) {
-                    source.sendMessage(plugin.getPrefix().append(
-                        Component.text("No active reports found.", NamedTextColor.YELLOW)
+                    source.sendMessage(plugin.getPrefix(source).append(
+                        Component.text("No active reports found.", NamedTextColor.GRAY)
                     ));
                     return;
                 }
@@ -658,7 +696,7 @@ public class ReportsCommand implements SimpleCommand {
                 
                 // Build header
                 Component header = Component.text("Active Reports", NamedTextColor.GOLD, TextDecoration.BOLD)
-                    .append(Component.text(" (Page " + page + ")", NamedTextColor.YELLOW));
+                    .append(Component.text(" (Page " + page + ")", NamedTextColor.GOLD));
                     
                 source.sendMessage(Component.empty());
                 source.sendMessage(header);
@@ -672,24 +710,24 @@ public class ReportsCommand implements SimpleCommand {
                             statusColor = NamedTextColor.RED;
                             break;
                         case IN_PROGRESS:
-                            statusColor = NamedTextColor.YELLOW;
+                            statusColor = NamedTextColor.GOLD;
                             break;
                         default:
-                            statusColor = NamedTextColor.WHITE;
+                            statusColor = NamedTextColor.GRAY;
                     }
                     
                     Component reportEntry = Component.text("#" + report.getId(), NamedTextColor.GOLD)
                         .append(Component.text(" [", NamedTextColor.DARK_GRAY))
                         .append(Component.text(report.getStatus().getDisplayName(), statusColor))
                         .append(Component.text("] ", NamedTextColor.DARK_GRAY))
-                        .append(Component.text(report.getReportedName(), NamedTextColor.WHITE))
+                        .append(Component.text(report.getReportedName(), NamedTextColor.GRAY))
                         .append(Component.text(" reported by ", NamedTextColor.GRAY))
-                        .append(Component.text(report.getReporterName(), NamedTextColor.WHITE))
+                        .append(Component.text(report.getReporterName(), NamedTextColor.GRAY))
                         .append(Component.text(" (", NamedTextColor.GRAY))
-                        .append(Component.text(formatTimeAgo(report.getReportTime()), NamedTextColor.AQUA))
+                        .append(Component.text(formatTimeAgo(report.getReportTime()), NamedTextColor.GOLD))
                         .append(Component.text(")", NamedTextColor.GRAY))
                         .clickEvent(ClickEvent.runCommand("/reports view " + report.getId()))
-                        .hoverEvent(HoverEvent.showText(Component.text("Click to view details", NamedTextColor.YELLOW)));
+                        .hoverEvent(HoverEvent.showText(Component.text("Click to view details", NamedTextColor.GOLD)));
                     
                     source.sendMessage(reportEntry);
                 }
@@ -699,9 +737,9 @@ public class ReportsCommand implements SimpleCommand {
                 
                 if (page > 1) {
                     footer = footer.append(
-                        Component.text("[Previous]", NamedTextColor.AQUA)
+                        Component.text("[Previous]", NamedTextColor.GOLD)
                             .clickEvent(ClickEvent.runCommand("/reports list ALL " + (page - 1)))
-                            .hoverEvent(HoverEvent.showText(Component.text("Go to previous page", NamedTextColor.YELLOW)))
+                            .hoverEvent(HoverEvent.showText(Component.text("Go to previous page", NamedTextColor.GOLD)))
                     );
                 } else {
                     footer = footer.append(Component.text("[Previous]", NamedTextColor.DARK_GRAY));
@@ -711,9 +749,9 @@ public class ReportsCommand implements SimpleCommand {
                 
                 if (hasNextPage) {
                     footer = footer.append(
-                        Component.text("[Next]", NamedTextColor.AQUA)
+                        Component.text("[Next]", NamedTextColor.GOLD)
                             .clickEvent(ClickEvent.runCommand("/reports list ALL " + (page + 1)))
-                            .hoverEvent(HoverEvent.showText(Component.text("Go to next page", NamedTextColor.YELLOW)))
+                            .hoverEvent(HoverEvent.showText(Component.text("Go to next page", NamedTextColor.GOLD)))
                     );
                 } else {
                     footer = footer.append(Component.text("[Next]", NamedTextColor.DARK_GRAY));
@@ -721,7 +759,7 @@ public class ReportsCommand implements SimpleCommand {
                 
                 source.sendMessage(Component.text("-------------------------------", NamedTextColor.DARK_GRAY));
                 source.sendMessage(footer);            } catch (Exception e) {
-                source.sendMessage(plugin.getPrefix().append(
+                source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("An error occurred while fetching reports.", NamedTextColor.RED)
                 ));
             }

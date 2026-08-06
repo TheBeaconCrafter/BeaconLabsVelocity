@@ -37,7 +37,7 @@ public class MessageCommand implements SimpleCommand {
 
         // Check if source is a player
         if (!(source instanceof Player)) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("Only players can use this command.", NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("Only players can use this command.", NamedTextColor.RED)));
             return;
         }
 
@@ -45,7 +45,7 @@ public class MessageCommand implements SimpleCommand {
 
         // Check arguments
         if (args.length < 2) {
-            sender.sendMessage(plugin.getPrefix().append(Component.text("Usage: /msg <player> <message>", NamedTextColor.RED)));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Usage: /msg <player> <message>", NamedTextColor.RED)));
             return;
         }
 
@@ -61,11 +61,11 @@ public class MessageCommand implements SimpleCommand {
             String privacy = plugin.getPlayerSettingsService().getPlayerSetting(recipient.getUniqueId(), "msg_privacy", "everyone");
             
             if (privacy.equals("nobody")) {
-                sender.sendMessage(plugin.getPrefix().append(Component.text("You cannot message this player.", NamedTextColor.RED)));
+                sender.sendMessage(plugin.getPrefix(sender).append(Component.text("You cannot message this player.", NamedTextColor.RED)));
                 return;
             } else if (privacy.equals("friends_only")) {
                 if (!plugin.getFriendService().areFriends(sender.getUniqueId(), recipient.getUniqueId())) {
-                    sender.sendMessage(plugin.getPrefix().append(Component.text("This player only accepts messages from friends.", NamedTextColor.RED)));
+                    sender.sendMessage(plugin.getPrefix(sender).append(Component.text("This player only accepts messages from friends.", NamedTextColor.RED)));
                     return;
                 }
             }
@@ -78,7 +78,7 @@ public class MessageCommand implements SimpleCommand {
         if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
             java.util.UUID targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(recipientName);
             if (targetUuid == null) {
-                sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + recipientName + "' not found or offline.", NamedTextColor.RED)));
+                sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Player '" + recipientName + "' not found or offline.", NamedTextColor.RED)));
                 return;
             }
 
@@ -86,11 +86,11 @@ public class MessageCommand implements SimpleCommand {
             // But since it's the database, we can check it directly via service which falls back to DB.
             String privacy = plugin.getPlayerSettingsService().getPlayerSetting(targetUuid, "msg_privacy", "everyone");
             if (privacy.equals("nobody")) {
-                sender.sendMessage(plugin.getPrefix().append(Component.text("You cannot message this player.", NamedTextColor.RED)));
+                sender.sendMessage(plugin.getPrefix(sender).append(Component.text("You cannot message this player.", NamedTextColor.RED)));
                 return;
             } else if (privacy.equals("friends_only")) {
                 if (!plugin.getFriendService().areFriends(sender.getUniqueId(), targetUuid)) {
-                    sender.sendMessage(plugin.getPrefix().append(Component.text("This player only accepts messages from friends.", NamedTextColor.RED)));
+                    sender.sendMessage(plugin.getPrefix(sender).append(Component.text("This player only accepts messages from friends.", NamedTextColor.RED)));
                     return;
                 }
             }
@@ -99,10 +99,10 @@ public class MessageCommand implements SimpleCommand {
             plugin.getCrossProxyService().publishPrivateMsg(recipientName, sender.getUniqueId().toString(), sender.getUsername(), recipientMessage);
             // Get the recipient's prefix from Redis for the outgoing display
             String recipientPrefix = MessageService.convertLegacyToMiniMessage(plugin.getCrossProxyService().getPlayerPrefix(recipientName));
-            Component senderMsg = MiniMessage.miniMessage().deserialize(String.format("<dark_gray>[<gray>You <dark_gray>-> %s<gray>%s<dark_gray>]: <white>%s", recipientPrefix, recipientName, message));
+            Component senderMsg = MiniMessage.miniMessage().deserialize(String.format("<dark_gray>[<gray>You <dark_gray>-> %s<gray>%s<dark_gray>]: <gray>%s", recipientPrefix, recipientName, message));
             sender.sendMessage(senderMsg);
         } else {
-            sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + recipientName + "' not found or offline.", NamedTextColor.RED)));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Player '" + recipientName + "' not found or offline.", NamedTextColor.RED)));
         }
     }
 

@@ -31,25 +31,25 @@ public class LimboCommand implements SimpleCommand {
         Optional<RegisteredServer> targetServer = server.getServer(limboServerName);
         
         if (targetServer.isEmpty()) {
-            invocation.source().sendMessage(plugin.getPrefix().append(Component.text("Limbo server '" + limboServerName + "' not found!", NamedTextColor.RED)));
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(Component.text("Limbo server '" + limboServerName + "' not found!", NamedTextColor.RED)));
             return;
         }
 
         if (args.length == 0) {
             if (invocation.source() instanceof Player) {
                 Player player = (Player) invocation.source();
-                player.sendMessage(plugin.getPrefix().append(Component.text("Sending you to limbo...", NamedTextColor.GRAY)));
+                player.sendMessage(plugin.getPrefix(player).append(Component.text("Sending you to limbo...", NamedTextColor.GRAY)));
                 player.createConnectionRequest(targetServer.get()).connectWithIndication().thenAccept(result -> {
                     if (!result) {
-                        player.sendMessage(plugin.getPrefix().append(Component.text("Failed to connect to the limbo server.", NamedTextColor.RED)));
+                        player.sendMessage(plugin.getPrefix(player).append(Component.text("Failed to connect to the limbo server.", NamedTextColor.RED)));
                     }
                 });
             } else {
-                invocation.source().sendMessage(plugin.getPrefix().append(Component.text("Console must specify a player: /limbo <player>", NamedTextColor.RED)));
+                invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(Component.text("Console must specify a player: /limbo <player>", NamedTextColor.RED)));
             }
         } else if (args.length == 1) {
             if (!invocation.source().hasPermission("beaconlabs.admin.limbo")) {
-                invocation.source().sendMessage(plugin.getPrefix().append(Component.text("You don't have permission to send others to limbo.", NamedTextColor.RED)));
+                invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(Component.text("You don't have permission to send others to limbo.", NamedTextColor.RED)));
                 return;
             }
             Optional<Player> target = server.getPlayer(args[0]);
@@ -57,12 +57,12 @@ public class LimboCommand implements SimpleCommand {
                 Player p = target.get();
                 p.sendMessage(plugin.getPrefix().append(Component.text("You have been sent to limbo by an administrator.", NamedTextColor.GRAY)));
                 p.createConnectionRequest(targetServer.get()).connectWithIndication();
-                invocation.source().sendMessage(plugin.getPrefix().append(Component.text("Sent " + p.getUsername() + " to limbo.", NamedTextColor.GREEN)));
+                invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(Component.text("Sent " + p.getUsername() + " to limbo.", NamedTextColor.GREEN)));
             } else {
-                invocation.source().sendMessage(plugin.getPrefix().append(Component.text("Player not found.", NamedTextColor.RED)));
+                invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(Component.text("Player not found.", NamedTextColor.RED)));
             }
         } else {
-            invocation.source().sendMessage(plugin.getPrefix().append(Component.text("Usage: /limbo [player]", NamedTextColor.RED)));
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(Component.text("Usage: /limbo [player]", NamedTextColor.RED)));
         }
     }
 

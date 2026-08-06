@@ -34,7 +34,7 @@ public class ReplyCommand implements SimpleCommand {
 
         // Check if source is a player
         if (!(source instanceof Player)) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("Only players can use this command.", NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("Only players can use this command.", NamedTextColor.RED)));
             return;
         }
 
@@ -42,7 +42,7 @@ public class ReplyCommand implements SimpleCommand {
 
         // Check arguments
         if (args.length < 1) {
-            sender.sendMessage(plugin.getPrefix().append(Component.text("Usage: /r <message>", NamedTextColor.RED)));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Usage: /r <message>", NamedTextColor.RED)));
             return;
         }
 
@@ -53,17 +53,17 @@ public class ReplyCommand implements SimpleCommand {
         if (optRecipient.isPresent()) {
             Player recipient = optRecipient.get();
             if (!recipient.isActive()) {
-                sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + recipient.getUsername() + "' is no longer online.", NamedTextColor.RED)));
+                sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Player '" + recipient.getUsername() + "' is no longer online.", NamedTextColor.RED)));
                 return;
             }
             
             String privacy = plugin.getPlayerSettingsService().getPlayerSetting(recipient.getUniqueId(), "msg_privacy", "everyone");
             if (privacy.equals("nobody")) {
-                sender.sendMessage(plugin.getPrefix().append(Component.text("You cannot message this player.", NamedTextColor.RED)));
+                sender.sendMessage(plugin.getPrefix(sender).append(Component.text("You cannot message this player.", NamedTextColor.RED)));
                 return;
             } else if (privacy.equals("friends_only")) {
                 if (!plugin.getFriendService().areFriends(sender.getUniqueId(), recipient.getUniqueId())) {
-                    sender.sendMessage(plugin.getPrefix().append(Component.text("This player only accepts messages from friends.", NamedTextColor.RED)));
+                    sender.sendMessage(plugin.getPrefix(sender).append(Component.text("This player only accepts messages from friends.", NamedTextColor.RED)));
                     return;
                 }
             }
@@ -76,17 +76,17 @@ public class ReplyCommand implements SimpleCommand {
         if (lastSenderUsername != null && !lastSenderUsername.isEmpty() && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
             java.util.UUID targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(lastSenderUsername);
             if (targetUuid == null) {
-                sender.sendMessage(plugin.getPrefix().append(Component.text("Player '" + lastSenderUsername + "' is no longer online.", NamedTextColor.RED)));
+                sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Player '" + lastSenderUsername + "' is no longer online.", NamedTextColor.RED)));
                 return;
             }
             
             String privacy = plugin.getPlayerSettingsService().getPlayerSetting(targetUuid, "msg_privacy", "everyone");
             if (privacy.equals("nobody")) {
-                sender.sendMessage(plugin.getPrefix().append(Component.text("You cannot message this player.", NamedTextColor.RED)));
+                sender.sendMessage(plugin.getPrefix(sender).append(Component.text("You cannot message this player.", NamedTextColor.RED)));
                 return;
             } else if (privacy.equals("friends_only")) {
                 if (!plugin.getFriendService().areFriends(sender.getUniqueId(), targetUuid)) {
-                    sender.sendMessage(plugin.getPrefix().append(Component.text("This player only accepts messages from friends.", NamedTextColor.RED)));
+                    sender.sendMessage(plugin.getPrefix(sender).append(Component.text("This player only accepts messages from friends.", NamedTextColor.RED)));
                     return;
                 }
             }
@@ -94,12 +94,12 @@ public class ReplyCommand implements SimpleCommand {
             String recipientMessage = messageService.formatIncomingMessage(sender, message);
             plugin.getCrossProxyService().publishPrivateMsg(lastSenderUsername, sender.getUniqueId().toString(), sender.getUsername(), recipientMessage);
             String recipientPrefix = MessageService.convertLegacyToMiniMessage(plugin.getCrossProxyService().getPlayerPrefix(lastSenderUsername));
-            Component senderMsg = MiniMessage.miniMessage().deserialize(String.format("<dark_gray>[<gray>You <dark_gray>-> %s<gray>%s<dark_gray>]: <white>%s", recipientPrefix, lastSenderUsername, message));
+            Component senderMsg = MiniMessage.miniMessage().deserialize(String.format("<dark_gray>[<gray>You <dark_gray>-> %s<gray>%s<dark_gray>]: <gray>%s", recipientPrefix, lastSenderUsername, message));
             sender.sendMessage(senderMsg);
             return;
         }
 
-        sender.sendMessage(plugin.getPrefix().append(Component.text("You have no one to reply to.", NamedTextColor.RED)));
+        sender.sendMessage(plugin.getPrefix(sender).append(Component.text("You have no one to reply to.", NamedTextColor.RED)));
     }
 
     @Override

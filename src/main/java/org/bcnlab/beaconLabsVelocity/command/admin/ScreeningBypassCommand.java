@@ -29,12 +29,12 @@ public class ScreeningBypassCommand implements SimpleCommand {
         String[] args = invocation.arguments();
 
         if (!source.hasPermission("beaconlabs.admin.bypassscreening")) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("You don't have permission.", NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("You don't have permission.", NamedTextColor.RED)));
             return;
         }
 
         if (screeningService == null) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("Screening service is not enabled.", NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("Screening service is not enabled.", NamedTextColor.RED)));
             return;
         }
 
@@ -43,13 +43,13 @@ public class ScreeningBypassCommand implements SimpleCommand {
             if (source instanceof Player) {
                 target = (Player) source;
             } else {
-                source.sendMessage(plugin.getPrefix().append(Component.text("Usage: /scb <player>", NamedTextColor.RED)));
+                source.sendMessage(plugin.getPrefix(source).append(Component.text("Usage: /scb <player>", NamedTextColor.RED)));
                 return;
             }
         } else {
             Optional<Player> p = server.getPlayer(args[0]);
             if (p.isEmpty()) {
-                source.sendMessage(plugin.getPrefix().append(Component.text("Player not found.", NamedTextColor.RED)));
+                source.sendMessage(plugin.getPrefix(source).append(Component.text("Player not found.", NamedTextColor.RED)));
                 return;
             }
             target = p.get();
@@ -58,7 +58,7 @@ public class ScreeningBypassCommand implements SimpleCommand {
         screeningService.bypassScreening(target);
         
         if (source != target) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("Bypassed screening for " + target.getUsername() + ".", NamedTextColor.GREEN)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("Bypassed screening for " + target.getUsername() + ".", NamedTextColor.GREEN)));
         }
     }
 }

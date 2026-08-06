@@ -48,7 +48,7 @@ public class MaintenanceService {
     public void loadConfig() {
         // Default values
         kickMessage = "&cServer is currently under maintenance. Please check back later.";
-        maintenanceMOTD = "<red><bold>MAINTENANCE MODE</bold></red> <dark_gray>|</dark_gray> <gray>Back soon!</gray>\n<yellow>We're working on improvements</yellow>";
+        maintenanceMOTD = "<red><bold>MAINTENANCE MODE</bold></red> <dark_gray>|</dark_gray> <gray>Back soon!</gray>\n<gold>We're working on improvements</gold>";
         requiredPermission = "beaconlabs.maintenance.bypass";
         
         // Get values from config
@@ -393,7 +393,7 @@ public class MaintenanceService {
                     plugin.getConfig().node("maintenance", "motd", "line2").set(lines[1]);
                 } else {
                     // Default second line if not provided
-                    plugin.getConfig().node("maintenance", "motd", "line2").set("<yellow>We're working on improvements</yellow>");
+                    plugin.getConfig().node("maintenance", "motd", "line2").set("<gold>We're working on improvements</gold>");
                 }
                 
                 // Save using plugin's method to preserve formatting

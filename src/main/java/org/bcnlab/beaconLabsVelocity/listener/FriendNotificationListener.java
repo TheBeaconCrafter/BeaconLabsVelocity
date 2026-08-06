@@ -24,9 +24,9 @@ public class FriendNotificationListener {
         // Notify local friends
         plugin.getServer().getAllPlayers().forEach(onlinePlayer -> {
             if (plugin.getFriendService().areFriends(onlinePlayer.getUniqueId(), player.getUniqueId())) {
-                onlinePlayer.sendMessage(plugin.getPrefix().append(Component.text("Friend ", NamedTextColor.YELLOW))
+                onlinePlayer.sendMessage(plugin.getPrefix().append(Component.text("Friend ", NamedTextColor.GOLD))
                         .append(Component.text(player.getUsername(), NamedTextColor.GREEN))
-                        .append(Component.text(" has joined the network.", NamedTextColor.YELLOW)));
+                        .append(Component.text(" has joined the network.", NamedTextColor.GOLD)));
             }
         });
 
@@ -39,7 +39,7 @@ public class FriendNotificationListener {
         // Notify player if they have pending requests
         int pendingCount = plugin.getFriendService().getPendingRequests(player.getUniqueId()).size();
         if (pendingCount > 0) {
-            player.sendMessage(plugin.getPrefix().append(Component.text("You have " + pendingCount + " pending friend request(s)! Use /friend requests to view.", NamedTextColor.YELLOW)));
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("You have " + pendingCount + " pending friend request(s)! Use /friend requests to view.", NamedTextColor.GOLD)));
         }
     }
 
@@ -50,9 +50,9 @@ public class FriendNotificationListener {
         // Notify local friends
         plugin.getServer().getAllPlayers().forEach(onlinePlayer -> {
             if (plugin.getFriendService().areFriends(onlinePlayer.getUniqueId(), player.getUniqueId())) {
-                onlinePlayer.sendMessage(plugin.getPrefix().append(Component.text("Friend ", NamedTextColor.YELLOW))
+                onlinePlayer.sendMessage(plugin.getPrefix().append(Component.text("Friend ", NamedTextColor.GOLD))
                         .append(Component.text(player.getUsername(), NamedTextColor.GREEN))
-                        .append(Component.text(" has left the network.", NamedTextColor.YELLOW)));
+                        .append(Component.text(" has left the network.", NamedTextColor.GOLD)));
             }
         });
 

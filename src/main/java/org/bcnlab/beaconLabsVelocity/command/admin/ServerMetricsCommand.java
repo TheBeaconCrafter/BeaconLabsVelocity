@@ -35,7 +35,7 @@ public class ServerMetricsCommand implements SimpleCommand {
         
         // Check permission
         if (!source.hasPermission(permission)) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("You don't have permission to use this command.", NamedTextColor.RED)
             ));
             return;
@@ -74,31 +74,31 @@ public class ServerMetricsCommand implements SimpleCommand {
         // Build the message
         Component message = Component.empty()
             .append(header).append(Component.newline())
-            .append(Component.text("OS: ", NamedTextColor.YELLOW))
-            .append(Component.text(osName + " " + osVersion + " (" + osArch + ")", NamedTextColor.WHITE))
-            .append(Component.newline())            .append(Component.text("CPU: ", NamedTextColor.YELLOW))
+            .append(Component.text("OS: ", NamedTextColor.GOLD))
+            .append(Component.text(osName + " " + osVersion + " (" + osArch + ")", NamedTextColor.GRAY))
+            .append(Component.newline())            .append(Component.text("CPU: ", NamedTextColor.GOLD))
             .append(Component.text(df.format(cpuLoad) + "% ", getCpuLoadColor(cpuLoad)))
-            .append(Component.text("(" + availableProcessors + " cores)", NamedTextColor.WHITE))
+            .append(Component.text("(" + availableProcessors + " cores)", NamedTextColor.GRAY))
             .append(Component.newline())
-            .append(Component.text("JVM Memory: ", NamedTextColor.YELLOW))
+            .append(Component.text("JVM Memory: ", NamedTextColor.GOLD))
             .append(Component.text(usedMemory + "MB / " + maxMemory + "MB ", getMemoryLoadColor(usedMemory, maxMemory)))
-            .append(Component.text("(" + df.format((double)usedMemory / maxMemory * 100) + "%)", NamedTextColor.WHITE))
+            .append(Component.text("(" + df.format((double)usedMemory / maxMemory * 100) + "%)", NamedTextColor.GRAY))
             .append(Component.newline())
-            .append(Component.text("System Memory: ", NamedTextColor.YELLOW))
+            .append(Component.text("System Memory: ", NamedTextColor.GOLD))
             .append(Component.text(systemMemory.getUsedFormatted() + " / " + systemMemory.getTotalFormatted() + " ", 
                     getMemoryLoadColor(systemMemory.getUsedMB(), systemMemory.getTotalMB())))
-            .append(Component.text("(" + df.format(systemMemory.getUsedPercentage()) + "%)", NamedTextColor.WHITE))
+            .append(Component.text("(" + df.format(systemMemory.getUsedPercentage()) + "%)", NamedTextColor.GRAY))
             .append(Component.newline())
-            .append(Component.text("Disk: ", NamedTextColor.YELLOW))
-            .append(Component.text(diskUsage, NamedTextColor.WHITE))
+            .append(Component.text("Disk: ", NamedTextColor.GOLD))
+            .append(Component.text(diskUsage, NamedTextColor.GRAY))
             .append(Component.newline())
-            .append(Component.text("JVM Uptime: ", NamedTextColor.YELLOW))
-            .append(Component.text(formattedUptime, NamedTextColor.WHITE))
+            .append(Component.text("JVM Uptime: ", NamedTextColor.GOLD))
+            .append(Component.text(formattedUptime, NamedTextColor.GRAY))
             .append(Component.newline())
-            .append(Component.text("Java Version: ", NamedTextColor.YELLOW))
-            .append(Component.text(System.getProperty("java.version"), NamedTextColor.WHITE));
+            .append(Component.text("Java Version: ", NamedTextColor.GOLD))
+            .append(Component.text(System.getProperty("java.version"), NamedTextColor.GRAY));
         
-        source.sendMessage(plugin.getPrefix().append(message));
+        source.sendMessage(plugin.getPrefix(source).append(message));
     }
     
     /**
@@ -197,7 +197,7 @@ public class ServerMetricsCommand implements SimpleCommand {
         if (load < 50) {
             return NamedTextColor.GREEN;
         } else if (load < 80) {
-            return NamedTextColor.YELLOW;
+            return NamedTextColor.GOLD;
         } else {
             return NamedTextColor.RED;
         }
@@ -215,7 +215,7 @@ public class ServerMetricsCommand implements SimpleCommand {
         if (percentage < 60) {
             return NamedTextColor.GREEN;
         } else if (percentage < 85) {
-            return NamedTextColor.YELLOW;
+            return NamedTextColor.GOLD;
         } else {
             return NamedTextColor.RED;
         }

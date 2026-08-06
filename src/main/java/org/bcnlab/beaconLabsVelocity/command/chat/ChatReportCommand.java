@@ -40,12 +40,12 @@ public class ChatReportCommand implements SimpleCommand {
         String[] args = invocation.arguments();
 
         if (args.length != 1) {
-            sender.sendMessage(plugin.getPrefix().append(Component.text("Usage: /chatreport <player>", NamedTextColor.RED)));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Usage: /chatreport <player>", NamedTextColor.RED)));
             return;
         }
 
         String targetName = args[0];
-        sender.sendMessage(plugin.getPrefix().append(Component.text("Gathering chat logs...")));
+        sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Gathering chat logs...")));
 
         long startTime = System.nanoTime();
 
@@ -53,12 +53,12 @@ public class ChatReportCommand implements SimpleCommand {
         try {
             playerId = getUUIDFromPlayerName(targetName);
             if (playerId == null) {
-                sender.sendMessage(plugin.getPrefix().append(Component.text("Player " + targetName + " does not exist or is not online.")));
+                sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Player " + targetName + " does not exist or is not online.")));
                 return;
             }
         } catch (Exception e) {
             e.printStackTrace();
-            sender.sendMessage(plugin.getPrefix().append(Component.text("Failed to retrieve player UUID.")));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Failed to retrieve player UUID.")));
             return;
         }
 
@@ -67,11 +67,11 @@ public class ChatReportCommand implements SimpleCommand {
                 && plugin.getCrossProxyService().getPlayerProxy(playerId) != null) {
             String reporterName = sender instanceof Player ? ((Player) sender).getUsername() : "Console";
             plugin.getCrossProxyService().publishChatReportRequest(playerId, targetName, reporterName);
-            sender.sendMessage(plugin.getPrefix().append(Component.text("Requesting chat log from the proxy where " + targetName + " is connected. You will receive the link when it's ready.", NamedTextColor.YELLOW)));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Requesting chat log from the proxy where " + targetName + " is connected. You will receive the link when it's ready.", NamedTextColor.GOLD)));
             return;
         }
         if (!targetOnThisProxy) {
-            sender.sendMessage(plugin.getPrefix().append(Component.text("Player " + targetName + " is not online on the network.")));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Player " + targetName + " is not online on the network.")));
             return;
         }
 
@@ -80,7 +80,7 @@ public class ChatReportCommand implements SimpleCommand {
             chatLog = chatLogger.readChatLog(playerId);
         } catch (IOException e) {
             e.printStackTrace();
-            sender.sendMessage(plugin.getPrefix().append(Component.text("Failed to retrieve chat logs.")));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Failed to retrieve chat logs.")));
             return;
         }
 
@@ -89,7 +89,7 @@ public class ChatReportCommand implements SimpleCommand {
             pasteLink = uploadToPastebinWithFallback(chatLog);
         } catch (IOException e) {
             e.printStackTrace();
-            sender.sendMessage(plugin.getPrefix().append(Component.text("Failed to upload chat logs.")));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Failed to upload chat logs.")));
             return;
         }
 
@@ -98,9 +98,9 @@ public class ChatReportCommand implements SimpleCommand {
 
         Component linkMessage = Component.text()
                 .append(plugin.getPrefix())
-                .append(Component.text("Chat log for ", NamedTextColor.WHITE))
+                .append(Component.text("Chat log for ", NamedTextColor.GRAY))
                 .append(Component.text(targetName, NamedTextColor.GOLD))
-                .append(Component.text(" has been uploaded. ", NamedTextColor.WHITE))
+                .append(Component.text(" has been uploaded. ", NamedTextColor.GRAY))
                 .append(Component.text("[Click here to view]", NamedTextColor.BLUE)
                         .clickEvent(ClickEvent.openUrl(pasteLink)))
                 .append(Component.text(" (Took " + durationMillis + "ms)", NamedTextColor.GRAY))

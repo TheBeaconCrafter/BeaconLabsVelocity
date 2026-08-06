@@ -35,7 +35,7 @@ public class ServerGuardListener {
             Component message = plugin.getPrefix().append(
                 Component.text("You don't have permission to access ", NamedTextColor.RED)
             ).append(
-                Component.text(targetServerName, NamedTextColor.YELLOW)
+                Component.text(targetServerName, NamedTextColor.GOLD)
             );
             
             // Add permission info if available

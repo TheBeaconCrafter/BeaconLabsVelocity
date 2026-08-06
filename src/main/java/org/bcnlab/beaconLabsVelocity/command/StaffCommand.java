@@ -37,7 +37,7 @@ public class StaffCommand implements SimpleCommand {
         CommandSource source = invocation.source();
 
         if (!source.hasPermission(PERMISSION)) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                     Component.text("You don't have permission to use this command.", NamedTextColor.RED)));
             return;
         }
@@ -67,7 +67,7 @@ public class StaffCommand implements SimpleCommand {
                             .append(Component.text("]", NamedTextColor.DARK_GRAY));
                     if (multiProxy) {
                         staffList = staffList.append(Component.text(" (", NamedTextColor.DARK_GRAY))
-                                .append(Component.text(proxyId, NamedTextColor.AQUA))
+                                .append(Component.text(proxyId, NamedTextColor.GOLD))
                                 .append(Component.text(")", NamedTextColor.DARK_GRAY));
                     }
                     hasStaff = true;
@@ -98,10 +98,10 @@ public class StaffCommand implements SimpleCommand {
 
         if (!hasStaff) {
             staffList = staffList.append(Component.newline())
-                    .append(Component.text(" No staff members are currently online.", NamedTextColor.YELLOW));
+                    .append(Component.text(" No staff members are currently online.", NamedTextColor.GOLD));
         }
 
-        source.sendMessage(plugin.getPrefix().append(staffList));
+        source.sendMessage(plugin.getPrefix(source).append(staffList));
     }
 
     /** Display name for a staff member on another proxy (prefix from Redis + username). */
@@ -112,7 +112,7 @@ public class StaffCommand implements SimpleCommand {
                 return ColorParser.parse(prefix).append(Component.text(username));
             } catch (Exception ignored) { }
         }
-        return Component.text(username, NamedTextColor.AQUA);
+        return Component.text(username, NamedTextColor.GOLD);
     }
 
     /** Get the display name of a local player (LuckPerms prefix + role color). */
@@ -132,11 +132,11 @@ public class StaffCommand implements SimpleCommand {
             } else if (player.hasPermission("beaconlabs.visual.mod")) {
                 return Component.text(player.getUsername(), NamedTextColor.GOLD);
             } else {
-                return Component.text(player.getUsername(), NamedTextColor.AQUA);
+                return Component.text(player.getUsername(), NamedTextColor.GOLD);
             }
         } catch (Exception e) {
             plugin.getLogger().warn("Failed to get LuckPerms prefix for player {}: {}", player.getUsername(), e.getMessage());
-            return Component.text(player.getUsername(), NamedTextColor.AQUA);
+            return Component.text(player.getUsername(), NamedTextColor.GOLD);
         }
     }
 

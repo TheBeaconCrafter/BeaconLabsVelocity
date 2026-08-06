@@ -110,7 +110,7 @@ public class IpsCommand implements SimpleCommand {
         
         Component header = Component.text()
             .append(Component.text("✦ ", NamedTextColor.GOLD))
-            .append(Component.text("IP HISTORY: ", NamedTextColor.YELLOW)
+            .append(Component.text("IP HISTORY: ", NamedTextColor.GOLD)
                 .decorate(TextDecoration.BOLD))
             .append(Component.text(playerName, NamedTextColor.GOLD)
                 .decorate(TextDecoration.BOLD))
@@ -153,7 +153,7 @@ public class IpsCommand implements SimpleCommand {
             timestamps.sort(Collections.reverseOrder());
             
             // Create IP component with copy functionality
-            Component ipComponent = Component.text(ipAddress, NamedTextColor.WHITE)
+            Component ipComponent = Component.text(ipAddress, NamedTextColor.GRAY)
                 .clickEvent(ClickEvent.copyToClipboard(ipAddress))
                 .hoverEvent(HoverEvent.showText(Component.text("Click to copy IP address", NamedTextColor.GRAY)));
               // Format main entry with IP and latest date
@@ -178,10 +178,10 @@ public class IpsCommand implements SimpleCommand {
             src.sendMessage(Component.text()
                 .append(Component.text(count + ". ", NamedTextColor.GOLD)
                     .clickEvent(ClickEvent.runCommand("/ipinfo " + ipAddress))
-                    .hoverEvent(HoverEvent.showText(Component.text("Click to run /ipinfo", NamedTextColor.YELLOW))))
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to run /ipinfo", NamedTextColor.GOLD))))
                 .append(ipComponent)
                 .append(Component.text(" - Last seen: ", NamedTextColor.DARK_GRAY))
-                .append(Component.text(latestDateStr, NamedTextColor.AQUA))
+                .append(Component.text(latestDateStr, NamedTextColor.GOLD))
                 .append(!subnetInfo.isEmpty() ? 
                     Component.text(subnetInfo, NamedTextColor.DARK_GREEN)
                     : Component.empty())
@@ -198,7 +198,7 @@ public class IpsCommand implements SimpleCommand {
                 for (int i = 0; i < displayLimit; i++) {
                     Date timestamp = new Date(timestamps.get(i));
                     String dateStr = DATE_FORMAT.format(timestamp);
-                    dateComponents.add(Component.text(dateStr, NamedTextColor.WHITE));
+                    dateComponents.add(Component.text(dateStr, NamedTextColor.GRAY));
                 }
                   // Join with commas
                 Component historyComponent = null;
@@ -245,7 +245,7 @@ public class IpsCommand implements SimpleCommand {
                     src.sendMessage(Component.empty());
                     src.sendMessage(Component.text()
                         .append(Component.text("⚠ ", NamedTextColor.GOLD))
-                        .append(Component.text("Notice: ", NamedTextColor.YELLOW).decorate(TextDecoration.BOLD))
+                        .append(Component.text("Notice: ", NamedTextColor.GOLD).decorate(TextDecoration.BOLD))
                         .append(Component.text("This player has connected from multiple different subnets", 
                                 NamedTextColor.GOLD))
                         .build());
@@ -256,7 +256,7 @@ public class IpsCommand implements SimpleCommand {
         // Add total count at the bottom
         src.sendMessage(Component.empty());
         src.sendMessage(Component.text()
-            .append(Component.text("Total unique IPs: ", NamedTextColor.YELLOW))
+            .append(Component.text("Total unique IPs: ", NamedTextColor.GOLD))
             .append(Component.text(ipGroups.size(), NamedTextColor.GREEN))
             .build());
         

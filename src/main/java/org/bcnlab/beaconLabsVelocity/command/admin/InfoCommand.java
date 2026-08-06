@@ -83,7 +83,7 @@ public class InfoCommand implements SimpleCommand {
         
         Component playerHeader = Component.text()
             .append(Component.text("✦ ", NamedTextColor.GOLD))
-            .append(Component.text("PLAYER INFO: ", NamedTextColor.YELLOW)
+            .append(Component.text("PLAYER INFO: ", NamedTextColor.GOLD)
                 .decorate(TextDecoration.BOLD))
             .append(Component.text(targetName, NamedTextColor.GOLD)
                 .decorate(TextDecoration.BOLD))
@@ -93,15 +93,15 @@ public class InfoCommand implements SimpleCommand {
 
         if (isNickname && optionalTarget.isPresent()) {
             src.sendMessage(Component.text("  (Playing as nick: ", NamedTextColor.GRAY)
-                .append(Component.text(targetName, NamedTextColor.YELLOW))
+                .append(Component.text(targetName, NamedTextColor.GOLD))
                 .append(Component.text(", Real name: ", NamedTextColor.GRAY))
-                .append(Component.text(optionalTarget.get().getUsername(), NamedTextColor.YELLOW))
+                .append(Component.text(optionalTarget.get().getUsername(), NamedTextColor.GOLD))
                 .append(Component.text(")", NamedTextColor.GRAY)));
         } else if (!isNickname && optionalTarget.isPresent() && plugin.getVisualStateListener() != null) {
             String nick = plugin.getVisualStateListener().getNickname(optionalTarget.get().getUniqueId());
             if (nick != null) {
                 src.sendMessage(Component.text("  (Currently nicked as: ", NamedTextColor.GRAY)
-                    .append(Component.text(nick, NamedTextColor.YELLOW))
+                    .append(Component.text(nick, NamedTextColor.GOLD))
                     .append(Component.text(")", NamedTextColor.GRAY)));
             }
         }
@@ -112,7 +112,7 @@ public class InfoCommand implements SimpleCommand {
             UUID uuid = target.getUniqueId();
             
             // Separator for profile section
-            src.sendMessage(Component.text("» PROFILE", NamedTextColor.AQUA)
+            src.sendMessage(Component.text("» PROFILE", NamedTextColor.GOLD)
                 .decorate(TextDecoration.BOLD));
             
             // Send player info in an organized way
@@ -126,8 +126,8 @@ public class InfoCommand implements SimpleCommand {
             // Send connection info
             sendConnectionInfo(src, target);
             if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
-                src.sendMessage(Component.text("Proxy: ", NamedTextColor.YELLOW)
-                        .append(Component.text(plugin.getCrossProxyService().getProxyId(), NamedTextColor.AQUA)));
+                src.sendMessage(Component.text("Proxy: ", NamedTextColor.GOLD)
+                        .append(Component.text(plugin.getCrossProxyService().getProxyId(), NamedTextColor.GOLD)));
             }
 
             // Separator for punishment section
@@ -175,12 +175,12 @@ public class InfoCommand implements SimpleCommand {
 
                 if (onlineProxyId != null) {
                     src.sendMessage(Component.text("● Online on proxy: ", NamedTextColor.GREEN)
-                            .append(Component.text(onlineProxyId, NamedTextColor.AQUA).decorate(TextDecoration.BOLD)));
+                            .append(Component.text(onlineProxyId, NamedTextColor.GOLD).decorate(TextDecoration.BOLD)));
                     String currentServer = (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled())
                             ? plugin.getCrossProxyService().getPlayerCurrentServer(effectivePlayerName) : null;
                     if (currentServer != null && !currentServer.isEmpty()) {
-                        src.sendMessage(Component.text("Server: ", NamedTextColor.YELLOW)
-                                .append(Component.text(currentServer, NamedTextColor.AQUA)
+                        src.sendMessage(Component.text("Server: ", NamedTextColor.GOLD)
+                                .append(Component.text(currentServer, NamedTextColor.GOLD)
                                         .clickEvent(ClickEvent.runCommand("/server " + currentServer))
                                         .hoverEvent(HoverEvent.showText(Component.text("Click to connect to this server", NamedTextColor.GRAY)))));
                     }
@@ -189,36 +189,36 @@ public class InfoCommand implements SimpleCommand {
                 }
 
                 // Show offline player profile
-                src.sendMessage(Component.text("» PROFILE", NamedTextColor.AQUA)
+                src.sendMessage(Component.text("» PROFILE", NamedTextColor.GOLD)
                     .decorate(TextDecoration.BOLD));
                   // Show UUID
                 Component uuidComponent = Component.text()
-                    .append(Component.text("UUID: ", NamedTextColor.YELLOW))
-                    .append(Component.text(offlineUuid.toString(), NamedTextColor.WHITE)
+                    .append(Component.text("UUID: ", NamedTextColor.GOLD))
+                    .append(Component.text(offlineUuid.toString(), NamedTextColor.GRAY)
                         .clickEvent(ClickEvent.copyToClipboard(offlineUuid.toString()))
                         .hoverEvent(HoverEvent.showText(Component.text("Click to copy UUID", NamedTextColor.GRAY))))
                     .build();
                 src.sendMessage(uuidComponent);
 
                 // Show username (canonical name)
-                src.sendMessage(Component.text("Username: ", NamedTextColor.YELLOW)
-                    .append(Component.text(effectivePlayerName, NamedTextColor.WHITE)));
+                src.sendMessage(Component.text("Username: ", NamedTextColor.GOLD)
+                    .append(Component.text(effectivePlayerName, NamedTextColor.GRAY)));
 
                   // Show playtime for offline player
                 long playtimeMs = playerStatsService.getPlayerPlaytime(offlineUuid);
                 String formattedPlaytime = PlayerStatsService.formatPlaytime(playtimeMs);
-                src.sendMessage(Component.text("Playtime: ", NamedTextColor.YELLOW)
-                    .append(Component.text(formattedPlaytime, NamedTextColor.WHITE)));
+                src.sendMessage(Component.text("Playtime: ", NamedTextColor.GOLD)
+                    .append(Component.text(formattedPlaytime, NamedTextColor.GRAY)));
                 
                 // Show last seen information for offline player
                 long lastSeenTime = playerStatsService.getLastSeenTime(offlineUuid);
                 if (lastSeenTime > 0) {
                     Date lastSeenDate = new Date(lastSeenTime);
                     String lastSeenStr = DATE_FORMAT.format(lastSeenDate);
-                    src.sendMessage(Component.text("Last seen: ", NamedTextColor.YELLOW)
-                        .append(Component.text(lastSeenStr, NamedTextColor.WHITE)));
+                    src.sendMessage(Component.text("Last seen: ", NamedTextColor.GOLD)
+                        .append(Component.text(lastSeenStr, NamedTextColor.GRAY)));
                 } else {
-                    src.sendMessage(Component.text("Last seen: ", NamedTextColor.YELLOW)
+                    src.sendMessage(Component.text("Last seen: ", NamedTextColor.GOLD)
                         .append(Component.text("Unknown", NamedTextColor.GRAY)));
                 }
                 
@@ -232,7 +232,7 @@ public class InfoCommand implements SimpleCommand {
                         src.sendMessage(Component.empty());
                         
                         // Make the title clickable to run /ipinfo <player>
-                        src.sendMessage(Component.text("Last Known IPs: ", NamedTextColor.YELLOW)
+                        src.sendMessage(Component.text("Last Known IPs: ", NamedTextColor.GOLD)
                             .decorate(TextDecoration.UNDERLINED)
                             .clickEvent(ClickEvent.runCommand("/ipinfo " + effectivePlayerName))
                             .hoverEvent(HoverEvent.showText(Component.text("Click to run /ipinfo for more details", NamedTextColor.GRAY))));
@@ -246,7 +246,7 @@ public class InfoCommand implements SimpleCommand {
                             Date timestamp = new Date(entry.getTimestamp());
                             String dateStr = DATE_FORMAT.format(timestamp);
                             
-                            Component historyComponent = Component.text("  " + historyIp, NamedTextColor.WHITE)
+                            Component historyComponent = Component.text("  " + historyIp, NamedTextColor.GRAY)
                                 .clickEvent(ClickEvent.copyToClipboard(historyIp))
                                 .hoverEvent(HoverEvent.showText(Component.text("Click to copy IP", NamedTextColor.GRAY)));
                             
@@ -272,7 +272,7 @@ public class InfoCommand implements SimpleCommand {
                                 
                             for (PlayerStatsService.PlayerData player : playersWithSameIp) {
                                 boolean isOnline = server.getPlayer(player.getPlayerId()).isPresent();
-                                NamedTextColor nameColor = isOnline ? NamedTextColor.GREEN : NamedTextColor.WHITE;
+                                NamedTextColor nameColor = isOnline ? NamedTextColor.GREEN : NamedTextColor.GRAY;
                                 TextDecoration nameDeco = isOnline ? TextDecoration.BOLD : null;
                                 
                                 Component playerComp = Component.text(player.getPlayerName(), nameColor);
@@ -283,7 +283,7 @@ public class InfoCommand implements SimpleCommand {
                                 Component entry = Component.text("  • ", NamedTextColor.GRAY)
                                     .append(playerComp
                                         .clickEvent(ClickEvent.runCommand("/info " + player.getPlayerName()))
-                                        .hoverEvent(HoverEvent.showText(Component.text("Click to view player info", NamedTextColor.YELLOW)))
+                                        .hoverEvent(HoverEvent.showText(Component.text("Click to view player info", NamedTextColor.GOLD)))
                                     );
                                     
                                 // Add online/offline status
@@ -305,13 +305,13 @@ public class InfoCommand implements SimpleCommand {
                     src.sendMessage(Component.empty());
                     src.sendMessage(Component.text("» CONNECTION", NamedTextColor.GREEN)
                             .decorate(TextDecoration.BOLD));
-                    src.sendMessage(Component.text("Proxy: ", NamedTextColor.YELLOW)
-                            .append(Component.text(onlineProxyId, NamedTextColor.AQUA)));
+                    src.sendMessage(Component.text("Proxy: ", NamedTextColor.GOLD)
+                            .append(Component.text(onlineProxyId, NamedTextColor.GOLD)));
                 } else if (lastProxy != null) {
                     src.sendMessage(Component.empty());
                     src.sendMessage(Component.text("» CONNECTION", NamedTextColor.GREEN)
                             .decorate(TextDecoration.BOLD));
-                    src.sendMessage(Component.text("Last Proxy: ", NamedTextColor.YELLOW)
+                    src.sendMessage(Component.text("Last Proxy: ", NamedTextColor.GOLD)
                             .append(Component.text(lastProxy, NamedTextColor.GRAY)));
                 }
 
@@ -346,8 +346,8 @@ public class InfoCommand implements SimpleCommand {
         
         // UUID with clickable copy in modern format
         Component uuidComponent = Component.text()
-            .append(Component.text("UUID: ", NamedTextColor.YELLOW))
-            .append(Component.text(uuid.toString(), NamedTextColor.WHITE)
+            .append(Component.text("UUID: ", NamedTextColor.GOLD))
+            .append(Component.text(uuid.toString(), NamedTextColor.GRAY)
                 .clickEvent(ClickEvent.copyToClipboard(uuid.toString()))
                 .hoverEvent(HoverEvent.showText(Component.text("Click to copy UUID", NamedTextColor.GRAY))))
             .build();
@@ -357,21 +357,21 @@ public class InfoCommand implements SimpleCommand {
         String accountIcon = target.isOnlineMode() ? "✓ " : "✗ ";
         NamedTextColor accountColor = target.isOnlineMode() ? NamedTextColor.GREEN : NamedTextColor.GOLD;
         
-        src.sendMessage(Component.text("Account: ", NamedTextColor.YELLOW)
+        src.sendMessage(Component.text("Account: ", NamedTextColor.GOLD)
             .append(Component.text(accountIcon + (target.isOnlineMode() ? "Premium" : "Non-Premium"), accountColor)));
           
         // Protocol with elegant formatting
-        src.sendMessage(Component.text("Version: ", NamedTextColor.YELLOW)
-            .append(Component.text("Protocol " + target.getProtocolVersion().getProtocol(), NamedTextColor.WHITE)));
+        src.sendMessage(Component.text("Version: ", NamedTextColor.GOLD)
+            .append(Component.text("Protocol " + target.getProtocolVersion().getProtocol(), NamedTextColor.GRAY)));
           // Playtime information
         long playtimeMs = playerStatsService.getPlayerPlaytime(uuid);
         String formattedPlaytime = PlayerStatsService.formatPlaytime(playtimeMs);
         
-        src.sendMessage(Component.text("Playtime: ", NamedTextColor.YELLOW)
-            .append(Component.text(formattedPlaytime, NamedTextColor.WHITE)));
+        src.sendMessage(Component.text("Playtime: ", NamedTextColor.GOLD)
+            .append(Component.text(formattedPlaytime, NamedTextColor.GRAY)));
             
         // Last seen information - for online players, this is "Online now"
-        src.sendMessage(Component.text("Last seen: ", NamedTextColor.YELLOW)
+        src.sendMessage(Component.text("Last seen: ", NamedTextColor.GOLD)
             .append(Component.text("Online now", NamedTextColor.GREEN)
                 .decorate(TextDecoration.ITALIC)));
     }
@@ -382,12 +382,12 @@ public class InfoCommand implements SimpleCommand {
         // Current server with interactive component
         target.getCurrentServer().ifPresentOrElse(serverConnection -> {
             String serverName = serverConnection.getServer().getServerInfo().getName();
-            src.sendMessage(Component.text("Server: ", NamedTextColor.YELLOW)
-                .append(Component.text(serverName, NamedTextColor.AQUA)
+            src.sendMessage(Component.text("Server: ", NamedTextColor.GOLD)
+                .append(Component.text(serverName, NamedTextColor.GOLD)
                     .clickEvent(ClickEvent.runCommand("/server " + serverName))
                     .hoverEvent(HoverEvent.showText(Component.text("Click to connect to this server", NamedTextColor.GRAY)))));
         }, () -> {
-            src.sendMessage(Component.text("Server: ", NamedTextColor.YELLOW)
+            src.sendMessage(Component.text("Server: ", NamedTextColor.GOLD)
                 .append(Component.text("Not connected", NamedTextColor.RED)));
         });
         
@@ -395,7 +395,7 @@ public class InfoCommand implements SimpleCommand {
         InetSocketAddress address = target.getRemoteAddress();
         String ipAddress = (address != null) ? address.getAddress().getHostAddress() : "Unknown";
         
-        NamedTextColor infoColor = NamedTextColor.AQUA;
+        NamedTextColor infoColor = NamedTextColor.GOLD;
         if (plugin.getAntiBotService() != null) {
             java.util.Optional<org.bcnlab.beaconLabsVelocity.service.AntiBotService.IpCheckResult> cachedInfo = plugin.getAntiBotService().getCachedInfo(ipAddress);
             if (cachedInfo.isPresent()) {
@@ -403,25 +403,25 @@ public class InfoCommand implements SimpleCommand {
                 if (result.confidenceScore >= 90 || result.action == org.bcnlab.beaconLabsVelocity.service.AntiBotService.DefenseAction.BLOCK) {
                     infoColor = NamedTextColor.RED;
                 } else if (result.action == org.bcnlab.beaconLabsVelocity.service.AntiBotService.DefenseAction.SCREEN) {
-                    infoColor = NamedTextColor.YELLOW;
+                    infoColor = NamedTextColor.GOLD;
                 } else {
                     infoColor = NamedTextColor.GREEN;
                 }
             }
         }
 
-        Component ipComponent = Component.text("IP: ", NamedTextColor.YELLOW)
-            .append(Component.text(ipAddress, NamedTextColor.WHITE)
+        Component ipComponent = Component.text("IP: ", NamedTextColor.GOLD)
+            .append(Component.text(ipAddress, NamedTextColor.GRAY)
                 .clickEvent(ClickEvent.copyToClipboard(ipAddress))
                 .hoverEvent(HoverEvent.showText(Component.text("Click to copy IP address", NamedTextColor.GRAY))))
             .append(Component.text(" [ℹ]", infoColor)
                 .clickEvent(ClickEvent.runCommand("/ipinfo " + target.getUsername()))
-                .hoverEvent(HoverEvent.showText(Component.text("Click to view full IP info", NamedTextColor.YELLOW))));
+                .hoverEvent(HoverEvent.showText(Component.text("Click to view full IP info", NamedTextColor.GOLD))));
         src.sendMessage(ipComponent);
           // Client brand with fancy formatting
         String clientBrand = target.getClientBrand() != null ? target.getClientBrand() : "Unknown";
-        src.sendMessage(Component.text("Client: ", NamedTextColor.YELLOW)
-            .append(Component.text(clientBrand, NamedTextColor.WHITE)));
+        src.sendMessage(Component.text("Client: ", NamedTextColor.GOLD)
+            .append(Component.text(clientBrand, NamedTextColor.GRAY)));
         
         // Previous IP addresses (if admin has permission)
         if (src.hasPermission("beaconlabs.admin.viewips")) {
@@ -432,7 +432,7 @@ public class InfoCommand implements SimpleCommand {
             
             if (!ipHistory.isEmpty()) {
                 src.sendMessage(Component.empty());
-                src.sendMessage(Component.text("Previous IPs:", NamedTextColor.YELLOW)
+                src.sendMessage(Component.text("Previous IPs:", NamedTextColor.GOLD)
                     .decorate(TextDecoration.UNDERLINED)
                     .clickEvent(ClickEvent.runCommand("/ipinfo " + target.getUsername()))
                     .hoverEvent(HoverEvent.showText(Component.text("Click to run /ipinfo for more details", NamedTextColor.GRAY))));
@@ -446,7 +446,7 @@ public class InfoCommand implements SimpleCommand {
                     Date timestamp = new Date(entry.getTimestamp());
                     String dateStr = DATE_FORMAT.format(timestamp);
                     
-                    Component historyComponent = Component.text("  " + historyIp, NamedTextColor.WHITE)
+                    Component historyComponent = Component.text("  " + historyIp, NamedTextColor.GRAY)
                         .clickEvent(ClickEvent.copyToClipboard(historyIp))
                         .hoverEvent(HoverEvent.showText(Component.text("Click to copy IP", NamedTextColor.GRAY)));
                     
@@ -469,7 +469,7 @@ public class InfoCommand implements SimpleCommand {
             pingColor = NamedTextColor.DARK_GREEN;
             pingQuality = "Good";
         } else if (ping < 180) {
-            pingColor = NamedTextColor.YELLOW;
+            pingColor = NamedTextColor.GOLD;
             pingQuality = "Average";
         } else if (ping < 300) {
             pingColor = NamedTextColor.GOLD;
@@ -478,7 +478,7 @@ public class InfoCommand implements SimpleCommand {
             pingColor = NamedTextColor.RED;
             pingQuality = "Very Poor";
         }
-          src.sendMessage(Component.text("Ping: ", NamedTextColor.YELLOW)
+          src.sendMessage(Component.text("Ping: ", NamedTextColor.GOLD)
             .append(Component.text(ping + "ms ", pingColor))
             .append(Component.text("(" + pingQuality + ")", NamedTextColor.GRAY)));
               // Players with the same IP (if admin has permission)
@@ -498,7 +498,7 @@ public class InfoCommand implements SimpleCommand {
                         
                     for (PlayerStatsService.PlayerData player : playersWithSameIp) {
                         boolean isOnline = server.getPlayer(player.getPlayerId()).isPresent();
-                        NamedTextColor nameColor = isOnline ? NamedTextColor.GREEN : NamedTextColor.WHITE;
+                        NamedTextColor nameColor = isOnline ? NamedTextColor.GREEN : NamedTextColor.GRAY;
                         TextDecoration nameDeco = isOnline ? TextDecoration.BOLD : null;
                         
                         Component playerComp = Component.text(player.getPlayerName(), nameColor);
@@ -509,7 +509,7 @@ public class InfoCommand implements SimpleCommand {
                         Component entry = Component.text("  • ", NamedTextColor.GRAY)
                             .append(playerComp
                                 .clickEvent(ClickEvent.runCommand("/info " + player.getPlayerName()))
-                                .hoverEvent(HoverEvent.showText(Component.text("Click to view player info", NamedTextColor.YELLOW)))
+                                .hoverEvent(HoverEvent.showText(Component.text("Click to view player info", NamedTextColor.GOLD)))
                             );
                             
                         // Add online/offline status
@@ -539,12 +539,12 @@ public class InfoCommand implements SimpleCommand {
         String muteSymbol = muted ? "🔇 " : "✓ ";
         
         // Status with color coding
-        Component banStatus = Component.text("Ban: ", NamedTextColor.YELLOW)
+        Component banStatus = Component.text("Ban: ", NamedTextColor.GOLD)
             .append(banned ? 
                 Component.text(banSymbol + "BANNED", NamedTextColor.RED).decorate(TextDecoration.BOLD) : 
                 Component.text(banSymbol + "Not Banned", NamedTextColor.GREEN));
         
-        Component muteStatus = Component.text("Mute: ", NamedTextColor.YELLOW)
+        Component muteStatus = Component.text("Mute: ", NamedTextColor.GOLD)
             .append(muted ? 
                 Component.text(muteSymbol + "MUTED", NamedTextColor.RED).decorate(TextDecoration.BOLD) : 
                 Component.text(muteSymbol + "Not Muted", NamedTextColor.GREEN));
@@ -553,7 +553,7 @@ public class InfoCommand implements SimpleCommand {
         if (plugin.getAntiBotService() != null) {
             screened = plugin.getAntiBotService().hasPlayerBeenScreened(uuid);
         }
-        Component screenedStatus = Component.text("Screened: ", NamedTextColor.YELLOW)
+        Component screenedStatus = Component.text("Screened: ", NamedTextColor.GOLD)
             .append(screened ? 
                 Component.text("✓ Yes (Passed)", NamedTextColor.GREEN) : 
                 Component.text("✗ No", NamedTextColor.GRAY));
@@ -600,7 +600,7 @@ public class InfoCommand implements SimpleCommand {
                 // Type badge with appropriate color
                 NamedTextColor typeColor = record.type.equalsIgnoreCase("ban") ? NamedTextColor.DARK_RED : 
                                           record.type.equalsIgnoreCase("mute") ? NamedTextColor.GOLD : 
-                                          NamedTextColor.YELLOW;
+                                          NamedTextColor.GOLD;
                 
                 // Send punishment entry with better structure
                 src.sendMessage(Component.text()
@@ -609,28 +609,28 @@ public class InfoCommand implements SimpleCommand {
                     .build());
                 
                 src.sendMessage(Component.text()
-                    .append(Component.text("  Reason: ", NamedTextColor.YELLOW))
-                    .append(Component.text(record.reason, NamedTextColor.WHITE))
+                    .append(Component.text("  Reason: ", NamedTextColor.GOLD))
+                    .append(Component.text(record.reason, NamedTextColor.GRAY))
                     .build());
                 
                 src.sendMessage(Component.text()
-                    .append(Component.text("  Started: ", NamedTextColor.YELLOW))
-                    .append(Component.text(formattedDate, NamedTextColor.WHITE))
+                    .append(Component.text("  Started: ", NamedTextColor.GOLD))
+                    .append(Component.text(formattedDate, NamedTextColor.GRAY))
                     .build());
                 
                 src.sendMessage(Component.text()
-                    .append(Component.text("  Duration: ", NamedTextColor.YELLOW))
-                    .append(Component.text(duration, NamedTextColor.WHITE))
+                    .append(Component.text("  Duration: ", NamedTextColor.GOLD))
+                    .append(Component.text(duration, NamedTextColor.GRAY))
                     .build());
                 
                 src.sendMessage(Component.text()
-                    .append(Component.text("  Expires: ", NamedTextColor.YELLOW))
+                    .append(Component.text("  Expires: ", NamedTextColor.GOLD))
                     .append(Component.text(expiry, 
-                        record.duration > 0 ? NamedTextColor.WHITE : NamedTextColor.RED))
+                        record.duration > 0 ? NamedTextColor.GRAY : NamedTextColor.RED))
                     .build());
                 
                 src.sendMessage(Component.text()
-                    .append(Component.text("  Issued by: ", NamedTextColor.YELLOW))
+                    .append(Component.text("  Issued by: ", NamedTextColor.GOLD))
                     .append(Component.text(record.issuerName, NamedTextColor.LIGHT_PURPLE))
                     .build());
                 

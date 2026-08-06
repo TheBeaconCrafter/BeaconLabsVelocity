@@ -23,14 +23,14 @@ public class NicklistCommand implements SimpleCommand {
             return;
         }
 
-        source.sendMessage(Component.text("--- Nicked Players ---", NamedTextColor.AQUA));
+        source.sendMessage(Component.text("--- Nicked Players ---", NamedTextColor.GOLD));
         
         boolean found = false;
         for (Player p : plugin.getServer().getAllPlayers()) {
             String nick = plugin.getVisualStateListener().getNickname(p.getUniqueId());
             if (nick != null) {
                 source.sendMessage(Component.text(p.getUsername(), NamedTextColor.GRAY)
-                        .append(Component.text(" is nicked as ", NamedTextColor.YELLOW))
+                        .append(Component.text(" is nicked as ", NamedTextColor.GOLD))
                         .append(Component.text(nick, NamedTextColor.GREEN)));
                 found = true;
             }

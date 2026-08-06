@@ -47,8 +47,8 @@ public class ReportCommand implements SimpleCommand {
         
         // Check if the source is a player
         if (!(source instanceof Player)) {
-            source.sendMessage(plugin.getPrefix().append(
-                Component.text("Only players can report other players.", NamedTextColor.RED)
+            source.sendMessage(plugin.getPrefix(source).append(
+                Component.text("Only players can report other players.", NamedTextColor.GRAY)
             ));
             return;
         }
@@ -57,14 +57,29 @@ public class ReportCommand implements SimpleCommand {
         
         // Check for permission
         if (!player.hasPermission(PERMISSION)) {
-            player.sendMessage(plugin.getPrefix().append(
-                Component.text("You don't have permission to use this command.", NamedTextColor.RED)
+            player.sendMessage(plugin.getPrefix(player).append(
+                Component.text("You don't have permission to use this command.", NamedTextColor.GRAY)
             ));
             return;
         }
         
         // Check for proper usage
         if (args.length < 2) {
+            // Attempt to open GUI on backend
+            String target = args.length == 1 ? args[0] : "";
+            try {
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                java.io.DataOutputStream data = new java.io.DataOutputStream(out);
+                data.writeUTF("REPORT");
+                data.writeUTF(target);
+                
+                Optional<ServerConnection> connection = player.getCurrentServer();
+                if (connection.isPresent() && connection.get().sendPluginMessage(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:report_dialog"), out.toByteArray())) {
+                    return; // GUI will open on backend
+                }
+            } catch (Exception e) {}
+            
+            // Fallback to text usage
             sendUsage(player);
             return;
         }
@@ -74,8 +89,8 @@ public class ReportCommand implements SimpleCommand {
         
         // Check if player is reporting themselves
         if (targetName.equalsIgnoreCase(player.getUsername())) {
-            player.sendMessage(plugin.getPrefix().append(
-                Component.text("You cannot report yourself.", NamedTextColor.RED)
+            player.sendMessage(plugin.getPrefix(player).append(
+                Component.text("You cannot report yourself.", NamedTextColor.GRAY)
             ));
             return;
         }
@@ -86,15 +101,15 @@ public class ReportCommand implements SimpleCommand {
             || (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()
                 && plugin.getCrossProxyService().getPlayerCurrentServer(targetName) != null);
         if (!targetOnNetwork) {
-            player.sendMessage(plugin.getPrefix().append(
-                Component.text("Warning: ", NamedTextColor.YELLOW, TextDecoration.BOLD)
-                    .append(Component.text("The player you're reporting is not online. Your report will still be submitted.", NamedTextColor.YELLOW, TextDecoration.ITALIC))
+            player.sendMessage(plugin.getPrefix(player).append(
+                Component.text("Warning: ", NamedTextColor.GOLD, TextDecoration.BOLD)
+                    .append(Component.text("The player you're reporting is not online. Your report will still be submitted.", NamedTextColor.GOLD, TextDecoration.ITALIC))
             ));
         }
         
         // Check cooldown for this player
         if (isOnCooldown(player.getUniqueId().toString())) {
-            player.sendMessage(plugin.getPrefix().append(
+            player.sendMessage(plugin.getPrefix(player).append(
                 Component.text("You must wait before submitting another report.", NamedTextColor.RED)
             ));
             return;
@@ -136,7 +151,7 @@ public class ReportCommand implements SimpleCommand {
         ).thenAccept(reportId -> {
             if (reportId > 0) {
                 // Success
-                player.sendMessage(plugin.getPrefix().append(
+                player.sendMessage(plugin.getPrefix(player).append(
                     Component.text("Your report has been submitted. Report ID: ", NamedTextColor.GREEN)
                         .append(Component.text("#" + reportId, NamedTextColor.GOLD, TextDecoration.BOLD))
                 ));
@@ -152,7 +167,7 @@ public class ReportCommand implements SimpleCommand {
                 addCooldown(player.getUniqueId().toString());
             } else {
                 // Failed
-                player.sendMessage(plugin.getPrefix().append(
+                player.sendMessage(plugin.getPrefix(player).append(
                     Component.text("Failed to submit your report. Please try again later.", NamedTextColor.RED)
                 ));
             }
@@ -165,9 +180,9 @@ public class ReportCommand implements SimpleCommand {
      * @param player The player to send usage information to
      */
     private void sendUsage(Player player) {
-        player.sendMessage(plugin.getPrefix().append(
+        player.sendMessage(plugin.getPrefix(player).append(
             Component.text("Usage: ", NamedTextColor.GOLD)
-                .append(Component.text("/report <player> <reason>", NamedTextColor.YELLOW))
+                .append(Component.text("/report <player> <reason>", NamedTextColor.GOLD))
         ));
         player.sendMessage(Component.text("Report a player for breaking the rules.", NamedTextColor.GRAY));
         player.sendMessage(Component.text("Example: /report BadPlayer hacking in game", NamedTextColor.GRAY));
@@ -205,17 +220,17 @@ public class ReportCommand implements SimpleCommand {
         return Component.text("【REPORT】", NamedTextColor.RED, TextDecoration.BOLD)
             .append(Component.text(" New player report #" + reportId + ":", NamedTextColor.GOLD))
             .append(Component.newline())
-            .append(Component.text("  Reported: ", NamedTextColor.YELLOW))
-            .append(Component.text(reportedName, NamedTextColor.WHITE))
+            .append(Component.text("  Reported: ", NamedTextColor.GOLD))
+            .append(Component.text(reportedName, NamedTextColor.GRAY))
             .append(Component.newline())
-            .append(Component.text("  By: ", NamedTextColor.YELLOW))
-            .append(Component.text(reporterName, NamedTextColor.WHITE))
+            .append(Component.text("  By: ", NamedTextColor.GOLD))
+            .append(Component.text(reporterName, NamedTextColor.GRAY))
             .append(Component.newline())
-            .append(Component.text("  Server: ", NamedTextColor.YELLOW))
-            .append(Component.text(serverName, NamedTextColor.WHITE))
+            .append(Component.text("  Server: ", NamedTextColor.GOLD))
+            .append(Component.text(serverName, NamedTextColor.GRAY))
             .append(Component.newline())
-            .append(Component.text("  Reason: ", NamedTextColor.YELLOW))
-            .append(Component.text(reason, NamedTextColor.WHITE));
+            .append(Component.text("  Reason: ", NamedTextColor.GOLD))
+            .append(Component.text(reason, NamedTextColor.GRAY));
     }
 
     /** Notify local staff with reports.notify permission. */

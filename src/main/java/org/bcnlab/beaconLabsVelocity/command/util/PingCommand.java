@@ -35,9 +35,9 @@ public class PingCommand implements SimpleCommand {
             if (source instanceof Player player) {
                 long pingValue = player.getPing();
                 Component message = formatPingMessage(player.getUsername(), pingValue);
-                source.sendMessage(plugin.getPrefix().append(message));
+                source.sendMessage(plugin.getPrefix(source).append(message));
             } else {
-                source.sendMessage(plugin.getPrefix().append(Component.text("Usage: /ping <player>", NamedTextColor.RED)));
+                source.sendMessage(plugin.getPrefix(source).append(Component.text("Usage: /ping <player>", NamedTextColor.RED)));
             }
             return;
         }
@@ -46,19 +46,19 @@ public class PingCommand implements SimpleCommand {
         
         if (source instanceof Player && !((Player) source).getUsername().equalsIgnoreCase(targetName) &&
             !source.hasPermission("beaconlabs.command.ping.others")) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("You don't have permission to check other players' ping.", NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("You don't have permission to check other players' ping.", NamedTextColor.RED)));
             return;
         }
 
         Optional<Player> optionalTarget = server.getPlayer(targetName);
         if (optionalTarget.isEmpty()) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("Player not found: " + targetName, NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("Player not found: " + targetName, NamedTextColor.RED)));
             return;
         }
         Player target = optionalTarget.get();
         long pingValue = target.getPing();
         Component message = formatPingMessage(target.getUsername(), pingValue);
-        source.sendMessage(plugin.getPrefix().append(message));
+        source.sendMessage(plugin.getPrefix(source).append(message));
     }
     /*
      * Format a ping message with color based on ping value
@@ -70,7 +70,7 @@ public class PingCommand implements SimpleCommand {
         if (ping < 50) {
             pingColor = NamedTextColor.GREEN;
         } else if (ping < 150) {
-            pingColor = NamedTextColor.YELLOW;
+            pingColor = NamedTextColor.GOLD;
         } else if (ping < 300) {
             pingColor = NamedTextColor.GOLD;
         } else {

@@ -55,7 +55,7 @@ public class JoinMeCommand implements SimpleCommand {
         
         // Check if the source is a player
         if (!(source instanceof Player)) {
-            source.sendMessage(plugin.getPrefix().append(
+            source.sendMessage(plugin.getPrefix(source).append(
                 Component.text("Only players can use this command.", NamedTextColor.RED)
             ));
             return;
@@ -64,7 +64,7 @@ public class JoinMeCommand implements SimpleCommand {
         Player player = (Player) source;
           // Check permission
         if (!player.hasPermission(usePermission)) {
-            player.sendMessage(plugin.getPrefix().append(
+            player.sendMessage(plugin.getPrefix(player).append(
                 Component.text("You don't have permission to use this command.", NamedTextColor.RED)
             ));
             return;
@@ -73,7 +73,7 @@ public class JoinMeCommand implements SimpleCommand {
         // Check if player is on a server
         Optional<ServerConnection> currentServer = player.getCurrentServer();
         if (currentServer.isEmpty()) {
-            player.sendMessage(plugin.getPrefix().append(
+            player.sendMessage(plugin.getPrefix(player).append(
                 Component.text("You must be connected to a server to use this command.", NamedTextColor.RED)
             ));
             return;
@@ -84,7 +84,7 @@ public class JoinMeCommand implements SimpleCommand {
         if (!player.hasPermission(cooldownBypassPermission)) {
             if (isOnCooldown(player)) {
                 long timeLeft = getRemainingCooldown(player);
-                player.sendMessage(plugin.getPrefix().append(
+                player.sendMessage(plugin.getPrefix(player).append(
                     Component.text("You can use this command again in " + 
                         formatTimeRemaining(timeLeft) + ".", NamedTextColor.RED)
                 ));
@@ -99,19 +99,19 @@ public class JoinMeCommand implements SimpleCommand {
             
             if (targetPlayer.isPresent()) {
                 sendJoinMeMessage(player, serverName, targetPlayer.get());
-                player.sendMessage(plugin.getPrefix().append(
+                player.sendMessage(plugin.getPrefix(player).append(
                     Component.text("Sent a join request to ", NamedTextColor.GREEN))
-                    .append(Component.text(targetName, NamedTextColor.YELLOW))
+                    .append(Component.text(targetName, NamedTextColor.GOLD))
                 );
             } else if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()
                     && plugin.getCrossProxyService().getPlayerCurrentServer(targetName) != null) {
                 plugin.getCrossProxyService().publishJoinMeToPlayer(targetName, player.getUsername(), serverName);
-                player.sendMessage(plugin.getPrefix().append(
+                player.sendMessage(plugin.getPrefix(player).append(
                     Component.text("Sent a join request to ", NamedTextColor.GREEN))
-                    .append(Component.text(targetName, NamedTextColor.YELLOW))
+                    .append(Component.text(targetName, NamedTextColor.GOLD))
                 );
             } else {
-                player.sendMessage(plugin.getPrefix().append(
+                player.sendMessage(plugin.getPrefix(player).append(
                     Component.text("Player " + targetName + " is not online.", NamedTextColor.RED)
                 ));
                 return;
@@ -122,7 +122,7 @@ public class JoinMeCommand implements SimpleCommand {
             if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
                 plugin.getCrossProxyService().publishJoinMeBroadcast(player.getUsername(), serverName);
             }
-            player.sendMessage(plugin.getPrefix().append(
+            player.sendMessage(plugin.getPrefix(player).append(
                 Component.text("Broadcast join request to all players.", NamedTextColor.GREEN)
             ));
         }
@@ -173,24 +173,24 @@ public class JoinMeCommand implements SimpleCommand {
         Component border = Component.text("▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬", NamedTextColor.GOLD, TextDecoration.BOLD);
         
         // Header with icon
-        Component header = Component.text("  ✦ JOIN ME INVITATION ✦  ", NamedTextColor.YELLOW, TextDecoration.BOLD);
+        Component header = Component.text("  ✦ JOIN ME INVITATION ✦  ", NamedTextColor.GOLD, TextDecoration.BOLD);
         
         // Player name with possible rank prefix
         // Note: You'd need to integrate with your permission system to get actual prefix
-        Component playerComponent = Component.text(player.getUsername(), NamedTextColor.AQUA, TextDecoration.BOLD);
+        Component playerComponent = Component.text(player.getUsername(), NamedTextColor.GOLD, TextDecoration.BOLD);
         
         // Server component with click and hover effects
         Component serverComponent = Component.text(serverName, NamedTextColor.GREEN, TextDecoration.BOLD)
             .clickEvent(ClickEvent.runCommand("/server " + serverName))
-            .hoverEvent(HoverEvent.showText(Component.text("Click to join " + serverName, NamedTextColor.YELLOW)));
+            .hoverEvent(HoverEvent.showText(Component.text("Click to join " + serverName, NamedTextColor.GOLD)));
         
         // Build the complete message
         return Component.empty()
             .append(Component.newline())
             .append(border).append(Component.newline())
             .append(header).append(Component.newline())
-            .append(Component.text("Player: ", NamedTextColor.YELLOW)).append(playerComponent).append(Component.newline())
-            .append(Component.text("Server: ", NamedTextColor.YELLOW)).append(serverComponent).append(Component.newline())
+            .append(Component.text("Player: ", NamedTextColor.GOLD)).append(playerComponent).append(Component.newline())
+            .append(Component.text("Server: ", NamedTextColor.GOLD)).append(serverComponent).append(Component.newline())
             .append(Component.text("Click on the server name to join!", NamedTextColor.GRAY, TextDecoration.ITALIC)).append(Component.newline())
             .append(border);
     }

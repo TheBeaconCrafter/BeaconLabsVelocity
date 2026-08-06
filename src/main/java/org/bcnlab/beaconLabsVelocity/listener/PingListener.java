@@ -46,7 +46,7 @@ public class PingListener {
             ConfigurationNode defaultMotdNode = config.node("motd");
             ConfigurationNode motdNode = resolveMotdNode(event, defaultMotdNode);
             String motdLine1 = getString(motdNode, defaultMotdNode, "line1", "<gradient:#5e4fa2:#f79459><bold>BeaconLabs</bold></gradient> <gray>»</gray> <hover:show_text:'<rainbow>Join the Adventure!</rainbow>'><gold>Your Network!</gold></hover>");
-            String motdLine2 = getString(motdNode, defaultMotdNode, "line2", "<aqua>Playing on <yellow>1.21.4+</yellow></aqua>");
+            String motdLine2 = getString(motdNode, defaultMotdNode, "line2", "<gold>Playing on <gold>1.21.4+</gold></gold>");
             
             Component motdComponent = miniMessage.deserialize(motdLine1 + "\n" + motdLine2);
             pingBuilder.description(motdComponent);

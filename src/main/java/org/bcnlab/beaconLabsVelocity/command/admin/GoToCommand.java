@@ -34,19 +34,19 @@ public class GoToCommand implements SimpleCommand {
         
         // Check permission
         if (!source.hasPermission("beaconlabs.command.goto")) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("You don't have permission to use this command.", NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("You don't have permission to use this command.", NamedTextColor.RED)));
             return;
         }
         
         // Only players can use this command
         if (!(source instanceof Player player)) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("This command can only be used by players.", NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("This command can only be used by players.", NamedTextColor.RED)));
             return;
         }
         
         // Check if a target is specified
         if (args.length < 1) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("Usage: /goto <server|player>", NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("Usage: /goto <server|player>", NamedTextColor.RED)));
             return;
         }
         
@@ -57,7 +57,7 @@ public class GoToCommand implements SimpleCommand {
         if (targetPlayer.isPresent()) {
             Player targetP = targetPlayer.get();
             if (player.equals(targetP)) {
-                source.sendMessage(plugin.getPrefix().append(Component.text("You cannot teleport to yourself.", NamedTextColor.RED)));
+                source.sendMessage(plugin.getPrefix(source).append(Component.text("You cannot teleport to yourself.", NamedTextColor.RED)));
                 return;
             }
             targetP.getCurrentServer().ifPresent(serverConnection -> {
@@ -82,7 +82,7 @@ public class GoToCommand implements SimpleCommand {
         // If not a player, try to find a server with that name
         Optional<RegisteredServer> targetServer = server.getServer(target);
         if (targetServer.isEmpty()) {
-            source.sendMessage(plugin.getPrefix().append(Component.text("Server or player not found: " + target, NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("Server or player not found: " + target, NamedTextColor.RED)));
             return;
         }
         
@@ -96,14 +96,14 @@ public class GoToCommand implements SimpleCommand {
         // Check if player is already on that server
         if (player.getCurrentServer().isPresent() && 
             player.getCurrentServer().get().getServer().equals(targetServer)) {
-            player.sendMessage(plugin.getPrefix().append(
+            player.sendMessage(plugin.getPrefix(player).append(
                 Component.text("You are already connected to this server.", NamedTextColor.RED)
             ));
             return;
         }
         
         // Send teleport message
-        player.sendMessage(plugin.getPrefix().append(
+        player.sendMessage(plugin.getPrefix(player).append(
             Component.text("Connecting to " + destination + "...", NamedTextColor.GREEN)
         ));
         
@@ -111,11 +111,11 @@ public class GoToCommand implements SimpleCommand {
         player.createConnectionRequest(targetServer).connect()
             .thenAcceptAsync(result -> {
                 if (result.isSuccessful()) {
-                    player.sendMessage(plugin.getPrefix().append(
+                    player.sendMessage(plugin.getPrefix(player).append(
                         Component.text("Successfully connected to " + destination + "!", NamedTextColor.GREEN)
                     ));
                 } else {
-                    player.sendMessage(plugin.getPrefix().append(
+                    player.sendMessage(plugin.getPrefix(player).append(
                         Component.text("Failed to connect to " + destination + ": " + result.getReasonComponent().orElse(Component.text("Unknown reason")), NamedTextColor.RED)
                     ));
                 }

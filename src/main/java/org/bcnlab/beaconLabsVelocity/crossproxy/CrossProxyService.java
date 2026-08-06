@@ -679,7 +679,7 @@ public class CrossProxyService {
             String duration = msg.getDurationFormatted() != null && !msg.getDurationFormatted().isEmpty() ? msg.getDurationFormatted() : "Permanent";
             Component comp = ColorParser.parse(
                     "&c&lYou have been muted. &7Duration: &f" + duration + " &7| Reason: &f" + reason);
-            player.sendMessage(plugin.getPrefix().append(comp));
+            player.sendMessage(plugin.getPrefix(player).append(comp));
         });
     }
 
@@ -719,11 +719,11 @@ public class CrossProxyService {
         if (pasteLink == null || pasteLink.isEmpty()) return;
         Component linkMessage = Component.text()
                 .append(plugin.getPrefix())
-                .append(Component.text("Chat log for ", NamedTextColor.WHITE))
+                .append(Component.text("Chat log for ", NamedTextColor.GRAY))
                 .append(Component.text(targetName != null ? targetName : "?", NamedTextColor.GOLD))
-                .append(Component.text(" (reported by ", NamedTextColor.WHITE))
+                .append(Component.text(" (reported by ", NamedTextColor.GRAY))
                 .append(Component.text(reporterName != null ? reporterName : "?", NamedTextColor.GRAY))
-                .append(Component.text(") has been uploaded. ", NamedTextColor.WHITE))
+                .append(Component.text(") has been uploaded. ", NamedTextColor.GRAY))
                 .append(Component.text("[Click here to view]", NamedTextColor.BLUE)
                         .clickEvent(ClickEvent.openUrl(pasteLink)))
                 .build();
@@ -819,9 +819,9 @@ public class CrossProxyService {
         if (targetUuid == null) return;
         String senderName = msg.getUsername();
         server.getPlayer(targetUuid).ifPresent(player -> {
-            player.sendMessage(plugin.getPrefix().append(Component.text("You have a new friend request from ", NamedTextColor.YELLOW))
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("You have a new friend request from ", NamedTextColor.GOLD))
                     .append(Component.text(senderName, NamedTextColor.GREEN))
-                    .append(Component.text("! ", NamedTextColor.YELLOW))
+                    .append(Component.text("! ", NamedTextColor.GOLD))
                     .append(Component.text("[Click to Accept]", NamedTextColor.GREEN)
                             .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Accept " + senderName + "'s request")))
                             .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/friend accept " + senderName))));
@@ -833,8 +833,8 @@ public class CrossProxyService {
         if (targetUuid == null) return;
         String acceptorName = msg.getUsername();
         server.getPlayer(targetUuid).ifPresent(player -> {
-            player.sendMessage(plugin.getPrefix().append(Component.text(acceptorName, NamedTextColor.GREEN))
-                    .append(Component.text(" has accepted your friend request!", NamedTextColor.YELLOW)));
+            player.sendMessage(plugin.getPrefix(player).append(Component.text(acceptorName, NamedTextColor.GREEN))
+                    .append(Component.text(" has accepted your friend request!", NamedTextColor.GOLD)));
         });
     }
 
@@ -845,9 +845,9 @@ public class CrossProxyService {
         String joinedName = msg.getUsername();
         server.getAllPlayers().forEach(player -> {
             if (plugin.getFriendService().areFriends(player.getUniqueId(), joinedUuid)) {
-                player.sendMessage(plugin.getPrefix().append(Component.text("Friend ", NamedTextColor.YELLOW))
+                player.sendMessage(plugin.getPrefix(player).append(Component.text("Friend ", NamedTextColor.GOLD))
                         .append(Component.text(joinedName, NamedTextColor.GREEN))
-                        .append(Component.text(" has joined the network.", NamedTextColor.YELLOW)));
+                        .append(Component.text(" has joined the network.", NamedTextColor.GOLD)));
             }
         });
     }
@@ -859,9 +859,9 @@ public class CrossProxyService {
         String leftName = msg.getUsername();
         server.getAllPlayers().forEach(player -> {
             if (plugin.getFriendService().areFriends(player.getUniqueId(), leftUuid)) {
-                player.sendMessage(plugin.getPrefix().append(Component.text("Friend ", NamedTextColor.YELLOW))
+                player.sendMessage(plugin.getPrefix(player).append(Component.text("Friend ", NamedTextColor.GOLD))
                         .append(Component.text(leftName, NamedTextColor.GREEN))
-                        .append(Component.text(" has left the network.", NamedTextColor.YELLOW)));
+                        .append(Component.text(" has left the network.", NamedTextColor.GOLD)));
             }
         });
     }
@@ -916,7 +916,7 @@ public class CrossProxyService {
         if (mode == null || mode.isEmpty()) return;
         if (plugin.getAbuseConfig() != null) {
             plugin.getAbuseConfig().setDefenseMode(mode);
-            Component comp = plugin.getPrefix().append(Component.text("Abuse Defense Mode updated to: ", net.kyori.adventure.text.format.NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
+            Component comp = plugin.getPrefix().append(Component.text("Abuse Defense Mode updated to: ", net.kyori.adventure.text.format.NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
                 .append(Component.text(mode.toUpperCase(), net.kyori.adventure.text.format.NamedTextColor.GREEN))
                 .append(Component.text(" by " + (issuerName != null ? issuerName : "Console"), net.kyori.adventure.text.format.NamedTextColor.GRAY)));
 
@@ -1043,7 +1043,7 @@ public class CrossProxyService {
             return;
         }
         performTransferToHost(player, hostPort).ifPresent(err ->
-                player.sendMessage(plugin.getPrefix().append(Component.text(err, NamedTextColor.RED))));
+                player.sendMessage(plugin.getPrefix(player).append(Component.text(err, NamedTextColor.RED))));
     }
 
     /** Minecraft 1.20.5+ protocol (transfer packet support). */
@@ -1092,17 +1092,17 @@ public class CrossProxyService {
 
     private static Component buildJoinMeComponent(String senderUsername, String serverName) {
         Component border = Component.text("▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬", NamedTextColor.GOLD, TextDecoration.BOLD);
-        Component header = Component.text("  ✦ JOIN ME INVITATION ✦  ", NamedTextColor.YELLOW, TextDecoration.BOLD);
-        Component playerComponent = Component.text(senderUsername, NamedTextColor.AQUA, TextDecoration.BOLD);
+        Component header = Component.text("  ✦ JOIN ME INVITATION ✦  ", NamedTextColor.GOLD, TextDecoration.BOLD);
+        Component playerComponent = Component.text(senderUsername, NamedTextColor.GOLD, TextDecoration.BOLD);
         Component serverComponent = Component.text(serverName, NamedTextColor.GREEN, TextDecoration.BOLD)
                 .clickEvent(ClickEvent.runCommand("/server " + serverName))
-                .hoverEvent(HoverEvent.showText(Component.text("Click to join " + serverName, NamedTextColor.YELLOW)));
+                .hoverEvent(HoverEvent.showText(Component.text("Click to join " + serverName, NamedTextColor.GOLD)));
         return Component.empty()
                 .append(Component.newline())
                 .append(border).append(Component.newline())
                 .append(header).append(Component.newline())
-                .append(Component.text("Player: ", NamedTextColor.YELLOW)).append(playerComponent).append(Component.newline())
-                .append(Component.text("Server: ", NamedTextColor.YELLOW)).append(serverComponent).append(Component.newline())
+                .append(Component.text("Player: ", NamedTextColor.GOLD)).append(playerComponent).append(Component.newline())
+                .append(Component.text("Server: ", NamedTextColor.GOLD)).append(serverComponent).append(Component.newline())
                 .append(Component.text("Click on the server name to join!", NamedTextColor.GRAY, TextDecoration.ITALIC)).append(Component.newline())
                 .append(border);
     }

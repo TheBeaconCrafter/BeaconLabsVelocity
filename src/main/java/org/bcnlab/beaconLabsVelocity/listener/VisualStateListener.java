@@ -49,10 +49,26 @@ public class VisualStateListener {
 
             UUID uuid = UUID.fromString(uuidStr);
 
-            if ("NICK".equalsIgnoreCase(action)) {
+            if ("NICK_REQUEST".equalsIgnoreCase(action)) {
                 if (nickname != null && !nickname.isBlank()) {
+                    // Check if player with this name is already online and not the nicking player
+                    Optional<com.velocitypowered.api.proxy.Player> onlineOwner = plugin.getServer().getPlayer(nickname);
+                    if (onlineOwner.isPresent() && !onlineOwner.get().getUniqueId().equals(uuid)) {
+                        // Deny the nick!
+                        sendForceAction(uuid, "NICK_DENIED", nickname, rank);
+                        return;
+                    }
+
                     activeNicknames.put(uuid, nickname);
                     plugin.getLogger().info("[VisualState] Registered nickname " + nickname + " for " + uuid);
+                    applyToTab(uuid, nickname, rank);
+                    
+                    // Accept and broadcast to backend
+                    sendForceAction(uuid, "NICK_ACCEPTED", nickname, rank);
+                }
+            } else if ("NICK".equalsIgnoreCase(action)) {
+                if (nickname != null && !nickname.isBlank()) {
+                    activeNicknames.put(uuid, nickname);
                     applyToTab(uuid, nickname, rank);
                 } else {
                     activeNicknames.remove(uuid);
@@ -61,6 +77,59 @@ public class VisualStateListener {
             }
         } catch (Exception e) {
             plugin.getLogger().warn("Failed to parse visual state message: " + e.getMessage());
+        }
+    }
+
+    private void sendForceAction(UUID targetUuid, String action) {
+        sendForceAction(targetUuid, action, "", "");
+    }
+    
+    private void sendForceAction(UUID targetUuid, String action, String nickname, String skinSource) {
+        Optional<com.velocitypowered.api.proxy.Player> playerOpt = plugin.getServer().getPlayer(targetUuid);
+        if (playerOpt.isPresent()) {
+            Optional<ServerConnection> serverOpt = playerOpt.get().getCurrentServer();
+            if (serverOpt.isPresent()) {
+                try {
+                    java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                    java.io.DataOutputStream data = new java.io.DataOutputStream(out);
+                    data.writeUTF(targetUuid.toString());
+                    data.writeUTF(action);
+                    data.writeUTF(nickname == null ? "" : nickname);
+                    data.writeUTF(skinSource == null ? "" : skinSource);
+                    serverOpt.get().sendPluginMessage(CHANNEL, out.toByteArray());
+                } catch (Exception e) {
+                    plugin.getLogger().warn("Failed to send force action: " + e.getMessage());
+                }
+            }
+        }
+    }
+
+    @Subscribe
+    public void onLogin(com.velocitypowered.api.event.connection.LoginEvent event) {
+        String realName = event.getPlayer().getUsername();
+        for (Map.Entry<UUID, String> entry : activeNicknames.entrySet()) {
+            if (entry.getValue().equalsIgnoreCase(realName)) {
+                // Someone is using this player's name as a nick, force re-nick them!
+                sendForceAction(entry.getKey(), "FORCE_RENICK");
+            }
+        }
+    }
+
+    @Subscribe
+    public void onServerConnected(com.velocitypowered.api.event.player.ServerConnectedEvent event) {
+        UUID uuid = event.getPlayer().getUniqueId();
+        if (activeNicknames.containsKey(uuid)) {
+            String nickname = activeNicknames.get(uuid);
+            // Send the NICK state to the new server so it can apply the nick
+            try {
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                java.io.DataOutputStream data = new java.io.DataOutputStream(out);
+                data.writeUTF(uuid.toString());
+                data.writeUTF("NICK");
+                data.writeUTF(nickname);
+                data.writeUTF(nickname);
+                event.getServer().sendPluginMessage(CHANNEL, out.toByteArray());
+            } catch (Exception e) {}
         }
     }
 

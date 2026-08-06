@@ -167,7 +167,7 @@ public class ScreeningService {
                 
                 player.sendMessage(Component.empty());
                 player.sendMessage(Component.text("--- ANTI-BOT SCREENING ---", NamedTextColor.RED, TextDecoration.BOLD));
-                player.sendMessage(Component.text("Please type the code shown on the map in your hotbar into the chat.", NamedTextColor.YELLOW));
+                player.sendMessage(Component.text("Please type the code shown on the map in your hotbar into the chat.", NamedTextColor.GOLD));
                 player.sendMessage(Component.text("You have " + config.getScreeningTimeout() + " seconds to respond.", NamedTextColor.GRAY));
                 player.sendMessage(Component.empty());
 

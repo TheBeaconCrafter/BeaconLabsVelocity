@@ -31,14 +31,14 @@ public class EnteCommand implements SimpleCommand {
     @Override
     public void execute(Invocation invocation) {
         if (!invocation.source().hasPermission(PERMISSION)) {
-            invocation.source().sendMessage(plugin.getPrefix().append(
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                     Component.text("You don't have permission to use this command.", NamedTextColor.RED)));
             return;
         }
 
         if (invocation.arguments().length == 0) {
             if (!(invocation.source() instanceof Player)) {
-                invocation.source().sendMessage(plugin.getPrefix().append(
+                invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                         Component.text("Specify a player: /ente <player>", NamedTextColor.RED)));
                 return;
             }
@@ -47,7 +47,7 @@ public class EnteCommand implements SimpleCommand {
         }
 
         if (!invocation.source().hasPermission(PERMISSION_OTHERS)) {
-            invocation.source().sendMessage(plugin.getPrefix().append(
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                     Component.text("You don't have permission to show the duck to other players.", NamedTextColor.RED)));
             return;
         }
@@ -56,7 +56,7 @@ public class EnteCommand implements SimpleCommand {
         Optional<Player> target = server.getPlayer(targetName);
         if (target.isPresent()) {
             plugin.showEnteTitleTo(target.get());
-            invocation.source().sendMessage(plugin.getPrefix().append(
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                     Component.text("Duck shown to " + target.get().getUsername() + ".", NamedTextColor.GREEN)));
             return;
         }
@@ -70,13 +70,13 @@ public class EnteCommand implements SimpleCommand {
                     .orElse(null);
             if (exactName != null) {
                 crossProxy.publishEnte(exactName);
-                invocation.source().sendMessage(plugin.getPrefix().append(
+                invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                         Component.text("Duck shown to " + exactName + " (on another proxy).", NamedTextColor.GREEN)));
                 return;
             }
         }
 
-        invocation.source().sendMessage(plugin.getPrefix().append(
+        invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(
                 Component.text("Player not found: " + targetName, NamedTextColor.RED)));
     }
 

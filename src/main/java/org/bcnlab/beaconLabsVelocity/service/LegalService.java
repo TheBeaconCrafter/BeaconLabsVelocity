@@ -247,7 +247,7 @@ public class LegalService {
 
         String topMessage = getTopMessage();
         if (topMessage != null && !topMessage.isEmpty()) {
-            player.sendMessage(plugin.getPrefix().append(
+            player.sendMessage(plugin.getPrefix(player).append(
                     ColorParser.parse(topMessage)));
         }
 
@@ -287,7 +287,7 @@ public class LegalService {
                 String tosLink = tos.node("link").getString("");
                 if (!tosLink.isEmpty()) {
                     page1 = page1.append(Component.text("Terms of Service: ", NamedTextColor.GRAY))
-                            .append(Component.text("[Open Link]", NamedTextColor.AQUA)
+                            .append(Component.text("[Open Link]", NamedTextColor.GOLD)
                                     .clickEvent(ClickEvent.openUrl(tosLink))
                                     .hoverEvent(HoverEvent.showText(Component.text(tosLink, NamedTextColor.GRAY))));
                 } else {
@@ -300,7 +300,7 @@ public class LegalService {
                 String privacyLink = privacy.node("link").getString("");
                 if (!privacyLink.isEmpty()) {
                     page1 = page1.append(Component.text("Privacy Policy: ", NamedTextColor.GRAY))
-                            .append(Component.text("[Open Link]", NamedTextColor.AQUA)
+                            .append(Component.text("[Open Link]", NamedTextColor.GOLD)
                                     .clickEvent(ClickEvent.openUrl(privacyLink))
                                     .hoverEvent(HoverEvent.showText(Component.text(privacyLink, NamedTextColor.GRAY))));
                 } else {
@@ -340,7 +340,7 @@ public class LegalService {
             String link = tos.node("link").getString("");
             if (!link.isEmpty()) {
                 player.sendMessage(Component.text("Terms of Service: ", NamedTextColor.GRAY)
-                        .append(Component.text("[Open Link]", NamedTextColor.AQUA)
+                        .append(Component.text("[Open Link]", NamedTextColor.GOLD)
                                 .clickEvent(ClickEvent.openUrl(link))
                                 .hoverEvent(HoverEvent.showText(Component.text(link, NamedTextColor.GRAY)))));
             } else {
@@ -353,7 +353,7 @@ public class LegalService {
             String link = privacy.node("link").getString("");
             if (!link.isEmpty()) {
                 player.sendMessage(Component.text("Privacy Policy: ", NamedTextColor.GRAY)
-                        .append(Component.text("[Open Link]", NamedTextColor.AQUA)
+                        .append(Component.text("[Open Link]", NamedTextColor.GOLD)
                                 .clickEvent(ClickEvent.openUrl(link))
                                 .hoverEvent(HoverEvent.showText(Component.text(link, NamedTextColor.GRAY)))));
             } else {
@@ -362,11 +362,11 @@ public class LegalService {
         }
 
         player.sendMessage(Component.empty());
-        player.sendMessage(Component.text("Accept to continue: ", NamedTextColor.YELLOW)
+        player.sendMessage(Component.text("Accept to continue: ", NamedTextColor.GOLD)
                 .append(Component.text("[Accept]", NamedTextColor.GREEN, TextDecoration.BOLD)
                         .clickEvent(ClickEvent.runCommand("/legal accept"))
                         .hoverEvent(HoverEvent.showText(Component.text("Click to accept", NamedTextColor.GREEN))))
-                .append(Component.text("  ", NamedTextColor.WHITE))
+                .append(Component.text("  ", NamedTextColor.GRAY))
                 .append(Component.text("[Deny]", NamedTextColor.RED, TextDecoration.BOLD)
                         .clickEvent(ClickEvent.runCommand("/legal deny"))
                         .hoverEvent(HoverEvent.showText(Component.text("Click to decline and disconnect", NamedTextColor.RED)))));

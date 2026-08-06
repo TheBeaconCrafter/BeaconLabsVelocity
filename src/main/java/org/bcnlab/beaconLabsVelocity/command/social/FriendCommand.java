@@ -45,28 +45,28 @@ public class FriendCommand implements SimpleCommand {
         switch (subCommand) {
             case "add":
                 if (args.length < 2) {
-                    player.sendMessage(plugin.getPrefix().append(Component.text("Usage: /friend add <player>", NamedTextColor.RED)));
+                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend add <player>", NamedTextColor.RED)));
                     return;
                 }
                 handleAdd(player, args[1]);
                 break;
             case "accept":
                 if (args.length < 2) {
-                    player.sendMessage(plugin.getPrefix().append(Component.text("Usage: /friend accept <player>", NamedTextColor.RED)));
+                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend accept <player>", NamedTextColor.RED)));
                     return;
                 }
                 handleAccept(player, args[1]);
                 break;
             case "deny":
                 if (args.length < 2) {
-                    player.sendMessage(plugin.getPrefix().append(Component.text("Usage: /friend deny <player>", NamedTextColor.RED)));
+                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend deny <player>", NamedTextColor.RED)));
                     return;
                 }
                 handleDeny(player, args[1]);
                 break;
             case "remove":
                 if (args.length < 2) {
-                    player.sendMessage(plugin.getPrefix().append(Component.text("Usage: /friend remove <player>", NamedTextColor.RED)));
+                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend remove <player>", NamedTextColor.RED)));
                     return;
                 }
                 handleRemove(player, args[1]);
@@ -86,17 +86,17 @@ public class FriendCommand implements SimpleCommand {
     private void handleAdd(Player player, String targetName) {
         UUID targetUuid = getPlayerUuid(targetName);
         if (targetUuid == null) {
-            player.sendMessage(plugin.getPrefix().append(Component.text("Player not found.", NamedTextColor.RED)));
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("Player not found.", NamedTextColor.RED)));
             return;
         }
 
         if (targetUuid.equals(player.getUniqueId())) {
-            player.sendMessage(plugin.getPrefix().append(Component.text("You cannot add yourself.", NamedTextColor.RED)));
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("You cannot add yourself.", NamedTextColor.RED)));
             return;
         }
 
         if (plugin.getFriendService().areFriends(player.getUniqueId(), targetUuid)) {
-            player.sendMessage(plugin.getPrefix().append(Component.text("You are already friends with " + targetName + ".", NamedTextColor.RED)));
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("You are already friends with " + targetName + ".", NamedTextColor.RED)));
             return;
         }
 
@@ -105,19 +105,19 @@ public class FriendCommand implements SimpleCommand {
             privacy = plugin.getPlayerSettingsService().getPlayerSetting(targetUuid, "friend_requests", "everyone");
         }
         if ("nobody".equalsIgnoreCase(privacy)) {
-            player.sendMessage(plugin.getPrefix().append(Component.text("This player is not accepting friend requests.", NamedTextColor.RED)));
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("This player is not accepting friend requests.", NamedTextColor.RED)));
             return;
         }
 
         plugin.getFriendService().sendFriendRequest(player.getUniqueId(), targetUuid);
-        player.sendMessage(plugin.getPrefix().append(Component.text("Friend request sent to " + targetName + ".", NamedTextColor.GREEN)));
+        player.sendMessage(plugin.getPrefix(player).append(Component.text("Friend request sent to " + targetName + ".", NamedTextColor.GREEN)));
         
         // Notify target locally or via cross proxy
         Optional<Player> targetPlayer = plugin.getServer().getPlayer(targetUuid);
         if (targetPlayer.isPresent()) {
-            targetPlayer.get().sendMessage(plugin.getPrefix().append(Component.text("You have a new friend request from ", NamedTextColor.YELLOW))
+            targetPlayer.get().sendMessage(plugin.getPrefix().append(Component.text("You have a new friend request from ", NamedTextColor.GOLD))
                     .append(Component.text(player.getUsername(), NamedTextColor.GREEN))
-                    .append(Component.text("! ", NamedTextColor.YELLOW))
+                    .append(Component.text("! ", NamedTextColor.GOLD))
                     .append(Component.text("[Click to Accept]", NamedTextColor.GREEN)
                             .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(Component.text("Accept " + player.getUsername() + "'s request")))
                             .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/friend accept " + player.getUsername()))));
@@ -129,17 +129,17 @@ public class FriendCommand implements SimpleCommand {
     private void handleAccept(Player player, String targetName) {
         UUID targetUuid = getPlayerUuid(targetName);
         if (targetUuid == null) {
-            player.sendMessage(plugin.getPrefix().append(Component.text("Player not found.", NamedTextColor.RED)));
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("Player not found.", NamedTextColor.RED)));
             return;
         }
 
         plugin.getFriendService().acceptFriendRequest(player.getUniqueId(), targetUuid);
-        player.sendMessage(plugin.getPrefix().append(Component.text("You are now friends with " + targetName + ".", NamedTextColor.GREEN)));
+        player.sendMessage(plugin.getPrefix(player).append(Component.text("You are now friends with " + targetName + ".", NamedTextColor.GREEN)));
 
         Optional<Player> targetPlayer = plugin.getServer().getPlayer(targetUuid);
         if (targetPlayer.isPresent()) {
             targetPlayer.get().sendMessage(plugin.getPrefix().append(Component.text(player.getUsername(), NamedTextColor.GREEN))
-                    .append(Component.text(" has accepted your friend request!", NamedTextColor.YELLOW)));
+                    .append(Component.text(" has accepted your friend request!", NamedTextColor.GOLD)));
         } else if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
             plugin.getCrossProxyService().publishFriendAccept(targetUuid, player.getUsername());
         }
@@ -148,23 +148,23 @@ public class FriendCommand implements SimpleCommand {
     private void handleDeny(Player player, String targetName) {
         UUID targetUuid = getPlayerUuid(targetName);
         if (targetUuid == null) {
-            player.sendMessage(plugin.getPrefix().append(Component.text("Player not found.", NamedTextColor.RED)));
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("Player not found.", NamedTextColor.RED)));
             return;
         }
 
         plugin.getFriendService().denyFriendRequest(player.getUniqueId(), targetUuid);
-        player.sendMessage(plugin.getPrefix().append(Component.text("Denied friend request from " + targetName + ".", NamedTextColor.YELLOW)));
+        player.sendMessage(plugin.getPrefix(player).append(Component.text("Denied friend request from " + targetName + ".", NamedTextColor.GOLD)));
     }
 
     private void handleRemove(Player player, String targetName) {
         UUID targetUuid = getPlayerUuid(targetName);
         if (targetUuid == null) {
-            player.sendMessage(plugin.getPrefix().append(Component.text("Player not found.", NamedTextColor.RED)));
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("Player not found.", NamedTextColor.RED)));
             return;
         }
 
         plugin.getFriendService().removeFriend(player.getUniqueId(), targetUuid);
-        player.sendMessage(plugin.getPrefix().append(Component.text("Removed " + targetName + " from your friends list.", NamedTextColor.YELLOW)));
+        player.sendMessage(plugin.getPrefix(player).append(Component.text("Removed " + targetName + " from your friends list.", NamedTextColor.GOLD)));
     }
 
     private void handleList(Player player, boolean tryGui) {
@@ -222,7 +222,7 @@ public class FriendCommand implements SimpleCommand {
             } catch (Exception e) {}
         }
         
-        player.sendMessage(Component.text("--- Friends List ---", NamedTextColor.AQUA));
+        player.sendMessage(Component.text("--- Friends List ---", NamedTextColor.GOLD));
         for (var friend : friends) {
             String name = getPlayerName(friend.uuid);
             boolean isOnline = plugin.getCrossProxyService() != null && plugin.getCrossProxyService().getOnlinePlayerNames().contains(name);
@@ -234,11 +234,11 @@ public class FriendCommand implements SimpleCommand {
     private void handleRequests(Player player) {
         List<UUID> requests = plugin.getFriendService().getPendingRequests(player.getUniqueId());
         if (requests.isEmpty()) {
-            player.sendMessage(plugin.getPrefix().append(Component.text("You have no pending friend requests.", NamedTextColor.YELLOW)));
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("You have no pending friend requests.", NamedTextColor.GOLD)));
             return;
         }
         
-        player.sendMessage(Component.text("--- Pending Friend Requests ---", NamedTextColor.AQUA));
+        player.sendMessage(Component.text("--- Pending Friend Requests ---", NamedTextColor.GOLD));
         for (UUID requesterUuid : requests) {
             String name = getPlayerName(requesterUuid);
             player.sendMessage(Component.text("- " + name, NamedTextColor.GRAY)
@@ -252,7 +252,7 @@ public class FriendCommand implements SimpleCommand {
     }
 
     private void sendHelp(Player player) {
-        player.sendMessage(Component.text("--- Friend Commands ---", NamedTextColor.AQUA));
+        player.sendMessage(Component.text("--- Friend Commands ---", NamedTextColor.GOLD));
         player.sendMessage(Component.text("/friend add <player>", NamedTextColor.GRAY));
         player.sendMessage(Component.text("/friend accept <player>", NamedTextColor.GRAY));
         player.sendMessage(Component.text("/friend deny <player>", NamedTextColor.GRAY));

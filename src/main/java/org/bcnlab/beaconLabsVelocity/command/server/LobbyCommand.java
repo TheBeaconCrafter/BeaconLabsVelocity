@@ -33,17 +33,17 @@ public class LobbyCommand implements SimpleCommand {
         Optional<RegisteredServer> targetServer = server.getServer(lobbyServerName);
         
         if (targetServer.isEmpty()) {
-            player.sendMessage(plugin.getPrefix().append(
+            player.sendMessage(plugin.getPrefix(player).append(
                     Component.text("The lobby server is not available.", NamedTextColor.RED)));
             return;
         }
 
-        player.sendMessage(plugin.getPrefix().append(
+        player.sendMessage(plugin.getPrefix(player).append(
                 Component.text("Connecting to the lobby server...", NamedTextColor.GREEN)));
                 
         player.createConnectionRequest(targetServer.get()).connectWithIndication().thenAccept(result -> {
             if (!result) {
-                player.sendMessage(plugin.getPrefix().append(
+                player.sendMessage(plugin.getPrefix(player).append(
                         Component.text("Failed to connect to the lobby server.", NamedTextColor.RED)));
             }
         });
