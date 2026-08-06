@@ -41,6 +41,8 @@ public class SettingsCommand implements SimpleCommand {
                 out.writeUTF(plugin.getPlayerSettingsService().getPlayerSetting(player.getUniqueId(), "msg_privacy", "everyone"));
                 out.writeUTF(plugin.getPlayerSettingsService().getPlayerSetting(player.getUniqueId(), "friend_requests", "everyone"));
                 out.writeUTF(plugin.getPlayerSettingsService().getPlayerSetting(player.getUniqueId(), "friend_server", "everyone"));
+                out.writeUTF(plugin.getPlayerSettingsService().getPlayerSetting(player.getUniqueId(), "friends_join_alert", "on"));
+                out.writeUTF(plugin.getPlayerSettingsService().getPlayerSetting(player.getUniqueId(), "join_summary", "off"));
                 
                 server.sendPluginMessage(identifier, b.toByteArray());
             } catch (Exception e) {

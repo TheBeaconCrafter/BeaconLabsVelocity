@@ -8,6 +8,13 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService;
+import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class FriendNotificationListener {
 
@@ -24,9 +31,12 @@ public class FriendNotificationListener {
         // Notify local friends
         plugin.getServer().getAllPlayers().forEach(onlinePlayer -> {
             if (plugin.getFriendService().areFriends(onlinePlayer.getUniqueId(), player.getUniqueId())) {
-                onlinePlayer.sendMessage(plugin.getPrefix().append(Component.text("Friend ", NamedTextColor.GOLD))
-                        .append(Component.text(player.getUsername(), NamedTextColor.GREEN))
-                        .append(Component.text(" has joined the network.", NamedTextColor.GOLD)));
+                String friendAlert = plugin.getPlayerSettingsService().getPlayerSetting(onlinePlayer.getUniqueId(), "friends_join_alert", "on");
+                if ("on".equalsIgnoreCase(friendAlert) || "true".equalsIgnoreCase(friendAlert)) {
+                    onlinePlayer.sendMessage(plugin.getPrefix().append(Component.text("Friend ", NamedTextColor.GOLD))
+                            .append(Component.text(player.getUsername(), NamedTextColor.GREEN))
+                            .append(Component.text(" has joined the network.", NamedTextColor.GOLD)));
+                }
             }
         });
 
@@ -41,6 +51,43 @@ public class FriendNotificationListener {
         if (pendingCount > 0) {
             player.sendMessage(plugin.getPrefix(player).append(Component.text("You have " + pendingCount + " pending friend request(s)! Use /friend requests to view.", NamedTextColor.GOLD)));
         }
+        
+        // Join Summary
+        String joinSummary = plugin.getPlayerSettingsService().getPlayerSetting(player.getUniqueId(), "join_summary", "off");
+        if ("on".equalsIgnoreCase(joinSummary) || "true".equalsIgnoreCase(joinSummary)) {
+            sendJoinSummary(player);
+        }
+    }
+
+    private void sendJoinSummary(Player player) {
+        plugin.getServer().getScheduler().buildTask(plugin, () -> {
+            PlayerStatsService statsService = plugin.getPlayerStatsService();
+            String lastLogin = "Unknown";
+            if (statsService != null) {
+                PlayerStatsService.PlayerData pd = statsService.getPlayerDataByName(player.getUsername());
+                if (pd != null && pd.getLastSeen() > 0) {
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+                    lastLogin = dateFormat.format(new Date(pd.getLastSeen()));
+                }
+            }
+            
+            List<UUID> friends = plugin.getFriendService().getFriends(player.getUniqueId());
+            int totalFriends = friends.size();
+            long onlineFriends = friends.stream().filter(uuid -> plugin.getServer().getPlayer(uuid).isPresent()).count();
+            
+            player.sendMessage(Component.empty());
+            player.sendMessage(Component.text("Welcome back, ", NamedTextColor.GRAY).append(Component.text(player.getUsername(), NamedTextColor.GOLD)).append(Component.text(".", NamedTextColor.GRAY)));
+            player.sendMessage(Component.text("» ", NamedTextColor.DARK_GRAY).append(Component.text("Last login: ", NamedTextColor.GRAY)).append(Component.text(lastLogin, NamedTextColor.YELLOW)));
+            player.sendMessage(Component.text("» ", NamedTextColor.DARK_GRAY)
+                    .append(Component.text("Of your ", NamedTextColor.GRAY))
+                    .append(Component.text(totalFriends, NamedTextColor.YELLOW))
+                    .append(Component.text(" friends ", NamedTextColor.GRAY))
+                    .append(Component.text(onlineFriends, NamedTextColor.GREEN))
+                    .append(Component.text(" are online. ", NamedTextColor.GRAY))
+                    .append(Component.text("» ", NamedTextColor.DARK_GRAY))
+                    .append(Component.text("/friend list", NamedTextColor.YELLOW)));
+            player.sendMessage(Component.empty());
+        }).delay(java.time.Duration.ofSeconds(2)).schedule(); // Delay slightly so it doesn't get buried
     }
 
     @Subscribe
@@ -50,9 +97,12 @@ public class FriendNotificationListener {
         // Notify local friends
         plugin.getServer().getAllPlayers().forEach(onlinePlayer -> {
             if (plugin.getFriendService().areFriends(onlinePlayer.getUniqueId(), player.getUniqueId())) {
-                onlinePlayer.sendMessage(plugin.getPrefix().append(Component.text("Friend ", NamedTextColor.GOLD))
-                        .append(Component.text(player.getUsername(), NamedTextColor.GREEN))
-                        .append(Component.text(" has left the network.", NamedTextColor.GOLD)));
+                String friendAlert = plugin.getPlayerSettingsService().getPlayerSetting(onlinePlayer.getUniqueId(), "friends_join_alert", "on");
+                if ("on".equalsIgnoreCase(friendAlert) || "true".equalsIgnoreCase(friendAlert)) {
+                    onlinePlayer.sendMessage(plugin.getPrefix().append(Component.text("Friend ", NamedTextColor.GOLD))
+                            .append(Component.text(player.getUsername(), NamedTextColor.GREEN))
+                            .append(Component.text(" has left the network.", NamedTextColor.GOLD)));
+                }
             }
         });
 

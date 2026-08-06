@@ -89,6 +89,7 @@ public class ReportsCommand implements SimpleCommand {
                                 data.writeUTF(r.getReportedName());
                                 data.writeUTF(r.getReason());
                                 data.writeUTF(r.getStatus().name());
+                                data.writeUTF(r.getServerName());
                             }
                             
                             connection.get().sendPluginMessage(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:report_dialog"), out.toByteArray());
