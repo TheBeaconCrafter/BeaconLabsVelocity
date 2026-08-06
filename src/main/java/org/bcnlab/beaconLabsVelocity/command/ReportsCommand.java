@@ -92,7 +92,10 @@ public class ReportsCommand implements SimpleCommand {
                                 data.writeUTF(r.getServerName());
                             }
                             
-                            connection.get().sendPluginMessage(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:report_dialog"), out.toByteArray());
+                            boolean sent = connection.get().sendPluginMessage(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:report_dialog"), out.toByteArray());
+                            if (!sent) {
+                                listActiveReports(source, 1);
+                            }
                         } catch (Exception e) {
                             plugin.getLogger().warn("Failed to send report dialog data: " + e.getMessage());
                             listActiveReports(source, 1); // fallback

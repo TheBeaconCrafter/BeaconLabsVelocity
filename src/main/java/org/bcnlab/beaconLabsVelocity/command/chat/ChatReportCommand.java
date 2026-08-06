@@ -45,7 +45,7 @@ public class ChatReportCommand implements SimpleCommand {
         }
 
         String targetName = args[0];
-        sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Gathering chat logs...")));
+        sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Gathering chat logs...", net.kyori.adventure.text.format.NamedTextColor.GRAY)));
 
         long startTime = System.nanoTime();
 
@@ -58,7 +58,7 @@ public class ChatReportCommand implements SimpleCommand {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Failed to retrieve player UUID.")));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Failed to retrieve player UUID.", net.kyori.adventure.text.format.NamedTextColor.GRAY)));
             return;
         }
 
@@ -71,16 +71,20 @@ public class ChatReportCommand implements SimpleCommand {
             return;
         }
         if (!targetOnThisProxy) {
-            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Player " + targetName + " is not online on the network.")));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Player " + targetName + " is not online on the network.", net.kyori.adventure.text.format.NamedTextColor.GRAY)));
             return;
         }
 
         String chatLog;
         try {
             chatLog = chatLogger.readChatLog(playerId);
+            if (chatLog == null) {
+                sender.sendMessage(plugin.getPrefix(sender).append(Component.text("This player hasn't sent any messages recently.", net.kyori.adventure.text.format.NamedTextColor.GRAY)));
+                return;
+            }
         } catch (IOException e) {
             e.printStackTrace();
-            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Failed to retrieve chat logs.")));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Failed to retrieve chat logs.", net.kyori.adventure.text.format.NamedTextColor.GRAY)));
             return;
         }
 
@@ -89,7 +93,7 @@ public class ChatReportCommand implements SimpleCommand {
             pasteLink = uploadToPastebinWithFallback(chatLog);
         } catch (IOException e) {
             e.printStackTrace();
-            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Failed to upload chat logs.")));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Failed to upload chat logs.", net.kyori.adventure.text.format.NamedTextColor.GRAY)));
             return;
         }
 

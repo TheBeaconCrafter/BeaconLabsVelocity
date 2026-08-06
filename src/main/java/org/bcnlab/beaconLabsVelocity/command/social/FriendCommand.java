@@ -226,7 +226,31 @@ public class FriendCommand implements SimpleCommand {
         for (var friend : friends) {
             String name = getPlayerName(friend.uuid);
             boolean isOnline = plugin.getCrossProxyService() != null && plugin.getCrossProxyService().getOnlinePlayerNames().contains(name);
-            Component status = isOnline ? Component.text(" [Online]", NamedTextColor.GREEN) : Component.text(" [Offline]", NamedTextColor.RED);
+            Component status;
+            if (isOnline) {
+                String friendServer = "Unknown";
+                String privacy = plugin.getPlayerSettingsService().getPlayerSetting(friend.uuid, "friend_server", "everyone");
+                if (privacy.equals("nobody")) {
+                    friendServer = "Hidden";
+                } else {
+                    java.util.Optional<com.velocitypowered.api.proxy.Player> localPlayer = plugin.getServer().getPlayer(friend.uuid);
+                    if (localPlayer.isPresent() && localPlayer.get().getCurrentServer().isPresent()) {
+                        friendServer = localPlayer.get().getCurrentServer().get().getServerInfo().getName();
+                    } else if (plugin.getCrossProxyService() != null) {
+                        for (String pid : plugin.getCrossProxyService().getProxyIds()) {
+                            for (java.util.Map.Entry<String, String> entry : plugin.getCrossProxyService().getPlayerListForProxy(pid)) {
+                                if (name.equalsIgnoreCase(entry.getKey())) {
+                                    friendServer = entry.getValue();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                status = Component.text(" [Online - " + friendServer + "]", NamedTextColor.GREEN);
+            } else {
+                status = Component.text(" [Offline]", NamedTextColor.RED);
+            }
             player.sendMessage(Component.text("- " + name, NamedTextColor.GRAY).append(status));
         }
     }

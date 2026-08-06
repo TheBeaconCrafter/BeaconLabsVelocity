@@ -39,7 +39,7 @@ public class SettingsUpdateListener {
             
             Optional<Player> playerOpt = plugin.getServer().getPlayer(uuid);
             if (playerOpt.isPresent()) {
-                playerOpt.get().sendMessage(plugin.getPrefix().append(Component.text("Setting " + key + " updated to " + value, NamedTextColor.GREEN)));
+                // playerOpt.get().sendMessage(plugin.getPrefix().append(Component.text("Setting " + key + " updated to " + value, NamedTextColor.GREEN)));
             }
         } catch (Exception e) {
             e.printStackTrace();

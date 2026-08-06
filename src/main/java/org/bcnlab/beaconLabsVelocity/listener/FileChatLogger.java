@@ -65,7 +65,11 @@ public class FileChatLogger {
 
     public String readChatLog(UUID playerId) throws IOException {
         String filePath = logDirectory + "/" + playerId.toString() + ".log";
-        return new String(Files.readAllBytes(Paths.get(filePath)));
+        java.nio.file.Path path = java.nio.file.Paths.get(filePath);
+        if (!java.nio.file.Files.exists(path)) {
+            return null;
+        }
+        return new String(java.nio.file.Files.readAllBytes(path));
     }
 
     private void clearLogs() {
