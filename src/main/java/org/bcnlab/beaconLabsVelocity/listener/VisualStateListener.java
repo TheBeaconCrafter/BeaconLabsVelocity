@@ -20,6 +20,7 @@ public class VisualStateListener {
     
     // Store active nicknames
     private final Map<UUID, String> activeNicknames = new ConcurrentHashMap<>();
+    private final Map<UUID, String> activeFakeRanks = new ConcurrentHashMap<>();
 
     public VisualStateListener(BeaconLabsVelocity plugin) {
         this.plugin = plugin;
@@ -58,8 +59,23 @@ public class VisualStateListener {
                         sendForceAction(uuid, "NICK_DENIED", nickname, rank);
                         return;
                     }
+                    
+                    // Check if another player is already nicked with this name
+                    boolean nickInUse = false;
+                    for (Map.Entry<UUID, String> entry : activeNicknames.entrySet()) {
+                        if (entry.getValue().equalsIgnoreCase(nickname) && !entry.getKey().equals(uuid)) {
+                            nickInUse = true;
+                            break;
+                        }
+                    }
+                    
+                    if (nickInUse) {
+                        sendForceAction(uuid, "NICK_DENIED", nickname, rank);
+                        return;
+                    }
 
                     activeNicknames.put(uuid, nickname);
+                    activeFakeRanks.put(uuid, rank);
                     plugin.getLogger().info("[VisualState] Registered nickname " + nickname + " for " + uuid);
                     applyToTab(uuid, nickname, rank);
                     
@@ -69,15 +85,18 @@ public class VisualStateListener {
             } else if ("NICK".equalsIgnoreCase(action)) {
                 if (nickname != null && !nickname.isBlank()) {
                     activeNicknames.put(uuid, nickname);
+                    activeFakeRanks.put(uuid, rank);
                     applyToTab(uuid, nickname, rank);
                 } else {
                     activeNicknames.remove(uuid);
+                    activeFakeRanks.remove(uuid);
                     applyToTab(uuid, null, null);
                 }
             } else if ("STATE_REQUEST".equalsIgnoreCase(action)) {
                 if (activeNicknames.containsKey(uuid)) {
                     String currentNick = activeNicknames.get(uuid);
-                    sendForceAction(uuid, "NICK", currentNick, currentNick);
+                    String currentRank = activeFakeRanks.getOrDefault(uuid, "");
+                    sendForceAction(uuid, "NICK", currentNick, currentRank);
                 } else {
                     sendForceAction(uuid, "UNNICK", "", "");
                 }
@@ -123,20 +142,45 @@ public class VisualStateListener {
     }
 
     @Subscribe
-    public void onServerConnected(com.velocitypowered.api.event.player.ServerConnectedEvent event) {
+    public void onServerPreConnect(com.velocitypowered.api.event.player.ServerPreConnectEvent event) {
+        if (!event.getResult().isAllowed()) return;
+        com.velocitypowered.api.proxy.server.RegisteredServer server = event.getResult().getServer().orElse(null);
+        if (server == null) return;
+        
         UUID uuid = event.getPlayer().getUniqueId();
         if (activeNicknames.containsKey(uuid)) {
             String nickname = activeNicknames.get(uuid);
-            // Send the NICK state to the new server so it can apply the nick
+            String rank = activeFakeRanks.getOrDefault(uuid, "");
             try {
                 java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
                 java.io.DataOutputStream data = new java.io.DataOutputStream(out);
                 data.writeUTF(uuid.toString());
-                data.writeUTF("NICK");
+                data.writeUTF("NICK_PRELOAD");
                 data.writeUTF(nickname);
-                data.writeUTF(nickname);
-                event.getServer().sendPluginMessage(CHANNEL, out.toByteArray());
+                data.writeUTF(rank);
+                server.sendPluginMessage(CHANNEL, out.toByteArray());
             } catch (Exception e) {}
+        }
+    }
+
+    @Subscribe
+    public void onServerConnected(com.velocitypowered.api.event.player.ServerConnectedEvent event) {
+        UUID uuid = event.getPlayer().getUniqueId();
+        if (activeNicknames.containsKey(uuid)) {
+            String nickname = activeNicknames.get(uuid);
+            String rank = activeFakeRanks.getOrDefault(uuid, "");
+            // Send the NICK state to the new server so it can apply the nick
+            plugin.getServer().getScheduler().buildTask(plugin, () -> {
+                try {
+                    java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                    java.io.DataOutputStream data = new java.io.DataOutputStream(out);
+                    data.writeUTF(uuid.toString());
+                    data.writeUTF("NICK");
+                    data.writeUTF(nickname);
+                    data.writeUTF(rank);
+                    event.getServer().sendPluginMessage(CHANNEL, out.toByteArray());
+                } catch (Exception e) {}
+            }).delay(java.time.Duration.ofMillis(500)).schedule();
         }
     }
 
