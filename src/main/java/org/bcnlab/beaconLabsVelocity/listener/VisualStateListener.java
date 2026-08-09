@@ -160,7 +160,7 @@ public class VisualStateListener {
                 activeNicknames.remove(uuid);
                 activeFakeRanks.remove(uuid);
                 applyToTab(uuid, null, null);
-                event.getPlayer().sendMessage(net.kyori.adventure.text.Component.text("You have been unnicked because the server you joined does not support nicknames.", net.kyori.adventure.text.format.NamedTextColor.RED));
+                event.getPlayer().sendMessage(plugin.getPrefix(event.getPlayer()).append(net.kyori.adventure.text.Component.text("You have been unnicked because the server you joined does not support nicknames.", net.kyori.adventure.text.format.NamedTextColor.RED)));
                 return;
             }
 

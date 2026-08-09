@@ -218,11 +218,18 @@ public class FriendCommand implements SimpleCommand {
         player.sendMessage(plugin.getPrefix(player).append(Component.text("Removed " + targetName + " from your friends list.", NamedTextColor.GOLD)));
     }
 
-    private void handleList(Player player, boolean tryGui) {
+    private void handleList(Player player, boolean useGui) {
+        if (useGui && player.getCurrentServer().isPresent() && plugin.getDependencyTracker().isSupported(player.getCurrentServer().get().getServerInfo().getName())) {
+            try {
+                com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier openId = com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:friend_gui_open");
+                player.getCurrentServer().get().sendPluginMessage(openId, new byte[0]);
+            } catch (Exception e) {}
+        }
+        
         plugin.getServer().getScheduler().buildTask(plugin, () -> {
             var friends = plugin.getFriendService().getDetailedFriends(player.getUniqueId());
             
-            if (tryGui && player.getCurrentServer().isPresent() && plugin.getDependencyTracker().isSupported(player.getCurrentServer().get())) {
+            if (useGui && player.getCurrentServer().isPresent() && plugin.getDependencyTracker().isSupported(player.getCurrentServer().get())) {
                 com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier openId = com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:friend_open");
                 boolean canGui = player.getCurrentServer().get().sendPluginMessage(openId, new byte[]{});
                 if (canGui) {

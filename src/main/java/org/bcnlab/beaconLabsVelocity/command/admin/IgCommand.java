@@ -63,6 +63,17 @@ public class IgCommand implements SimpleCommand {
             return;
         }
 
+        Optional<ServerConnection> serverOptional = player.getCurrentServer();
+        if (serverOptional.isPresent()) {
+            if (!plugin.getDependencyTracker().isSupported(serverOptional.get())) {
+                player.sendMessage(plugin.getPrefix(player).append(Component.text("GUI commands are not supported on your current server. Falling back to /info.", NamedTextColor.RED)));
+                fallbackInfoCommand.execute(invocation);
+                return;
+            }
+        } else {
+            return;
+        }
+
         String targetName = args[0];
         Optional<Player> optionalTarget = server.getPlayer(targetName);
         

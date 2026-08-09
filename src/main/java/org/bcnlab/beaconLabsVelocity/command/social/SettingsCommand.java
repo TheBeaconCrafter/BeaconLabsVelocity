@@ -33,7 +33,7 @@ public class SettingsCommand implements SimpleCommand {
         if (serverOptional.isPresent()) {
             ServerConnection server = serverOptional.get();
             if (!plugin.getDependencyTracker().isSupported(server)) {
-                player.sendMessage(Component.text("This command is not supported on your current server. Please join a lobby.", NamedTextColor.RED));
+                player.sendMessage(plugin.getPrefix(player).append(Component.text("This command is not supported on your current server. Please join a lobby.", NamedTextColor.RED)));
                 return;
             }
 

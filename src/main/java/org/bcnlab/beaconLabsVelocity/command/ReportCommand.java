@@ -72,17 +72,23 @@ public class ReportCommand implements SimpleCommand {
         if (args.length == 1) {
             // Attempt to open GUI on backend
             String target = args[0];
-            try {
-                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
-                java.io.DataOutputStream data = new java.io.DataOutputStream(out);
-                data.writeUTF("REPORT");
-                data.writeUTF(target);
-                
-                Optional<ServerConnection> connection = player.getCurrentServer();
-                if (connection.isPresent() && connection.get().sendPluginMessage(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:report_dialog"), out.toByteArray())) {
-                    return; // GUI will open on backend
+            Optional<ServerConnection> connection = player.getCurrentServer();
+            if (connection.isPresent()) {
+                if (plugin.getDependencyTracker().isSupported(connection.get())) {
+                    try {
+                        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                        java.io.DataOutputStream data = new java.io.DataOutputStream(out);
+                        data.writeUTF("REPORT");
+                        data.writeUTF(target);
+                        
+                        if (connection.get().sendPluginMessage(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:report_dialog"), out.toByteArray())) {
+                            return; // GUI will open on backend
+                        }
+                    } catch (Exception e) {}
+                } else {
+                    player.sendMessage(plugin.getPrefix(player).append(Component.text("GUI commands are not supported on your current server. Falling back to text.", NamedTextColor.RED)));
                 }
-            } catch (Exception e) {}
+            }
             
             // Fallback to text usage
             sendUsage(player);
