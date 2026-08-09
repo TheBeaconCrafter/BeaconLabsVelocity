@@ -32,6 +32,11 @@ public class SettingsCommand implements SimpleCommand {
 
         if (serverOptional.isPresent()) {
             ServerConnection server = serverOptional.get();
+            if (!plugin.getDependencyTracker().isSupported(server)) {
+                player.sendMessage(Component.text("This command is not supported on your current server. Please join a lobby.", NamedTextColor.RED));
+                return;
+            }
+
             com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier identifier = com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:settings_dialog");
             
             try {

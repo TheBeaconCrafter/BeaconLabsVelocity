@@ -95,6 +95,12 @@ public class BeaconLabsVelocity {
     private PlayerSettingsService playerSettingsService;
     private FriendService friendService;
     private volatile boolean featherDebug = false;
+    private final org.bcnlab.beaconLabsVelocity.util.DependencyTracker dependencyTracker = new org.bcnlab.beaconLabsVelocity.util.DependencyTracker();
+
+    public org.bcnlab.beaconLabsVelocity.util.DependencyTracker getDependencyTracker() {
+        return dependencyTracker;
+    }
+
     @Inject
     public BeaconLabsVelocity(CommandManager commandManager) {
         // Commands are now registered in onProxyInitialization

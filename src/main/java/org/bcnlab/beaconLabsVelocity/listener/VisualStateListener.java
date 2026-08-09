@@ -37,6 +37,8 @@ public class VisualStateListener {
             return;
         }
 
+        plugin.getDependencyTracker().markSupported(((ServerConnection) event.getSource()).getServerInfo().getName());
+
         try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(event.getData()))) {
             String uuidStr = in.readUTF();
             String action = in.readUTF();
@@ -46,6 +48,8 @@ public class VisualStateListener {
             String rank = "";
             if (in.available() > 0) {
                 rank = in.readUTF();
+            } else {
+                rank = skin;
             }
 
             UUID uuid = UUID.fromString(uuidStr);
@@ -100,6 +104,8 @@ public class VisualStateListener {
                 } else {
                     sendForceAction(uuid, "UNNICK", "", "");
                 }
+            } else if ("LINK_HELLO".equalsIgnoreCase(action)) {
+                plugin.getDependencyTracker().markSupported(((ServerConnection) event.getSource()).getServerInfo().getName());
             }
         } catch (Exception e) {
             plugin.getLogger().warn("Failed to parse visual state message: " + e.getMessage());
@@ -149,6 +155,15 @@ public class VisualStateListener {
         
         UUID uuid = event.getPlayer().getUniqueId();
         if (activeNicknames.containsKey(uuid)) {
+            if (!plugin.getDependencyTracker().isSupported(server)) {
+                // Server doesn't support Link plugin, unnick the player
+                activeNicknames.remove(uuid);
+                activeFakeRanks.remove(uuid);
+                applyToTab(uuid, null, null);
+                event.getPlayer().sendMessage(net.kyori.adventure.text.Component.text("You have been unnicked because the server you joined does not support nicknames.", net.kyori.adventure.text.format.NamedTextColor.RED));
+                return;
+            }
+
             String nickname = activeNicknames.get(uuid);
             String rank = activeFakeRanks.getOrDefault(uuid, "");
             try {

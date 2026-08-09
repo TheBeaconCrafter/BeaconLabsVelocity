@@ -222,7 +222,7 @@ public class FriendCommand implements SimpleCommand {
         plugin.getServer().getScheduler().buildTask(plugin, () -> {
             var friends = plugin.getFriendService().getDetailedFriends(player.getUniqueId());
             
-            if (tryGui && player.getCurrentServer().isPresent()) {
+            if (tryGui && player.getCurrentServer().isPresent() && plugin.getDependencyTracker().isSupported(player.getCurrentServer().get())) {
                 com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier openId = com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:friend_open");
                 boolean canGui = player.getCurrentServer().get().sendPluginMessage(openId, new byte[]{});
                 if (canGui) {
