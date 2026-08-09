@@ -145,6 +145,12 @@ public class IgCommand implements SimpleCommand {
             }
             data.writeLong(activeBans);
             data.writeLong(activeMutes);
+            
+            // Permissions for submenus
+            data.writeBoolean(src.hasPermission("beaconlabs.punish.ipinfo"));
+            data.writeBoolean(src.hasPermission("beaconlabs.punish.history"));
+            data.writeBoolean(src.hasPermission("beaconlabs.punish.goto"));
+            
             Optional<ServerConnection> connection = player.getCurrentServer();
             if (connection.isPresent()) {
                 boolean sent = connection.get().sendPluginMessage(CHANNEL, out.toByteArray());

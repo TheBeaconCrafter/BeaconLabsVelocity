@@ -64,9 +64,14 @@ public class ReportCommand implements SimpleCommand {
         }
         
         // Check for proper usage
-        if (args.length < 2) {
+        if (args.length == 0) {
+            sendUsage(player);
+            return;
+        }
+
+        if (args.length == 1) {
             // Attempt to open GUI on backend
-            String target = args.length == 1 ? args[0] : "";
+            String target = args[0];
             try {
                 java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
                 java.io.DataOutputStream data = new java.io.DataOutputStream(out);

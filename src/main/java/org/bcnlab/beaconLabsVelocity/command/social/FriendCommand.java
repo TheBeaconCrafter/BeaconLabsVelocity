@@ -77,9 +77,60 @@ public class FriendCommand implements SimpleCommand {
             case "requests":
                 handleRequests(player);
                 break;
+            case "jump":
+                if (args.length < 2) {
+                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend jump <player>", NamedTextColor.RED)));
+                    return;
+                }
+                handleJump(player, args[1]);
+                break;
             default:
                 sendHelp(player);
                 break;
+        }
+    }
+
+    private void handleJump(Player player, String targetName) {
+        UUID targetUuid = getPlayerUuid(targetName);
+        if (targetUuid == null) {
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("Player not found.", NamedTextColor.RED)));
+            return;
+        }
+        if (!plugin.getFriendService().areFriends(player.getUniqueId(), targetUuid)) {
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("You are not friends with " + targetName + ".", NamedTextColor.RED)));
+            return;
+        }
+        
+        Optional<Player> optTarget = plugin.getServer().getPlayer(targetUuid);
+        if (optTarget.isPresent() && optTarget.get().getCurrentServer().isPresent()) {
+            String serverName = optTarget.get().getCurrentServer().get().getServerInfo().getName();
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("Jumping to " + serverName + "...", NamedTextColor.GREEN)));
+            player.createConnectionRequest(optTarget.get().getCurrentServer().get().getServer()).fireAndForget();
+        } else if (plugin.getCrossProxyService() != null) {
+            // Find server via CrossProxy
+            String serverName = null;
+            String proxyId = plugin.getCrossProxyService().getPlayerProxy(targetUuid);
+            if (proxyId != null) {
+                for (java.util.Map.Entry<String, String> entry : plugin.getCrossProxyService().getPlayerListForProxy(proxyId)) {
+                    if (entry.getKey().equalsIgnoreCase(targetName)) {
+                        serverName = entry.getValue();
+                        break;
+                    }
+                }
+            }
+            if (serverName != null) {
+                Optional<com.velocitypowered.api.proxy.server.RegisteredServer> server = plugin.getServer().getServer(serverName);
+                if (server.isPresent()) {
+                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Jumping to " + serverName + "...", NamedTextColor.GREEN)));
+                    player.createConnectionRequest(server.get()).fireAndForget();
+                } else {
+                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Server " + serverName + " is not available on this proxy.", NamedTextColor.RED)));
+                }
+            } else {
+                player.sendMessage(plugin.getPrefix(player).append(Component.text("Player is not online.", NamedTextColor.RED)));
+            }
+        } else {
+            player.sendMessage(plugin.getPrefix(player).append(Component.text("Player is not online.", NamedTextColor.RED)));
         }
     }
 
@@ -168,91 +219,101 @@ public class FriendCommand implements SimpleCommand {
     }
 
     private void handleList(Player player, boolean tryGui) {
-        var friends = plugin.getFriendService().getDetailedFriends(player.getUniqueId());
-        
-        if (tryGui && player.getCurrentServer().isPresent()) {
-            com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier identifier = com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:friend_dialog");
-            try {
-                java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
-                java.io.DataOutputStream out = new java.io.DataOutputStream(b);
-                out.writeInt(friends.size());
-                for (var friend : friends) {
-                    String name = getPlayerName(friend.uuid);
-                    boolean isOnline = plugin.getCrossProxyService() != null && plugin.getCrossProxyService().getOnlinePlayerNames().contains(name);
-                    out.writeUTF(friend.uuid.toString());
-                    out.writeUTF(name);
-                    out.writeBoolean(isOnline);
-                    out.writeLong(friend.friendsSince);
-                    
-                    long lastOnline = 0;
-                    if (plugin.getPlayerStatsService() != null) {
-                        lastOnline = plugin.getPlayerStatsService().getLastSeenTime(friend.uuid);
-                    }
-                    out.writeLong(lastOnline);
-                    
-                    // friend_server parsing
-                    String friendServer = "";
-                    if (isOnline) {
-                        String friendServerPrivacy = plugin.getPlayerSettingsService() != null ? plugin.getPlayerSettingsService().getPlayerSetting(friend.uuid, "friend_server", "everyone") : "everyone";
-                        if (friendServerPrivacy.equalsIgnoreCase("nobody")) {
-                            friendServer = "Hidden";
-                        } else if (friendServerPrivacy.equalsIgnoreCase("friends_only") && !plugin.getFriendService().areFriends(friend.uuid, player.getUniqueId())) {
-                            friendServer = "Hidden";
-                        } else {
-                            // Find server name
-                            java.util.Optional<com.velocitypowered.api.proxy.Player> localPlayer = plugin.getServer().getPlayer(friend.uuid);
-                            if (localPlayer.isPresent() && localPlayer.get().getCurrentServer().isPresent()) {
-                                friendServer = localPlayer.get().getCurrentServer().get().getServerInfo().getName();
-                            } else if (plugin.getCrossProxyService() != null) {
-                                for (String pid : plugin.getCrossProxyService().getProxyIds()) {
-                                    for (java.util.Map.Entry<String, String> entry : plugin.getCrossProxyService().getPlayerListForProxy(pid)) {
-                                        if (name.equalsIgnoreCase(entry.getKey())) {
-                                            friendServer = entry.getValue();
-                                            break;
+        plugin.getServer().getScheduler().buildTask(plugin, () -> {
+            var friends = plugin.getFriendService().getDetailedFriends(player.getUniqueId());
+            
+            if (tryGui && player.getCurrentServer().isPresent()) {
+                com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier openId = com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:friend_open");
+                boolean canGui = player.getCurrentServer().get().sendPluginMessage(openId, new byte[]{});
+                if (canGui) {
+                    com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier identifier = com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:friend_dialog");
+                    try {
+                        java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
+                        java.io.DataOutputStream out = new java.io.DataOutputStream(b);
+                        out.writeInt(friends.size());
+                        for (var friend : friends) {
+                            String name = getPlayerName(friend.uuid);
+                            boolean isOnline = plugin.getCrossProxyService() != null && plugin.getCrossProxyService().getOnlinePlayerNames().contains(name);
+                            out.writeUTF(friend.uuid.toString());
+                            out.writeUTF(name);
+                            out.writeBoolean(isOnline);
+                            out.writeLong(friend.friendsSince);
+                            
+                            long lastOnline = 0;
+                            if (plugin.getPlayerStatsService() != null) {
+                                lastOnline = plugin.getPlayerStatsService().getLastSeenTime(friend.uuid);
+                            }
+                            out.writeLong(lastOnline);
+                            
+                            // friend_server parsing
+                            String friendServer = "";
+                            if (isOnline) {
+                                String friendServerPrivacy = plugin.getPlayerSettingsService() != null ? plugin.getPlayerSettingsService().getPlayerSetting(friend.uuid, "friend_server", "friends_only") : "friends_only";
+                                if (friendServerPrivacy.equalsIgnoreCase("nobody")) {
+                                    friendServer = "Hidden";
+                                } else if (friendServerPrivacy.equalsIgnoreCase("friends_only") && !plugin.getFriendService().areFriends(friend.uuid, player.getUniqueId())) {
+                                    friendServer = "Hidden";
+                                } else {
+                                    // Find server name
+                                    java.util.Optional<com.velocitypowered.api.proxy.Player> localPlayer = plugin.getServer().getPlayer(friend.uuid);
+                                    if (localPlayer.isPresent() && localPlayer.get().getCurrentServer().isPresent()) {
+                                        friendServer = localPlayer.get().getCurrentServer().get().getServerInfo().getName();
+                                    } else if (plugin.getCrossProxyService() != null) {
+                                        for (String pid : plugin.getCrossProxyService().getProxyIds()) {
+                                            for (java.util.Map.Entry<String, String> entry : plugin.getCrossProxyService().getPlayerListForProxy(pid)) {
+                                                if (name.equalsIgnoreCase(entry.getKey())) {
+                                                    friendServer = entry.getValue();
+                                                    break;
+                                                }
+                                            }
                                         }
+                                    }
+                                }
+                            }
+                            out.writeUTF(friendServer);
+                        }
+                        player.getCurrentServer().get().sendPluginMessage(identifier, b.toByteArray());
+                    } catch (Exception e) {}
+                    return;
+                }
+            }
+            
+            player.sendMessage(Component.text("--- Friends List ---", NamedTextColor.GOLD));
+            if (friends.isEmpty()) {
+                player.sendMessage(Component.text("You have no friends added.", NamedTextColor.GRAY));
+                return;
+            }
+            for (var friend : friends) {
+                String name = getPlayerName(friend.uuid);
+                boolean isOnline = plugin.getCrossProxyService() != null && plugin.getCrossProxyService().getOnlinePlayerNames().contains(name);
+                Component status;
+                if (isOnline) {
+                    String friendServer = "Unknown";
+                    String privacy = plugin.getPlayerSettingsService().getPlayerSetting(friend.uuid, "friend_server", "friends_only");
+                    if (privacy.equals("nobody")) {
+                        friendServer = "Hidden";
+                    } else {
+                        java.util.Optional<com.velocitypowered.api.proxy.Player> localPlayer = plugin.getServer().getPlayer(friend.uuid);
+                        if (localPlayer.isPresent() && localPlayer.get().getCurrentServer().isPresent()) {
+                            friendServer = localPlayer.get().getCurrentServer().get().getServerInfo().getName();
+                        } else if (plugin.getCrossProxyService() != null) {
+                            for (String pid : plugin.getCrossProxyService().getProxyIds()) {
+                                for (java.util.Map.Entry<String, String> entry : plugin.getCrossProxyService().getPlayerListForProxy(pid)) {
+                                    if (name.equalsIgnoreCase(entry.getKey())) {
+                                        friendServer = entry.getValue();
+                                        break;
                                     }
                                 }
                             }
                         }
                     }
-                    out.writeUTF(friendServer);
-                }
-                boolean sent = player.getCurrentServer().get().sendPluginMessage(identifier, b.toByteArray());
-                if (sent) return; // Only return if successfully sent
-            } catch (Exception e) {}
-        }
-        
-        player.sendMessage(Component.text("--- Friends List ---", NamedTextColor.GOLD));
-        for (var friend : friends) {
-            String name = getPlayerName(friend.uuid);
-            boolean isOnline = plugin.getCrossProxyService() != null && plugin.getCrossProxyService().getOnlinePlayerNames().contains(name);
-            Component status;
-            if (isOnline) {
-                String friendServer = "Unknown";
-                String privacy = plugin.getPlayerSettingsService().getPlayerSetting(friend.uuid, "friend_server", "everyone");
-                if (privacy.equals("nobody")) {
-                    friendServer = "Hidden";
+                    status = Component.text(" [Online - " + friendServer + "]", NamedTextColor.GREEN);
                 } else {
-                    java.util.Optional<com.velocitypowered.api.proxy.Player> localPlayer = plugin.getServer().getPlayer(friend.uuid);
-                    if (localPlayer.isPresent() && localPlayer.get().getCurrentServer().isPresent()) {
-                        friendServer = localPlayer.get().getCurrentServer().get().getServerInfo().getName();
-                    } else if (plugin.getCrossProxyService() != null) {
-                        for (String pid : plugin.getCrossProxyService().getProxyIds()) {
-                            for (java.util.Map.Entry<String, String> entry : plugin.getCrossProxyService().getPlayerListForProxy(pid)) {
-                                if (name.equalsIgnoreCase(entry.getKey())) {
-                                    friendServer = entry.getValue();
-                                    break;
-                                }
-                            }
-                        }
-                    }
+                    status = Component.text(" [Offline]", NamedTextColor.RED);
                 }
-                status = Component.text(" [Online - " + friendServer + "]", NamedTextColor.GREEN);
-            } else {
-                status = Component.text(" [Offline]", NamedTextColor.RED);
+                player.sendMessage(Component.text("- " + name, NamedTextColor.GRAY).append(status));
             }
-            player.sendMessage(Component.text("- " + name, NamedTextColor.GRAY).append(status));
-        }
+        }).schedule();
     }
 
     private void handleRequests(Player player) {
@@ -283,6 +344,7 @@ public class FriendCommand implements SimpleCommand {
         player.sendMessage(Component.text("/friend remove <player>", NamedTextColor.GRAY));
         player.sendMessage(Component.text("/friend list", NamedTextColor.GRAY));
         player.sendMessage(Component.text("/friend requests", NamedTextColor.GRAY));
+        player.sendMessage(Component.text("/friend jump <player>", NamedTextColor.GRAY));
     }
     
     private UUID getPlayerUuid(String name) {
@@ -319,10 +381,10 @@ public class FriendCommand implements SimpleCommand {
         String[] args = invocation.arguments();
         if (args.length == 0 || args.length == 1) {
             String input = args.length == 0 ? "" : args[0].toLowerCase();
-            return List.of("add", "accept", "deny", "remove", "list", "requests").stream()
+            return List.of("add", "accept", "deny", "remove", "list", "requests", "jump").stream()
                     .filter(s -> s.startsWith(input))
                     .collect(Collectors.toList());
-        } else if (args.length == 2 && List.of("add", "accept", "deny", "remove").contains(args[0].toLowerCase())) {
+        } else if (args.length == 2 && List.of("add", "accept", "deny", "remove", "jump").contains(args[0].toLowerCase())) {
             String input = args[1].toLowerCase();
             if (plugin.getCrossProxyService() != null) {
                 return plugin.getCrossProxyService().getOnlinePlayerNames().stream()

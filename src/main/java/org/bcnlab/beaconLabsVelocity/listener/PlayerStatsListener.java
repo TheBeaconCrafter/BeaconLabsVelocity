@@ -32,6 +32,9 @@ public class PlayerStatsListener {
         plugin.getServer().getScheduler().buildTask(plugin, () -> {
             try {
                 playerStatsService.recordLogin(player);
+                if (plugin.getPlayerSettingsService() != null) {
+                    plugin.getPlayerSettingsService().loadPlayerSettings(player.getUniqueId());
+                }
                 logger.debug("Recorded login for player: " + player.getUsername());
             } catch (Exception e) {
                 logger.error("Error recording login for player: " + player.getUsername(), e);

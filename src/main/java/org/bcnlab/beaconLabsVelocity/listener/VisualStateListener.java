@@ -74,6 +74,13 @@ public class VisualStateListener {
                     activeNicknames.remove(uuid);
                     applyToTab(uuid, null, null);
                 }
+            } else if ("STATE_REQUEST".equalsIgnoreCase(action)) {
+                if (activeNicknames.containsKey(uuid)) {
+                    String currentNick = activeNicknames.get(uuid);
+                    sendForceAction(uuid, "NICK", currentNick, currentNick);
+                } else {
+                    sendForceAction(uuid, "UNNICK", "", "");
+                }
             }
         } catch (Exception e) {
             plugin.getLogger().warn("Failed to parse visual state message: " + e.getMessage());

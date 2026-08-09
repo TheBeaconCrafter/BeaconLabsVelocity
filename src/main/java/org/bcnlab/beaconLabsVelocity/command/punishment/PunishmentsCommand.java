@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.bcnlab.beaconLabsVelocity.util.ColorParser;
+import java.util.Optional;
 
 /**
  * /punishments <player> - show punishment history
@@ -72,6 +73,33 @@ public class PunishmentsCommand implements SimpleCommand {
         
         // Fetch history using the found UUID
         List<PunishmentRecord> history = service.getHistory(targetUUID);
+
+        if (src instanceof com.velocitypowered.api.proxy.Player player) {
+            try {
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                java.io.DataOutputStream data = new java.io.DataOutputStream(out);
+                
+                data.writeUTF(targetName);
+                data.writeInt(history.size());
+                for (PunishmentRecord record : history) {
+                    data.writeBoolean(record.active);
+                    data.writeUTF(record.type);
+                    data.writeUTF(record.reason);
+                    data.writeUTF(record.issuerName != null ? record.issuerName : "Console");
+                    data.writeLong(PunishmentService.parseTimestamp(record.startTime).getTime());
+                    data.writeLong(record.endTime <= 0 ? 0 : PunishmentService.parseTimestamp(record.endTime).getTime());
+                    data.writeLong(record.duration);
+                }
+
+                Optional<com.velocitypowered.api.proxy.ServerConnection> connection = player.getCurrentServer();
+                if (connection.isPresent()) {
+                    boolean sent = connection.get().sendPluginMessage(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:punishments_dialog"), out.toByteArray());
+                    if (sent) return;
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warn("Failed to encode punishments payload: " + e.getMessage());
+            }
+        }
 
         // Use the provided targetName for the header, as we might not have the exact casing from the DB
         String header = config.getMessage("history-header").replace("{player}", targetName);

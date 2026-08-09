@@ -92,17 +92,18 @@ public class IpInfoCommand implements SimpleCommand {
         }
 
         final String finalIp = targetIp;
+        final String finalName = target.equals(targetIp) ? "" : target;
         src.sendMessage(plugin.getPrefix().append(Component.text("Looking up info for IP: " + finalIp + "...", NamedTextColor.GRAY)));
 
         if (refresh) {
-            antiBotService.refreshIpInfo(finalIp).thenAccept(result -> displayInfo(src, finalIp, result));
+            antiBotService.refreshIpInfo(finalIp).thenAccept(result -> displayInfo(src, finalIp, finalName, result));
         } else {
             Optional<AntiBotService.IpCheckResult> cached = antiBotService.getCachedInfo(finalIp);
             if (cached.isPresent()) {
-                displayInfo(src, finalIp, cached.get());
+                displayInfo(src, finalIp, finalName, cached.get());
             } else {
                 src.sendMessage(plugin.getPrefix().append(Component.text("No cached info found. Fetching...", NamedTextColor.GRAY)));
-                antiBotService.refreshIpInfo(finalIp).thenAccept(result -> displayInfo(src, finalIp, result));
+                antiBotService.refreshIpInfo(finalIp).thenAccept(result -> displayInfo(src, finalIp, finalName, result));
             }
         }
     }
@@ -111,8 +112,46 @@ public class IpInfoCommand implements SimpleCommand {
         src.sendMessage(Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", color));
     }
 
-    private void displayInfo(CommandSource src, String ip, AntiBotService.IpCheckResult result) {
+    private void displayInfo(CommandSource src, String ip, String targetName, AntiBotService.IpCheckResult result) {
         PlayerStatsService playerStatsService = plugin.getPlayerStatsService();
+        if (src instanceof com.velocitypowered.api.proxy.Player player) {
+            try {
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                java.io.DataOutputStream data = new java.io.DataOutputStream(out);
+                data.writeUTF(ip);
+                data.writeUTF(targetName != null ? targetName : "");
+                data.writeInt(result.confidenceScore);
+                data.writeUTF(result.ipData != null && result.ipData.usageType != null ? result.ipData.usageType : "Unknown");
+                data.writeUTF(result.ipData != null ? result.ipData.isp : "Unknown");
+                data.writeUTF(result.ipData != null ? result.ipData.domain : "None");
+                data.writeUTF(result.ipData != null ? result.ipData.countryName : "Unknown");
+                data.writeUTF(result.ipData != null ? result.ipData.countryCode : "");
+                data.writeBoolean(result.ipData != null && result.ipData.isTor);
+                data.writeInt(result.ipData != null ? result.ipData.totalReports : 0);
+                data.writeUTF(result.ipData != null ? result.ipData.lastReportedAt : "");
+                data.writeBoolean(result.whitelisted);
+                data.writeBoolean(result.blacklisted);
+                data.writeUTF(result.action == AntiBotService.DefenseAction.BLOCK ? "BLOCKED" : (result.action == AntiBotService.DefenseAction.SCREEN ? "SCREENED" : "ALLOWED"));
+
+                List<PlayerStatsService.PlayerData> playersWithSameIp = playerStatsService != null ? playerStatsService.getPlayersWithSameIp(ip) : new ArrayList<>();
+                data.writeInt(playersWithSameIp.size());
+                for (PlayerStatsService.PlayerData pd : playersWithSameIp) {
+                    data.writeUTF(pd.getPlayerName());
+                    boolean isOnline = server.getPlayer(pd.getPlayerId()).isPresent();
+                    data.writeBoolean(isOnline);
+                    data.writeLong(pd.getLastSeen());
+                }
+
+                Optional<com.velocitypowered.api.proxy.ServerConnection> connection = player.getCurrentServer();
+                if (connection.isPresent()) {
+                    boolean sent = connection.get().sendPluginMessage(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:ipinfo_dialog"), out.toByteArray());
+                    if (sent) return; // Successfully sent to backend
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warn("Failed to encode ipinfo payload: " + e.getMessage());
+            }
+        }
+
         sendDivider(src, NamedTextColor.GOLD);
         
         Component header = Component.text()
