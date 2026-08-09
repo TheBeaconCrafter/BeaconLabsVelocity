@@ -39,7 +39,7 @@ public class UnmuteCommand implements SimpleCommand {
             return;
         }
         if (args.length < 1) {
-            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&cUsage: /unmute <player>")));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&7Usage: /unmute <player>")));
             return;
         }        String targetName = args[0];
         // Try to get UUID for both online and offline players

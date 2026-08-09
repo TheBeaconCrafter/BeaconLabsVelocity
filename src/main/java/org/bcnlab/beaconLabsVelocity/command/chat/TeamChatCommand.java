@@ -41,7 +41,7 @@ public class TeamChatCommand implements SimpleCommand {
 
         // Check for message content
         if (args.length == 0) {
-            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Usage: /teamchat <message>", NamedTextColor.RED)));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Usage: /teamchat <message>", NamedTextColor.GRAY)));
             return;
         }
 

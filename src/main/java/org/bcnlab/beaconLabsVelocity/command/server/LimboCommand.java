@@ -62,7 +62,7 @@ public class LimboCommand implements SimpleCommand {
                 invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(Component.text("Player not found.", NamedTextColor.RED)));
             }
         } else {
-            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(Component.text("Usage: /limbo [player]", NamedTextColor.RED)));
+            invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(Component.text("Usage: /limbo [player]", NamedTextColor.GRAY)));
         }
     }
 

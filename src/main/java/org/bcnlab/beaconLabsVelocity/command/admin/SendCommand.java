@@ -43,7 +43,7 @@ public class SendCommand implements SimpleCommand {
         }
         if (args.length < 2) {
             source.sendMessage(plugin.getPrefix(source).append(
-                    Component.text("Usage: /send * <server> or /send <player> <server>", NamedTextColor.RED)));
+                    Component.text("Usage: /send * <server> or /send <player> <server>", NamedTextColor.GRAY)));
             return;
         }
 

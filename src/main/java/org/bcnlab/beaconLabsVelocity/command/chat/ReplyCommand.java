@@ -42,7 +42,7 @@ public class ReplyCommand implements SimpleCommand {
 
         // Check arguments
         if (args.length < 1) {
-            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Usage: /r <message>", NamedTextColor.RED)));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Usage: /r <message>", NamedTextColor.GRAY)));
             return;
         }
 

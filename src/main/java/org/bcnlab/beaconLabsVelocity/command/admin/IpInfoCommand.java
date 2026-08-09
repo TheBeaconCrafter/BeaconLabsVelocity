@@ -38,7 +38,7 @@ public class IpInfoCommand implements SimpleCommand {
         }
 
         if (args.length == 0) {
-            src.sendMessage(plugin.getPrefix(src).append(Component.text("Usage: /ipinfo <user/ip> [refresh]", NamedTextColor.RED)));
+            src.sendMessage(plugin.getPrefix(src).append(Component.text("Usage: /ipinfo <user/ip> [refresh]", NamedTextColor.GRAY)));
             return;
         }
 

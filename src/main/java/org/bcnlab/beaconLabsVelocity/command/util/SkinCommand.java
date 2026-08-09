@@ -23,7 +23,7 @@ public class SkinCommand implements SimpleCommand {
         String[] args = invocation.arguments();
         
         if (args.length != 1) {
-            source.sendMessage(plugin.getPrefix(source).append(Component.text("Usage: /skin <player>", NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("Usage: /skin <player>", NamedTextColor.GRAY)));
             return;
         }
 

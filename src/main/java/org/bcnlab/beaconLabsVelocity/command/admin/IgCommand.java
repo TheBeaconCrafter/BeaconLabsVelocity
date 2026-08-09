@@ -59,7 +59,7 @@ public class IgCommand implements SimpleCommand {
 
         if (args.length < 1) {
             src.sendMessage(plugin.getPrefix(src).append(
-                Component.text("Usage: /ig <player>", NamedTextColor.RED)));
+                Component.text("Usage: /ig <player>", NamedTextColor.GRAY)));
             return;
         }
 

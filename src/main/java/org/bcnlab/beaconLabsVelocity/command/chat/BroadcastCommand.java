@@ -18,7 +18,7 @@ public class BroadcastCommand implements SimpleCommand {
     @Override
     public void execute(Invocation invocation) {
         if (invocation.arguments().length == 0) {
-            invocation.source().sendMessage(Component.text("Usage: /broadcast <message>", NamedTextColor.RED));
+            invocation.source().sendMessage(Component.text("Usage: /broadcast <message>", NamedTextColor.GRAY));
             return;
         }
         String msg = String.join(" ", invocation.arguments());

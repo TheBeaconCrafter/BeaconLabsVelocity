@@ -44,7 +44,7 @@ public class PunishmentsCommand implements SimpleCommand {
             return;
         }
         if (args.length < 1) {
-            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&cUsage: /punishments <player>")));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&7Usage: /punishments <player>")));
             return;
         }
         String targetName = args[0];

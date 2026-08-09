@@ -44,7 +44,7 @@ public class ClearPunishmentCommand implements SimpleCommand {
         
         if (args.length < 1) {
             src.sendMessage(plugin.getPrefix(src).append(
-                ColorParser.parse("&cUsage: /cpunish <player>")));
+                ColorParser.parse("&7Usage: /cpunish <player>")));
             return;
         }
         

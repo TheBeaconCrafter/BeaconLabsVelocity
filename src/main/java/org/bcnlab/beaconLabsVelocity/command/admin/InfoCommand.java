@@ -63,7 +63,7 @@ public class InfoCommand implements SimpleCommand {
         // Usage check
         if (args.length < 1) {
             src.sendMessage(plugin.getPrefix(src).append(
-                Component.text("Usage: /info <player>", NamedTextColor.RED)));
+                Component.text("Usage: /info <player>", NamedTextColor.GRAY)));
             return;
         }        // Get target player
         String targetName = args[0];

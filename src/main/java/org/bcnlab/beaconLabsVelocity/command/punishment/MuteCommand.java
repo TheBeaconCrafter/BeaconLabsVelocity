@@ -41,7 +41,7 @@ public class MuteCommand implements SimpleCommand {
             return;
         }
         if (args.length < 2) {
-            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&cUsage: /mute <player> <duration> [reason]")));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&7Usage: /mute <player> <duration> [reason]")));
             return;
         }
         String targetName = args[0];

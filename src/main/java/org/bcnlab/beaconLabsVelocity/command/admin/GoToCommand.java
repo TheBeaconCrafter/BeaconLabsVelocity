@@ -46,7 +46,7 @@ public class GoToCommand implements SimpleCommand {
         
         // Check if a target is specified
         if (args.length < 1) {
-            source.sendMessage(plugin.getPrefix(source).append(Component.text("Usage: /goto <server|player>", NamedTextColor.RED)));
+            source.sendMessage(plugin.getPrefix(source).append(Component.text("Usage: /goto <server|player>", NamedTextColor.GRAY)));
             return;
         }
         

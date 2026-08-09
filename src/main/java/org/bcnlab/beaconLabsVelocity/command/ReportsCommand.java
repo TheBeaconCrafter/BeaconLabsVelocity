@@ -187,7 +187,7 @@ public class ReportsCommand implements SimpleCommand {
             case "status":
                 if (args.length < 3) {
                     source.sendMessage(plugin.getPrefix(source).append(
-                        Component.text("Usage: /reports status <id> <new-status> [note]", NamedTextColor.RED)
+                        Component.text("Usage: /reports status <id> <new-status> [note]", NamedTextColor.GRAY)
                     ));
                     return;
                 }

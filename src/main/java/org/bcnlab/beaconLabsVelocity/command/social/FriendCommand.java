@@ -45,28 +45,28 @@ public class FriendCommand implements SimpleCommand {
         switch (subCommand) {
             case "add":
                 if (args.length < 2) {
-                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend add <player>", NamedTextColor.RED)));
+                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend add <player>", NamedTextColor.GRAY)));
                     return;
                 }
                 handleAdd(player, args[1]);
                 break;
             case "accept":
                 if (args.length < 2) {
-                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend accept <player>", NamedTextColor.RED)));
+                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend accept <player>", NamedTextColor.GRAY)));
                     return;
                 }
                 handleAccept(player, args[1]);
                 break;
             case "deny":
                 if (args.length < 2) {
-                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend deny <player>", NamedTextColor.RED)));
+                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend deny <player>", NamedTextColor.GRAY)));
                     return;
                 }
                 handleDeny(player, args[1]);
                 break;
             case "remove":
                 if (args.length < 2) {
-                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend remove <player>", NamedTextColor.RED)));
+                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend remove <player>", NamedTextColor.GRAY)));
                     return;
                 }
                 handleRemove(player, args[1]);
@@ -79,7 +79,7 @@ public class FriendCommand implements SimpleCommand {
                 break;
             case "jump":
                 if (args.length < 2) {
-                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend jump <player>", NamedTextColor.RED)));
+                    player.sendMessage(plugin.getPrefix(player).append(Component.text("Usage: /friend jump <player>", NamedTextColor.GRAY)));
                     return;
                 }
                 handleJump(player, args[1]);

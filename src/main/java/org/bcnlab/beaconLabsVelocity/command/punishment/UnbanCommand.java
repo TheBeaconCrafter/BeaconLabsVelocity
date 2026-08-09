@@ -50,7 +50,7 @@ public class UnbanCommand implements SimpleCommand {
 
         // Usage Message with Prefix
         if (args.length < 1) {
-            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&cUsage: /unban <player>")));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&7Usage: /unban <player>")));
             return;
         }        String targetName = args[0];
         // Use the new method to get UUID for both online and offline players

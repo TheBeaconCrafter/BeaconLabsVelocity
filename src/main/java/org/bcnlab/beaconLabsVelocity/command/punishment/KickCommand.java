@@ -40,7 +40,7 @@ public class KickCommand implements SimpleCommand {
             return;
         }
         if (args.length < 1) {
-            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&cUsage: /kick <player> [reason]")));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&7Usage: /kick <player> [reason]")));
             return;
         }
         String targetName = args[0];

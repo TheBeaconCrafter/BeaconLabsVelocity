@@ -43,7 +43,7 @@ public class WarnCommand implements SimpleCommand {
             return;
         }
         if (args.length < 2) {
-            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&cUsage: /warn <player> <reasonKey>")));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&7Usage: /warn <player> <reasonKey>")));
             return;
         }        String targetName = args[0];
         if (src instanceof Player && ((Player) src).getUsername().equalsIgnoreCase(targetName)) {

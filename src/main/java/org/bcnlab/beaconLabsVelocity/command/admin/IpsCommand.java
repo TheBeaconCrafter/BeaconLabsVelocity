@@ -60,7 +60,7 @@ public class IpsCommand implements SimpleCommand {
         // Usage check
         if (args.length < 1) {
             src.sendMessage(plugin.getPrefix(src).append(
-                Component.text("Usage: /ips <player>", NamedTextColor.RED)));
+                Component.text("Usage: /ips <player>", NamedTextColor.GRAY)));
             return;
         }
         

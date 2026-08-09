@@ -31,7 +31,7 @@ public class ScreenCommand implements SimpleCommand {
         }
 
         if (args.length < 2) {
-            src.sendMessage(plugin.getPrefix(src).append(Component.text("Usage: /screen <clean|force> <player/ip>", NamedTextColor.RED)));
+            src.sendMessage(plugin.getPrefix(src).append(Component.text("Usage: /screen <clean|force> <player/ip>", NamedTextColor.GRAY)));
             return;
         }
 

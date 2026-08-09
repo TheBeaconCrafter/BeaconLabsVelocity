@@ -37,7 +37,7 @@ public class PingCommand implements SimpleCommand {
                 Component message = formatPingMessage(player.getUsername(), pingValue);
                 source.sendMessage(plugin.getPrefix(source).append(message));
             } else {
-                source.sendMessage(plugin.getPrefix(source).append(Component.text("Usage: /ping <player>", NamedTextColor.RED)));
+                source.sendMessage(plugin.getPrefix(source).append(Component.text("Usage: /ping <player>", NamedTextColor.GRAY)));
             }
             return;
         }

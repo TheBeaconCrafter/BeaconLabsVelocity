@@ -192,7 +192,7 @@ public class ReportCommand implements SimpleCommand {
      */
     private void sendUsage(Player player) {
         player.sendMessage(plugin.getPrefix(player).append(
-            Component.text("Usage: ", NamedTextColor.GOLD)
+            Component.text("Usage:  ", NamedTextColor.GRAY)
                 .append(Component.text("/report <player> <reason>", NamedTextColor.GOLD))
         ));
         player.sendMessage(Component.text("Report a player for breaking the rules.", NamedTextColor.GRAY));

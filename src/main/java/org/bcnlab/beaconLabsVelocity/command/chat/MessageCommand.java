@@ -45,7 +45,7 @@ public class MessageCommand implements SimpleCommand {
 
         // Check arguments
         if (args.length < 2) {
-            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Usage: /msg <player> <message>", NamedTextColor.RED)));
+            sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Usage: /msg <player> <message>", NamedTextColor.GRAY)));
             return;
         }
 

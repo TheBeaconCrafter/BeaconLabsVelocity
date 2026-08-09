@@ -43,7 +43,7 @@ public class ScreeningBypassCommand implements SimpleCommand {
             if (source instanceof Player) {
                 target = (Player) source;
             } else {
-                source.sendMessage(plugin.getPrefix(source).append(Component.text("Usage: /scb <player>", NamedTextColor.RED)));
+                source.sendMessage(plugin.getPrefix(source).append(Component.text("Usage: /scb <player>", NamedTextColor.GRAY)));
                 return;
             }
         } else {

@@ -68,7 +68,7 @@ public class ProxiesCommand implements SimpleCommand {
             }
             if (args.length < 2) {
                 source.sendMessage(plugin.getPrefix(source).append(
-                        Component.text("Usage: /proxies info <proxy>", NamedTextColor.RED)));
+                        Component.text("Usage: /proxies info <proxy>", NamedTextColor.GRAY)));
                 return;
             }
             handleInfo(source, args[1]);
@@ -83,7 +83,7 @@ public class ProxiesCommand implements SimpleCommand {
             }
             if (args.length < 3) {
                 source.sendMessage(plugin.getPrefix(source).append(
-                        Component.text("Usage: /proxies send <player|server|proxy|*> <proxy>", NamedTextColor.RED)));
+                        Component.text("Usage: /proxies send <player|server|proxy|*> <proxy>", NamedTextColor.GRAY)));
                 return;
             }
             handleSend(source, args[1], args[2]);
