@@ -23,6 +23,11 @@ public class ProtocolSyncListener {
     public void onServerConnected(ServerConnectedEvent event) {
         Player player = event.getPlayer();
         int protocol = player.getProtocolVersion().getProtocol();
+        if (plugin.getServer().getPluginManager().isLoaded("viaversion")) {
+            try {
+                protocol = com.viaversion.viaversion.api.Via.getAPI().getPlayerVersion(player.getUniqueId());
+            } catch (Exception e) {}
+        }
 
         ByteArrayOutputStream b = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(b);

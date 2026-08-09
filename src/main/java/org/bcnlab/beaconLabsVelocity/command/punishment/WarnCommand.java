@@ -39,15 +39,15 @@ public class WarnCommand implements SimpleCommand {
         CommandSource src = invocation.source();
         String[] args = invocation.arguments();
         if (!src.hasPermission("beaconlabs.punish.warn")) {
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(config.getMessage("no-permission"))));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse(config.getMessage("no-permission"))));
             return;
         }
         if (args.length < 2) {
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse("&cUsage: /warn <player> <reasonKey>")));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&cUsage: /warn <player> <reasonKey>")));
             return;
         }        String targetName = args[0];
         if (src instanceof Player && ((Player) src).getUsername().equalsIgnoreCase(targetName)) {
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(config.getMessage("self-punish"))));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse(config.getMessage("self-punish"))));
             return;
         }
         
@@ -57,7 +57,7 @@ public class WarnCommand implements SimpleCommand {
         if (pr == null) {
             // unknown reason key
             String keys = String.join(", ", config.getAllPredefinedReasons().keySet());
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse("&cUnknown reason key. Available: " + keys)));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&cUnknown reason key. Available: " + keys)));
             return;
         }
         
@@ -87,7 +87,7 @@ public class WarnCommand implements SimpleCommand {
             src.sendMessage(ColorParser.parse(msg));
             
             // Notify the player
-            target.sendMessage(plugin.getPrefix().append(
+            target.sendMessage(plugin.getPrefix(target).append(
                 ColorParser.parse(
                     "&cYou have been warned: " + reason
                 )

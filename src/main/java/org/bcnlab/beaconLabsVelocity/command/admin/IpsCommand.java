@@ -52,14 +52,14 @@ public class IpsCommand implements SimpleCommand {
         
         // Permission check
         if (!src.hasPermission("beaconlabs.admin.ips")) {
-            src.sendMessage(plugin.getPrefix().append(
+            src.sendMessage(plugin.getPrefix(src).append(
                 Component.text("You don't have permission to use this command.", NamedTextColor.RED)));
             return;
         }
         
         // Usage check
         if (args.length < 1) {
-            src.sendMessage(plugin.getPrefix().append(
+            src.sendMessage(plugin.getPrefix(src).append(
                 Component.text("Usage: /ips <player>", NamedTextColor.RED)));
             return;
         }
@@ -84,7 +84,7 @@ public class IpsCommand implements SimpleCommand {
                 }
             }
             if (targetUuid == null) {
-                src.sendMessage(plugin.getPrefix().append(
+                src.sendMessage(plugin.getPrefix(src).append(
                     Component.text("Player not found: " + targetName, NamedTextColor.RED)));
                 return;
             }
@@ -100,7 +100,7 @@ public class IpsCommand implements SimpleCommand {
         List<IpHistoryEntry> ipHistory = playerStatsService.getAllPlayerIpHistory(playerId);
         
         if (ipHistory.isEmpty()) {
-            src.sendMessage(plugin.getPrefix().append(
+            src.sendMessage(plugin.getPrefix(src).append(
                 Component.text("No IP history found for " + playerName, NamedTextColor.RED)));
             return;
         }

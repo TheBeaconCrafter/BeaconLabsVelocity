@@ -26,12 +26,12 @@ public class ScreenCommand implements SimpleCommand {
         String[] args = invocation.arguments();
 
         if (!src.hasPermission("beaconlabs.antiabuse")) {
-            src.sendMessage(plugin.getPrefix().append(Component.text("You do not have permission.", NamedTextColor.RED)));
+            src.sendMessage(plugin.getPrefix(src).append(Component.text("You do not have permission.", NamedTextColor.RED)));
             return;
         }
 
         if (args.length < 2) {
-            src.sendMessage(plugin.getPrefix().append(Component.text("Usage: /screen <clean|force> <player/ip>", NamedTextColor.RED)));
+            src.sendMessage(plugin.getPrefix(src).append(Component.text("Usage: /screen <clean|force> <player/ip>", NamedTextColor.RED)));
             return;
         }
 
@@ -41,7 +41,7 @@ public class ScreenCommand implements SimpleCommand {
         if (action.equals("clean")) {
             if (target.matches("^\\d{1,3}(\\.\\d{1,3}){3}$")) {
                 int removed = plugin.getAntiBotService().removeScreeningPassByIp(target);
-                src.sendMessage(plugin.getPrefix().append(Component.text("Cleaned screening passes for IP " + target + " (" + removed + " removed)", NamedTextColor.GREEN)));
+                src.sendMessage(plugin.getPrefix(src).append(Component.text("Cleaned screening passes for IP " + target + " (" + removed + " removed)", NamedTextColor.GREEN)));
             } else {
                 UUID targetUuid = null;
                 
@@ -59,12 +59,12 @@ public class ScreenCommand implements SimpleCommand {
                 }
 
                 if (targetUuid == null) {
-                    src.sendMessage(plugin.getPrefix().append(Component.text("Player not found: " + target, NamedTextColor.RED)));
+                    src.sendMessage(plugin.getPrefix(src).append(Component.text("Player not found: " + target, NamedTextColor.RED)));
                     return;
                 }
 
                 int removed = plugin.getAntiBotService().removeScreeningPassByUuid(targetUuid);
-                src.sendMessage(plugin.getPrefix().append(Component.text("Cleaned screening passes for player " + target + " (" + removed + " removed)", NamedTextColor.GREEN)));
+                src.sendMessage(plugin.getPrefix(src).append(Component.text("Cleaned screening passes for player " + target + " (" + removed + " removed)", NamedTextColor.GREEN)));
             }
         } else if (action.equals("force")) {
             UUID targetUuid = plugin.getPunishmentService().getPlayerUUID(target);
@@ -77,14 +77,14 @@ public class ScreenCommand implements SimpleCommand {
             }
 
             if (targetUuid == null) {
-                src.sendMessage(plugin.getPrefix().append(Component.text("Player not found: " + target, NamedTextColor.RED)));
+                src.sendMessage(plugin.getPrefix(src).append(Component.text("Player not found: " + target, NamedTextColor.RED)));
                 return;
             }
 
             plugin.getAntiBotService().setForceScreen(targetUuid);
-            src.sendMessage(plugin.getPrefix().append(Component.text("Player " + target + " will be force screened on next login.", NamedTextColor.GREEN)));
+            src.sendMessage(plugin.getPrefix(src).append(Component.text("Player " + target + " will be force screened on next login.", NamedTextColor.GREEN)));
         } else {
-            src.sendMessage(plugin.getPrefix().append(Component.text("Unknown action. Use clean or force.", NamedTextColor.RED)));
+            src.sendMessage(plugin.getPrefix(src).append(Component.text("Unknown action. Use clean or force.", NamedTextColor.RED)));
         }
     }
 

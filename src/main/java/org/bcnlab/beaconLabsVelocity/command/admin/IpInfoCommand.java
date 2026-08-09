@@ -33,12 +33,12 @@ public class IpInfoCommand implements SimpleCommand {
         String[] args = invocation.arguments();
 
         if (!src.hasPermission("beaconlabs.admin.ipinfo")) {
-            src.sendMessage(plugin.getPrefix().append(Component.text("You don't have permission.", NamedTextColor.RED)));
+            src.sendMessage(plugin.getPrefix(src).append(Component.text("You don't have permission.", NamedTextColor.RED)));
             return;
         }
 
         if (args.length == 0) {
-            src.sendMessage(plugin.getPrefix().append(Component.text("Usage: /ipinfo <user/ip> [refresh]", NamedTextColor.RED)));
+            src.sendMessage(plugin.getPrefix(src).append(Component.text("Usage: /ipinfo <user/ip> [refresh]", NamedTextColor.RED)));
             return;
         }
 
@@ -71,7 +71,7 @@ public class IpInfoCommand implements SimpleCommand {
                 }
 
                 if (targetUuid == null) {
-                    src.sendMessage(plugin.getPrefix().append(Component.text("Player not found: " + target, NamedTextColor.RED)));
+                    src.sendMessage(plugin.getPrefix(src).append(Component.text("Player not found: " + target, NamedTextColor.RED)));
                     return;
                 }
 
@@ -87,13 +87,13 @@ public class IpInfoCommand implements SimpleCommand {
 
 
         if (targetIp == null) {
-            src.sendMessage(plugin.getPrefix().append(Component.text("Could not determine IP for target: " + target, NamedTextColor.RED)));
+            src.sendMessage(plugin.getPrefix(src).append(Component.text("Could not determine IP for target: " + target, NamedTextColor.RED)));
             return;
         }
 
         final String finalIp = targetIp;
         final String finalName = target.equals(targetIp) ? "" : target;
-        src.sendMessage(plugin.getPrefix().append(Component.text("Looking up info for IP: " + finalIp + "...", NamedTextColor.GRAY)));
+        src.sendMessage(plugin.getPrefix(src).append(Component.text("Looking up info for IP: " + finalIp + "...", NamedTextColor.GRAY)));
 
         if (refresh) {
             antiBotService.refreshIpInfo(finalIp).thenAccept(result -> displayInfo(src, finalIp, finalName, result));
@@ -102,7 +102,7 @@ public class IpInfoCommand implements SimpleCommand {
             if (cached.isPresent()) {
                 displayInfo(src, finalIp, finalName, cached.get());
             } else {
-                src.sendMessage(plugin.getPrefix().append(Component.text("No cached info found. Fetching...", NamedTextColor.GRAY)));
+                src.sendMessage(plugin.getPrefix(src).append(Component.text("No cached info found. Fetching...", NamedTextColor.GRAY)));
                 antiBotService.refreshIpInfo(finalIp).thenAccept(result -> displayInfo(src, finalIp, finalName, result));
             }
         }

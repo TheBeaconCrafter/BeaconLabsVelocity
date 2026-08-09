@@ -21,7 +21,7 @@ public class StatsCommand implements SimpleCommand {
         CommandSource src = invocation.source();
 
         if (plugin.getPlayerStatsService() == null) {
-            src.sendMessage(plugin.getPrefix().append(Component.text("PlayerStatsService is disabled.", NamedTextColor.RED)));
+            src.sendMessage(plugin.getPrefix(src).append(Component.text("PlayerStatsService is disabled.", NamedTextColor.RED)));
             return;
         }
 

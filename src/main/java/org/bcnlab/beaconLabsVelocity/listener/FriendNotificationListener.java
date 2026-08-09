@@ -33,7 +33,7 @@ public class FriendNotificationListener {
             if (plugin.getFriendService().areFriends(onlinePlayer.getUniqueId(), player.getUniqueId())) {
                 String friendAlert = plugin.getPlayerSettingsService().getPlayerSetting(onlinePlayer.getUniqueId(), "friends_join_alert", "on");
                 if ("on".equalsIgnoreCase(friendAlert) || "true".equalsIgnoreCase(friendAlert)) {
-                    onlinePlayer.sendMessage(plugin.getPrefix().append(Component.text("Friend ", NamedTextColor.GOLD))
+                    onlinePlayer.sendMessage(plugin.getPrefix(onlinePlayer).append(Component.text("Friend ", NamedTextColor.GOLD))
                             .append(Component.text(player.getUsername(), NamedTextColor.GREEN))
                             .append(Component.text(" has joined the network.", NamedTextColor.GOLD)));
                 }
@@ -99,7 +99,7 @@ public class FriendNotificationListener {
             if (plugin.getFriendService().areFriends(onlinePlayer.getUniqueId(), player.getUniqueId())) {
                 String friendAlert = plugin.getPlayerSettingsService().getPlayerSetting(onlinePlayer.getUniqueId(), "friends_join_alert", "on");
                 if ("on".equalsIgnoreCase(friendAlert) || "true".equalsIgnoreCase(friendAlert)) {
-                    onlinePlayer.sendMessage(plugin.getPrefix().append(Component.text("Friend ", NamedTextColor.GOLD))
+                    onlinePlayer.sendMessage(plugin.getPrefix(onlinePlayer).append(Component.text("Friend ", NamedTextColor.GOLD))
                             .append(Component.text(player.getUsername(), NamedTextColor.GREEN))
                             .append(Component.text(" has left the network.", NamedTextColor.GOLD)));
                 }

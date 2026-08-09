@@ -404,6 +404,9 @@ public class BeaconLabsVelocity {
         if (source instanceof com.velocitypowered.api.proxy.Player player) {
             try {
                 int protocol = player.getProtocolVersion().getProtocol();
+                if (server.getPluginManager().isLoaded("viaversion")) {
+                    protocol = com.viaversion.viaversion.api.Via.getAPI().getPlayerVersion(player.getUniqueId());
+                }
                 if (protocol <= 47) { // 1.8.x
                     return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand().deserialize(legacyPrefix);
                 }

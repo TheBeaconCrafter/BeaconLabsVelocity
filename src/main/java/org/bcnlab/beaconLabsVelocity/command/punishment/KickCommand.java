@@ -36,16 +36,16 @@ public class KickCommand implements SimpleCommand {
         CommandSource src = invocation.source();
         String[] args = invocation.arguments();
         if (!src.hasPermission("beaconlabs.punish.kick")) {
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(config.getMessage("no-permission"))));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse(config.getMessage("no-permission"))));
             return;
         }
         if (args.length < 1) {
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse("&cUsage: /kick <player> [reason]")));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&cUsage: /kick <player> [reason]")));
             return;
         }
         String targetName = args[0];
         if (src instanceof Player && ((Player) src).getUsername().equalsIgnoreCase(targetName)) {
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(config.getMessage("self-punish"))));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse(config.getMessage("self-punish"))));
             return;
         }
         String reason = config.getMessage("default-reason");
@@ -72,10 +72,10 @@ public class KickCommand implements SimpleCommand {
                 String successMsg = config.getMessage("kick-success")
                         .replace("{player}", targetName)
                         .replace("{reason}", reason);
-                src.sendMessage(plugin.getPrefix().append(MiniMessage.miniMessage()
+                src.sendMessage(plugin.getPrefix(src).append(MiniMessage.miniMessage()
                         .deserialize(successMsg + " (on another proxy)")));
             } else {
-                src.sendMessage(plugin.getPrefix().append(MiniMessage.miniMessage()
+                src.sendMessage(plugin.getPrefix(src).append(MiniMessage.miniMessage()
                         .deserialize(config.getMessage("player-not-found").replace("{player}", targetName))));
             }
             return;
@@ -89,7 +89,7 @@ public class KickCommand implements SimpleCommand {
         String successMsg = config.getMessage("kick-success")
                 .replace("{player}", target.getUsername())
                 .replace("{reason}", reason);
-        src.sendMessage(plugin.getPrefix().append(ColorParser.parse(successMsg)));
+        src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse(successMsg)));
 
         Component kickComp = ColorParser.parse(kickScreenMsg);
         target.disconnect(kickComp);

@@ -33,7 +33,7 @@ public class MaintenanceCommand implements SimpleCommand {
         
         // Check permission
         if (!src.hasPermission("beaconlabs.command.maintenance")) {
-            src.sendMessage(plugin.getPrefix().append(
+            src.sendMessage(plugin.getPrefix(src).append(
                 Component.text("You don't have permission to use this command.", NamedTextColor.RED)
             ));
             return;
@@ -66,7 +66,7 @@ public class MaintenanceCommand implements SimpleCommand {
         } else if (subCommand.equals("off") || subCommand.equals("disable") || subCommand.equals("false")) {
             enable = false;
         } else {
-            src.sendMessage(plugin.getPrefix().append(
+            src.sendMessage(plugin.getPrefix(src).append(
                 Component.text("Invalid option. Use: /maintenance <on|off>", NamedTextColor.RED)
             ));
             return;
@@ -94,7 +94,7 @@ public class MaintenanceCommand implements SimpleCommand {
         // Toggle locally: when enabling (no cross-proxy), countdown runs first; when disabling, immediate
         boolean success = maintenanceService.toggleMaintenance(enable, null);
         if (!success) {
-            src.sendMessage(plugin.getPrefix().append(
+            src.sendMessage(plugin.getPrefix(src).append(
                 Component.text("Maintenance mode toggle is on cooldown. Please wait.", NamedTextColor.RED)
             ));
             return;

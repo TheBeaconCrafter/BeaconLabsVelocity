@@ -120,7 +120,7 @@ public class AntiAbuseCommand implements SimpleCommand {
                 plugin.getCrossProxyService().publishDefenseModeUpdate(mode, issuerName);
             }
         } else {
-            src.sendMessage(plugin.getPrefix().append(Component.text("Invalid mode. Use: normal, elevated, or attack.", NamedTextColor.RED)));
+            src.sendMessage(plugin.getPrefix(src).append(Component.text("Invalid mode. Use: normal, elevated, or attack.", NamedTextColor.RED)));
         }
     }
 
@@ -290,7 +290,7 @@ public class AntiAbuseCommand implements SimpleCommand {
                 }
 
                 if (targetUuid == null) {
-                    src.sendMessage(plugin.getPrefix().append(Component.text("Player not found: " + target, NamedTextColor.RED)));
+                    src.sendMessage(plugin.getPrefix(src).append(Component.text("Player not found: " + target, NamedTextColor.RED)));
                     return;
                 }
 
@@ -304,19 +304,19 @@ public class AntiAbuseCommand implements SimpleCommand {
         }
 
         if (targetIp == null) {
-            src.sendMessage(plugin.getPrefix().append(Component.text("Could not determine IP for target: " + target, NamedTextColor.RED)));
+            src.sendMessage(plugin.getPrefix(src).append(Component.text("Could not determine IP for target: " + target, NamedTextColor.RED)));
             return;
         }
 
         if (isWhitelist) {
             antiBotService.setWhitelist(targetIp, state);
-            src.sendMessage(plugin.getPrefix().append(Component.text("Whitelist for ", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
+            src.sendMessage(plugin.getPrefix(src).append(Component.text("Whitelist for ", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
                 .append(Component.text(targetIp, NamedTextColor.GOLD))
                 .append(Component.text(" set to ", NamedTextColor.GOLD))
                 .append(Component.text(state ? "TRUE" : "FALSE", state ? NamedTextColor.GREEN : NamedTextColor.RED))));
         } else {
             antiBotService.setBlacklist(targetIp, state);
-            src.sendMessage(plugin.getPrefix().append(Component.text("Blacklist for ", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
+            src.sendMessage(plugin.getPrefix(src).append(Component.text("Blacklist for ", NamedTextColor.GOLD).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
                 .append(Component.text(targetIp, NamedTextColor.GOLD))
                 .append(Component.text(" set to ", NamedTextColor.GOLD))
                 .append(Component.text(state ? "TRUE" : "FALSE", state ? NamedTextColor.RED : NamedTextColor.GREEN))));

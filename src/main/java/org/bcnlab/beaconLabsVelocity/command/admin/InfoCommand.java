@@ -55,14 +55,14 @@ public class InfoCommand implements SimpleCommand {
         
         // Permission check
         if (!src.hasPermission("beaconlabs.punish.info")) {
-            src.sendMessage(plugin.getPrefix().append(
+            src.sendMessage(plugin.getPrefix(src).append(
                 ColorParser.parse(config.getMessage("no-permission"))));
             return;
         }
         
         // Usage check
         if (args.length < 1) {
-            src.sendMessage(plugin.getPrefix().append(
+            src.sendMessage(plugin.getPrefix(src).append(
                 Component.text("Usage: /info <player>", NamedTextColor.RED)));
             return;
         }        // Get target player

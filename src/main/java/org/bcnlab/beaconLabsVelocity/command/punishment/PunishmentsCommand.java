@@ -40,11 +40,11 @@ public class PunishmentsCommand implements SimpleCommand {
         CommandSource src = invocation.source();
         String[] args = invocation.arguments();
         if (!src.hasPermission("beaconlabs.punish.history")) {
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(config.getMessage("no-permission"))));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse(config.getMessage("no-permission"))));
             return;
         }
         if (args.length < 1) {
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse("&cUsage: /punishments <player>")));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&cUsage: /punishments <player>")));
             return;
         }
         String targetName = args[0];
@@ -66,7 +66,7 @@ public class PunishmentsCommand implements SimpleCommand {
                 notFoundMsg = "&cPlayer &f{player} &cnot found.";
                 // Consider adding logger warning here if needed
             }
-            src.sendMessage(plugin.getPrefix().append(MiniMessage.miniMessage()
+            src.sendMessage(plugin.getPrefix(src).append(MiniMessage.miniMessage()
                     .deserialize(notFoundMsg.replace("{player}", targetName))));
             return;
         }

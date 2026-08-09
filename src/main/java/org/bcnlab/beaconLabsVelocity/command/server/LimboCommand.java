@@ -55,7 +55,7 @@ public class LimboCommand implements SimpleCommand {
             Optional<Player> target = server.getPlayer(args[0]);
             if (target.isPresent()) {
                 Player p = target.get();
-                p.sendMessage(plugin.getPrefix().append(Component.text("You have been sent to limbo by an administrator.", NamedTextColor.GRAY)));
+                p.sendMessage(plugin.getPrefix(p).append(Component.text("You have been sent to limbo by an administrator.", NamedTextColor.GRAY)));
                 p.createConnectionRequest(targetServer.get()).connectWithIndication();
                 invocation.source().sendMessage(plugin.getPrefix(invocation.source()).append(Component.text("Sent " + p.getUsername() + " to limbo.", NamedTextColor.GREEN)));
             } else {

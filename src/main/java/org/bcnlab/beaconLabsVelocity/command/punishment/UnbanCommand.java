@@ -44,13 +44,13 @@ public class UnbanCommand implements SimpleCommand {
                 noPermMsg = "&cYou do not have permission to use this command.";
                 logger.warn("Missing 'no-permission' message in punishments.yml");
             }
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(noPermMsg)));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse(noPermMsg)));
             return;
         }
 
         // Usage Message with Prefix
         if (args.length < 1) {
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse("&cUsage: /unban <player>")));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&cUsage: /unban <player>")));
             return;
         }        String targetName = args[0];
         // Use the new method to get UUID for both online and offline players
@@ -62,7 +62,7 @@ public class UnbanCommand implements SimpleCommand {
                 notFoundMsg = "&cPlayer &f{player} &cnot found.";
                 logger.warn("Missing 'player-not-found' message in punishments.yml");
             }
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse(
                     notFoundMsg.replace("{player}", targetName)
             )));
             return;
@@ -73,7 +73,7 @@ public class UnbanCommand implements SimpleCommand {
             success = service.unban(targetUUID); // Use unban() with UUID
         } catch (Exception e) {
             logger.error("Error occurred while unbanning " + targetName, e);
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse("&cAn internal error occurred.")));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&cAn internal error occurred.")));
             return;
         }
 
@@ -90,7 +90,7 @@ public class UnbanCommand implements SimpleCommand {
             msg = "&cNo active ban found for " + targetName + " or an error occurred.";
         }
         // Add prefix to final message
-        src.sendMessage(plugin.getPrefix().append(ColorParser.parse(msg)));
+        src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse(msg)));
     }
 
     @Override

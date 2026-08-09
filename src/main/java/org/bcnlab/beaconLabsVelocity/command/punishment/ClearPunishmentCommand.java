@@ -37,13 +37,13 @@ public class ClearPunishmentCommand implements SimpleCommand {
         String[] args = invocation.arguments();
         
         if (!src.hasPermission("beaconlabs.punish.clear")) {
-            src.sendMessage(plugin.getPrefix().append(
+            src.sendMessage(plugin.getPrefix(src).append(
                 ColorParser.parse(config.getMessage("no-permission"))));
             return;
         }
         
         if (args.length < 1) {
-            src.sendMessage(plugin.getPrefix().append(
+            src.sendMessage(plugin.getPrefix(src).append(
                 ColorParser.parse("&cUsage: /cpunish <player>")));
             return;
         }
@@ -63,7 +63,7 @@ public class ClearPunishmentCommand implements SimpleCommand {
                 targetUUID = plugin.getCrossProxyService().getPlayerUuidByName(playerName);
             }
             if (targetUUID == null) {
-                src.sendMessage(plugin.getPrefix().append(
+                src.sendMessage(plugin.getPrefix(src).append(
                     ColorParser.parse(
                         config.getMessage("player-not-found").replace("{player}", playerName))));
                 return;
@@ -75,11 +75,11 @@ public class ClearPunishmentCommand implements SimpleCommand {
         
         // Send success message
         if (count > 0) {
-            src.sendMessage(plugin.getPrefix().append(
+            src.sendMessage(plugin.getPrefix(src).append(
                 ColorParser.parse(
                     "&aCleared all punishments for &f" + playerName + "&a. &7(" + count + " records removed)")));
         } else {
-            src.sendMessage(plugin.getPrefix().append(
+            src.sendMessage(plugin.getPrefix(src).append(
                 ColorParser.parse(
                     "&aNo punishment records found for &f" + playerName + "&a.")));
         }

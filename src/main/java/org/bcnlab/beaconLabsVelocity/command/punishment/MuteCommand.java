@@ -41,12 +41,12 @@ public class MuteCommand implements SimpleCommand {
             return;
         }
         if (args.length < 2) {
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse("&cUsage: /mute <player> <duration> [reason]")));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse("&cUsage: /mute <player> <duration> [reason]")));
             return;
         }
         String targetName = args[0];
         if (src instanceof Player && ((Player) src).getUsername().equalsIgnoreCase(targetName)) {
-            src.sendMessage(plugin.getPrefix().append(ColorParser.parse(config.getMessage("self-punish"))));
+            src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse(config.getMessage("self-punish"))));
             return;
         }
         long duration = DurationUtils.parseDuration(args[1]);
@@ -76,12 +76,12 @@ public class MuteCommand implements SimpleCommand {
                         .replace("{player}", canonicalName)
                         .replace("{duration}", DurationUtils.formatDuration(duration))
                         .replace("{reason}", reason);
-                src.sendMessage(plugin.getPrefix().append(ColorParser.parse(msg + (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled() ? " (on another proxy)" : ""))));
+                src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse(msg + (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled() ? " (on another proxy)" : ""))));
                 if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
                     plugin.getCrossProxyService().publishMuteApplied(offlineUuid, reason, DurationUtils.formatDuration(duration));
                 }
             } else {
-                src.sendMessage(plugin.getPrefix().append(ColorParser.parse(config.getMessage("player-not-found").replace("{player}", targetName))));
+                src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse(config.getMessage("player-not-found").replace("{player}", targetName))));
             }
             return;
         }
@@ -94,7 +94,7 @@ public class MuteCommand implements SimpleCommand {
                 .replace("{player}", target.getUsername())
                 .replace("{duration}", DurationUtils.formatDuration(duration))
                 .replace("{reason}", reason);
-        src.sendMessage(plugin.getPrefix().append(ColorParser.parse(msg)));
+        src.sendMessage(plugin.getPrefix(src).append(ColorParser.parse(msg)));
         if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
             plugin.getCrossProxyService().publishMuteApplied(target.getUniqueId(), reason, DurationUtils.formatDuration(duration));
         }
