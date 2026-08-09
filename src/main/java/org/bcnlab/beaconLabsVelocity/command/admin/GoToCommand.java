@@ -62,7 +62,18 @@ public class GoToCommand implements SimpleCommand {
             }
             targetP.getCurrentServer().ifPresent(serverConnection -> {
                 RegisteredServer targetServer = serverConnection.getServer();
-                teleportToServer(player, targetServer, "Player " + targetP.getUsername());
+                teleportToServer(player, targetServer, "Player " + targetP.getUsername(), true);
+                
+                try {
+                    java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
+                    java.io.DataOutputStream out = new java.io.DataOutputStream(b);
+                    out.writeUTF(player.getUniqueId().toString());
+                    out.writeUTF(targetP.getUniqueId().toString());
+                    
+                    com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier channel = 
+                        com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:goto_tp");
+                    targetServer.sendPluginMessage(channel, b.toByteArray());
+                } catch (Exception e) {}
             });
             return;
         }
@@ -73,7 +84,7 @@ public class GoToCommand implements SimpleCommand {
             if (targetServerName != null) {
                 Optional<RegisteredServer> rs = server.getServer(targetServerName);
                 if (rs.isPresent()) {
-                    teleportToServer(player, rs.get(), "Player " + target);
+                    teleportToServer(player, rs.get(), "Player " + target, true);
                     return;
                 }
             }
@@ -86,19 +97,25 @@ public class GoToCommand implements SimpleCommand {
             return;
         }
         
-        teleportToServer(player, targetServer.get(), "Server " + target);
+        teleportToServer(player, targetServer.get(), "Server " + target, false);
     }
     
     /**
      * Teleport a player to a specific server
      */
-    private void teleportToServer(Player player, RegisteredServer targetServer, String destination) {
+    private void teleportToServer(Player player, RegisteredServer targetServer, String destination, boolean isPlayerTarget) {
         // Check if player is already on that server
         if (player.getCurrentServer().isPresent() && 
             player.getCurrentServer().get().getServer().equals(targetServer)) {
-            player.sendMessage(plugin.getPrefix(player).append(
-                Component.text("You are already connected to this server.", NamedTextColor.RED)
-            ));
+            if (isPlayerTarget) {
+                player.sendMessage(plugin.getPrefix(player).append(
+                    Component.text("Teleporting to " + destination + "...", NamedTextColor.GREEN)
+                ));
+            } else {
+                player.sendMessage(plugin.getPrefix(player).append(
+                    Component.text("You are already connected to this server.", NamedTextColor.RED)
+                ));
+            }
             return;
         }
         

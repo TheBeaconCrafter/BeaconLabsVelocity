@@ -43,6 +43,7 @@ import org.bcnlab.beaconLabsVelocity.command.admin.AntiAbuseCommand;
 import org.bcnlab.beaconLabsVelocity.command.admin.IpInfoCommand;
 import org.bcnlab.beaconLabsVelocity.brand.F3BrandService;
 import org.bcnlab.beaconLabsVelocity.listener.VisualStateListener;
+import org.bcnlab.beaconLabsVelocity.listener.ProtocolSyncListener;
 import org.bcnlab.beaconLabsVelocity.listener.AntiBotListener;
 import org.slf4j.Logger;
 import org.spongepowered.configurate.ConfigurationNode;
@@ -290,6 +291,7 @@ public class BeaconLabsVelocity {
         
         visualStateListener = new VisualStateListener(this);
         server.getEventManager().register(this, visualStateListener);
+        server.getEventManager().register(this, new ProtocolSyncListener(this));
         
         // Plugin Message Channels
         server.getChannelRegistrar().register(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:friend_dialog"));
@@ -400,14 +402,12 @@ public class BeaconLabsVelocity {
     
     public Component getPrefix(com.velocitypowered.api.command.CommandSource source) {
         if (source instanceof com.velocitypowered.api.proxy.Player player) {
-            if (server.getPluginManager().isLoaded("viaversion")) {
-                try {
-                    int protocol = com.viaversion.viaversion.api.Via.getAPI().getPlayerVersion(player.getUniqueId());
-                    if (protocol < 735) {
-                        return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand().deserialize(legacyPrefix);
-                    }
-                } catch (Exception e) {}
-            }
+            try {
+                int protocol = player.getProtocolVersion().getProtocol();
+                if (protocol <= 47) { // 1.8.x
+                    return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand().deserialize(legacyPrefix);
+                }
+            } catch (Exception e) {}
         }
         return MiniMessage.miniMessage().deserialize(prefix);
     }

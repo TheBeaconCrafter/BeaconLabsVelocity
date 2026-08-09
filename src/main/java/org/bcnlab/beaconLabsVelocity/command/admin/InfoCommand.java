@@ -81,11 +81,12 @@ public class InfoCommand implements SimpleCommand {
         // Send elegant header
         sendDivider(src, NamedTextColor.GOLD);
         
+        String displayName = optionalTarget.map(Player::getUsername).orElse(targetName);
         Component playerHeader = Component.text()
             .append(Component.text("✦ ", NamedTextColor.GOLD))
             .append(Component.text("PLAYER INFO: ", NamedTextColor.GOLD)
                 .decorate(TextDecoration.BOLD))
-            .append(Component.text(targetName, NamedTextColor.GOLD)
+            .append(Component.text(displayName, NamedTextColor.GOLD)
                 .decorate(TextDecoration.BOLD))
             .append(Component.text(" ✦", NamedTextColor.GOLD))
             .build();

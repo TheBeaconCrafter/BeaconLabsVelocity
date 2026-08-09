@@ -68,6 +68,10 @@ public class ReportsCommand implements SimpleCommand {
             if (source instanceof Player player) {
                 Optional<ServerConnection> connection = player.getCurrentServer();
                 if (connection.isPresent()) {
+                    if (!plugin.getDependencyTracker().isSupported(connection.get())) {
+                        listActiveReports(source, 1);
+                        return;
+                    }
                     // Fetch reports async and send them
                     CompletableFuture<List<Report>> openReportsFuture = reportService.getReports(ReportStatus.OPEN, PAGE_SIZE * 5, 0); // fetch up to 50
                     CompletableFuture<List<Report>> inProgressReportsFuture = reportService.getReports(ReportStatus.IN_PROGRESS, PAGE_SIZE * 5, 0);

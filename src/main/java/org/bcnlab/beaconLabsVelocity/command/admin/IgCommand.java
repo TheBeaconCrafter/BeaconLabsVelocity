@@ -84,6 +84,14 @@ public class IgCommand implements SimpleCommand {
         if (optionalTarget.isPresent()) {
             targetUuid = optionalTarget.get().getUniqueId();
             realName = optionalTarget.get().getUsername();
+            // Check if they are currently nicked even if looked up by real name
+            if (plugin.getVisualStateListener() != null) {
+                String nick = plugin.getVisualStateListener().getNickname(targetUuid);
+                if (nick != null && !nick.isBlank()) {
+                    isNickname = true;
+                    targetName = nick; // Set to nick so it's passed correctly
+                }
+            }
         } else {
             if (plugin.getVisualStateListener() != null) {
                 targetUuid = plugin.getVisualStateListener().getUuidByNickname(targetName);
