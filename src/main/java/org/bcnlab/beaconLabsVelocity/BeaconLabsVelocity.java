@@ -302,6 +302,9 @@ public class BeaconLabsVelocity {
         
         server.getChannelRegistrar().register(org.bcnlab.beaconLabsVelocity.listener.FriendRequestListener.CHANNEL);
         server.getEventManager().register(this, new org.bcnlab.beaconLabsVelocity.listener.FriendRequestListener(this));
+
+        server.getChannelRegistrar().register(org.bcnlab.beaconLabsVelocity.listener.ServerInfoListener.CHANNEL);
+        server.getEventManager().register(this, new org.bcnlab.beaconLabsVelocity.listener.ServerInfoListener(this));
         
         server.getChannelRegistrar().register(org.bcnlab.beaconLabsVelocity.listener.ProxyCommandListener.CHANNEL);
         server.getEventManager().register(this, new org.bcnlab.beaconLabsVelocity.listener.ProxyCommandListener(this));
