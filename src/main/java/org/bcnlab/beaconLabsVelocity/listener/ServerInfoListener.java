@@ -51,9 +51,15 @@ public class ServerInfoListener {
                                 out.writeInt(0);
                                 out.writeInt(0);
                             } else {
+                                int onlinePlayers = target.getPlayersConnected().size();
+                                int maxPlayers = ping.getPlayers().map(p -> p.getMax()).orElse(0);
+                                if (maxPlayers <= 0) {
+                                    maxPlayers = plugin.getServer().getConfiguration().getShowMaxPlayers();
+                                }
+                                
                                 out.writeBoolean(true); // online
-                                out.writeInt(ping.getPlayers().map(p -> p.getOnline()).orElse(target.getPlayersConnected().size()));
-                                out.writeInt(ping.getPlayers().map(p -> p.getMax()).orElse(0));
+                                out.writeInt(onlinePlayers);
+                                out.writeInt(maxPlayers);
                             }
                             if (event.getSource() instanceof ServerConnection) {
                                 ((ServerConnection) event.getSource()).getServer().sendPluginMessage(CHANNEL, b.toByteArray());
