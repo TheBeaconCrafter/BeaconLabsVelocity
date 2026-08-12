@@ -68,7 +68,7 @@ public class BeaconLabsVelocity {
 
     private String prefix;
     private String legacyPrefix;
-    private final String version = "1.8.1";
+    private final String version = "1.8.2";
 
     @Inject
     private Logger logger;
