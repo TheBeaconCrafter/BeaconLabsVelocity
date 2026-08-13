@@ -57,7 +57,7 @@ import java.time.Duration;
 import java.util.Objects;
 import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
-@Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.8.0", url = "bcnlab.org", authors = {"Vincent Wackler"})
+@Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.8.3", url = "bcnlab.org", authors = {"Vincent Wackler"})
 public class BeaconLabsVelocity {
 
     @Inject
@@ -68,7 +68,7 @@ public class BeaconLabsVelocity {
 
     private String prefix;
     private String legacyPrefix;
-    private final String version = "1.8.2";
+    private final String version = "1.8.3";
 
     @Inject
     private Logger logger;

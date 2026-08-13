@@ -8,11 +8,11 @@ import net.kyori.adventure.text.format.TextDecoration;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
 
-public class StatsCommand implements SimpleCommand {
+public class PStatsCommand implements SimpleCommand {
 
     private final BeaconLabsVelocity plugin;
 
-    public StatsCommand(BeaconLabsVelocity plugin) {
+    public PStatsCommand(BeaconLabsVelocity plugin) {
         this.plugin = plugin;
     }
 

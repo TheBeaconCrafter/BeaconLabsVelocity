@@ -1,6 +1,5 @@
 package org.bcnlab.beaconLabsVelocity.command.admin;
 
-import com.velocitypowered.api.command.Command;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.proxy.ProxyServer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
@@ -46,7 +45,7 @@ public class AdminCommandRegistrar {
         // IP history command - only register if PlayerStatsService is available
         if (plugin.getPlayerStatsService() != null) {
             commandManager.register("ips", new IpsCommand(server, plugin.getPlayerStatsService(), service, plugin));
-            commandManager.register("stats", new StatsCommand(plugin));
+            commandManager.register("pstats", new PStatsCommand(plugin));
         }
           // Server metrics command
         ServerMetricsCommand serverMetricsCommand = new ServerMetricsCommand(plugin);
