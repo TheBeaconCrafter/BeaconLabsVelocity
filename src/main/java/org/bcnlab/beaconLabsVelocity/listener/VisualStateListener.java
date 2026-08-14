@@ -26,6 +26,14 @@ public class VisualStateListener {
         this.plugin = plugin;
     }
 
+    private void markServerSupported(ServerConnection server) {
+        String serverName = server.getServerInfo().getName();
+        plugin.getDependencyTracker().markSupported(serverName);
+        if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            plugin.getCrossProxyService().publishServerSupported(serverName);
+        }
+    }
+
     @Subscribe
     public void onPluginMessage(PluginMessageEvent event) {
         if (!event.getIdentifier().equals(CHANNEL)) {
@@ -37,7 +45,7 @@ public class VisualStateListener {
             return;
         }
 
-        plugin.getDependencyTracker().markSupported(((ServerConnection) event.getSource()).getServerInfo().getName());
+        markServerSupported((ServerConnection) event.getSource());
 
         try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(event.getData()))) {
             String uuidStr = in.readUTF();
@@ -105,7 +113,7 @@ public class VisualStateListener {
                     sendForceAction(uuid, "UNNICK", "", "");
                 }
             } else if ("LINK_HELLO".equalsIgnoreCase(action)) {
-                plugin.getDependencyTracker().markSupported(((ServerConnection) event.getSource()).getServerInfo().getName());
+                markServerSupported((ServerConnection) event.getSource());
             }
         } catch (Exception e) {
             plugin.getLogger().warn("Failed to parse visual state message: " + e.getMessage());

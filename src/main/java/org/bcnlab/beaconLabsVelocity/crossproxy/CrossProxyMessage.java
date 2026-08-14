@@ -15,6 +15,7 @@ public final class CrossProxyMessage {
         SENDALL,
         PLAYER_CONNECT,
         PLAYER_LIST_UPDATED,
+        SERVER_SUPPORTED,
         SEND_PLAYER,
         MUTE_APPLIED,
         PRIVATE_MSG,
@@ -99,6 +100,11 @@ public final class CrossProxyMessage {
     /** Build outbound player-list invalidation message. */
     public static String playerListUpdated(String proxyId, String secret) {
         return "PLAYER_LIST_UPDATED" + SEP + proxyId + SEP + secret;
+    }
+
+    /** Build outbound backend capability notification. */
+    public static String serverSupported(String serverName, String secret, String proxyId) {
+        return "SERVER_SUPPORTED" + SEP + (serverName != null ? serverName : "") + SEP + secret + SEP + proxyId;
     }
 
     /** Build outbound SEND_PLAYER message. */
@@ -235,6 +241,9 @@ public final class CrossProxyMessage {
             }
             if ("PLAYER_LIST_UPDATED".equals(typeStr) && parts.length >= 3) {
                 return new CrossProxyMessage(Type.PLAYER_LIST_UPDATED, parts[2], parts[1], null, null, null, null, null);
+            }
+            if ("SERVER_SUPPORTED".equals(typeStr) && parts.length >= 4) {
+                return new CrossProxyMessage(Type.SERVER_SUPPORTED, parts[2], parts[3], null, null, parts[1], null, null);
             }
             if ("SEND_PLAYER".equals(typeStr) && parts.length >= 5) {
                 return new CrossProxyMessage(Type.SEND_PLAYER, parts[3], parts.length > 4 ? parts[4] : null, parts[1], null, parts[2], null, null);

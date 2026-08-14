@@ -47,6 +47,7 @@ public class CrossProxyService {
     private static final String TRANSFER_PENDING_KEY_PREFIX = "blv:transfer:";
     private static final String STAFF_KEY_PREFIX = "blv:staff:";
     private static final String PREFIX_HASH_KEY = "blv:prefixes";
+    private static final String SUPPORTED_SERVERS_KEY = "blv:supported-servers";
     private static final int HEARTBEAT_TTL_SECONDS = 90;
     /** TTL for pending transfer (player reconnected to backend after cross-proxy transfer). */
     private static final int TRANSFER_PENDING_TTL_SECONDS = 60;
@@ -390,6 +391,11 @@ public class CrossProxyService {
         if (!enabled || pubConnection == null) return;
         try {
             var sync = pubConnection.sync();
+            for (String supportedServer : sync.smembers(SUPPORTED_SERVERS_KEY)) {
+                if (supportedServer != null && !supportedServer.isEmpty()) {
+                    plugin.getDependencyTracker().markSupported(supportedServer);
+                }
+            }
             java.util.Set<String> ids = new java.util.HashSet<>(sync.smembers(PROXIES_SET));
             ids.add(proxyId);
             java.util.List<String> proxyList = new java.util.ArrayList<>(ids);
@@ -612,6 +618,9 @@ public class CrossProxyService {
                         break;
                     case PLAYER_LIST_UPDATED:
                         requestRemoteSnapshotRefresh();
+                        break;
+                    case SERVER_SUPPORTED:
+                        handleServerSupported(msg);
                         break;
                     case SEND_PLAYER:
                         handleSendPlayer(msg);
@@ -849,6 +858,26 @@ public class CrossProxyService {
 
     public void publishPlayerConnect(UUID uuid) {
         publish(CrossProxyMessage.playerConnect(proxyId, uuid, sharedSecret));
+    }
+
+    /** Share a backend capability learned from the visual-state handshake. */
+    public void publishServerSupported(String serverName) {
+        if (serverName == null || serverName.isEmpty()) return;
+        if (pubConnection != null) {
+            try {
+                pubConnection.async().sadd(SUPPORTED_SERVERS_KEY, serverName);
+            } catch (Exception e) {
+                logger.debug("Failed to persist supported backend {}: {}", serverName, e.getMessage());
+            }
+        }
+        publish(CrossProxyMessage.serverSupported(serverName, sharedSecret, proxyId));
+    }
+
+    private void handleServerSupported(CrossProxyMessage msg) {
+        String serverName = msg.getServerName();
+        if (serverName != null && !serverName.isEmpty()) {
+            plugin.getDependencyTracker().markSupported(serverName);
+        }
     }
 
     public void publishSendPlayer(UUID uuid, String serverName) {
