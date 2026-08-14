@@ -4,8 +4,6 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.service.MessageService;
@@ -98,8 +96,8 @@ public class MessageCommand implements SimpleCommand {
             String recipientMessage = messageService.formatIncomingMessage(sender, message);
             plugin.getCrossProxyService().publishPrivateMsg(recipientName, sender.getUniqueId().toString(), sender.getUsername(), recipientMessage);
             // Get the recipient's prefix from Redis for the outgoing display
-            String recipientPrefix = MessageService.convertLegacyToMiniMessage(plugin.getCrossProxyService().getPlayerPrefix(recipientName));
-            Component senderMsg = MiniMessage.miniMessage().deserialize(String.format("<dark_gray>[<gray>You <dark_gray>-> %s<reset><gray>%s<dark_gray>]: <gray>%s", recipientPrefix, recipientName, message));
+            Component senderMsg = messageService.formatOutgoingMessage(
+                    plugin.getCrossProxyService().getPlayerPrefix(recipientName), recipientName, message);
             sender.sendMessage(senderMsg);
         } else {
             sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Player '" + recipientName + "' not found or offline.", NamedTextColor.RED)));

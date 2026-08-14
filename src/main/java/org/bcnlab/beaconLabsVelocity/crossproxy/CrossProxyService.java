@@ -28,6 +28,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 /**
@@ -71,6 +72,7 @@ public class CrossProxyService {
     private ScheduledTask heartbeatTask;
     private ScheduledTask snapshotTask;
     private final java.util.Map<String, PendingPing> pendingPings = new ConcurrentHashMap<>();
+    private final AtomicBoolean snapshotRefreshInProgress = new AtomicBoolean();
 
     private static final class PendingPing {
         private final CompletableFuture<Long> future;
@@ -149,7 +151,7 @@ public class CrossProxyService {
     public void setPlayerProxy(UUID playerUuid, String onProxyId) {
         if (!enabled || pubConnection == null || onProxyId == null) return;
         try {
-            pubConnection.sync().set(ONLINE_KEY_PREFIX + playerUuid.toString(), onProxyId);
+            pubConnection.async().set(ONLINE_KEY_PREFIX + playerUuid.toString(), onProxyId);
         } catch (Exception e) {
             logger.debug("Failed to set online proxy for {}: {}", playerUuid, e.getMessage());
         }
@@ -159,7 +161,7 @@ public class CrossProxyService {
     public void removePlayerProxy(UUID playerUuid) {
         if (!enabled || pubConnection == null) return;
         try {
-            pubConnection.sync().del(ONLINE_KEY_PREFIX + playerUuid.toString());
+            pubConnection.async().del(ONLINE_KEY_PREFIX + playerUuid.toString());
         } catch (Exception e) {
             logger.debug("Failed to remove online proxy for {}: {}", playerUuid, e.getMessage());
         }
@@ -177,8 +179,8 @@ public class CrossProxyService {
     public void registerProxy() {
         if (!enabled || pubConnection == null) return;
         try {
-            var sync = pubConnection.sync();
-            sync.sadd(PROXIES_SET, proxyId);
+            var async = pubConnection.async();
+            async.sadd(PROXIES_SET, proxyId);
             refreshHeartbeat();
             refreshProxyHostname();
         } catch (Exception e) {
@@ -190,7 +192,7 @@ public class CrossProxyService {
     private void refreshHeartbeat() {
         if (!enabled || pubConnection == null) return;
         try {
-            pubConnection.sync().setex(HEARTBEAT_KEY_PREFIX + proxyId, HEARTBEAT_TTL_SECONDS, "1");
+            pubConnection.async().setex(HEARTBEAT_KEY_PREFIX + proxyId, HEARTBEAT_TTL_SECONDS, "1");
         } catch (Exception e) {
             logger.debug("Failed to refresh heartbeat: {}", e.getMessage());
         }
@@ -200,7 +202,7 @@ public class CrossProxyService {
     private void refreshProxyHostname() {
         if (!enabled || pubConnection == null || publicHostname.isEmpty()) return;
         try {
-            pubConnection.sync().setex(PROXY_HOST_KEY_PREFIX + proxyId, HEARTBEAT_TTL_SECONDS, publicHostname);
+            pubConnection.async().setex(PROXY_HOST_KEY_PREFIX + proxyId, HEARTBEAT_TTL_SECONDS, publicHostname);
         } catch (Exception e) {
             logger.debug("Failed to set proxy hostname: {}", e.getMessage());
         }
@@ -257,7 +259,7 @@ public class CrossProxyService {
         if (!enabled || pubConnection == null) return;
         try {
             refreshHeartbeat();
-            var sync = pubConnection.sync();
+            var async = pubConnection.async();
             java.util.List<String> entries = new java.util.ArrayList<>();
             java.util.Set<String> staffNames = new java.util.HashSet<>();
             for (com.velocitypowered.api.proxy.Player p : server.getAllPlayers()) {
@@ -269,18 +271,20 @@ public class CrossProxyService {
                 try {
                     String prefix = getPlayerLuckPermsPrefix(p.getUniqueId());
                     if (prefix != null && !prefix.isEmpty()) {
-                        sync.hset(PREFIX_HASH_KEY, p.getUsername().toLowerCase(), prefix);
+                        async.hset(PREFIX_HASH_KEY, p.getUsername().toLowerCase(), prefix);
                     } else {
-                        sync.hdel(PREFIX_HASH_KEY, p.getUsername().toLowerCase());
+                        async.hdel(PREFIX_HASH_KEY, p.getUsername().toLowerCase());
                     }
                 } catch (Exception ignored) {
                     // Don't let prefix sync failure block plist update
                 }
             }
             String value = String.join(PLAYER_SERVER_SEP, entries);
-            sync.setex(PLIST_KEY_PREFIX + proxyId, PLIST_TTL_SECONDS, value);
+            async.setex(PLIST_KEY_PREFIX + proxyId, PLIST_TTL_SECONDS, value);
             String staffValue = String.join(PLAYER_SERVER_SEP, staffNames);
-            sync.setex(STAFF_KEY_PREFIX + proxyId, PLIST_TTL_SECONDS, staffValue);
+            async.setex(STAFF_KEY_PREFIX + proxyId, PLIST_TTL_SECONDS, staffValue);
+            // Notify peers after the writes on this Redis connection so their snapshots refresh immediately.
+            publish(CrossProxyMessage.playerListUpdated(proxyId, sharedSecret));
         } catch (Exception e) {
             logger.debug("Failed to update player list: {}", e.getMessage());
         }
@@ -308,7 +312,7 @@ public class CrossProxyService {
     public void removePlayerPrefix(String playerName) {
         if (playerName == null || playerName.isEmpty() || !enabled || pubConnection == null) return;
         try {
-            pubConnection.sync().hdel(PREFIX_HASH_KEY, playerName.toLowerCase());
+            pubConnection.async().hdel(PREFIX_HASH_KEY, playerName.toLowerCase());
         } catch (Exception e) {
             logger.debug("Failed to remove prefix for {}: {}", playerName, e.getMessage());
         }
@@ -375,7 +379,14 @@ public class CrossProxyService {
         return snapshot.playerUuidsByName.get(playerName.toLowerCase());
     }
 
-    private void refreshRemoteSnapshot() {
+    /** Start a snapshot refresh away from Velocity's main thread. */
+    private void requestRemoteSnapshotRefresh() {
+        if (!enabled || pubConnection == null || !snapshotRefreshInProgress.compareAndSet(false, true)) return;
+        CompletableFuture.runAsync(this::refreshRemoteSnapshotNow)
+                .whenComplete((ignored, error) -> snapshotRefreshInProgress.set(false));
+    }
+
+    private void refreshRemoteSnapshotNow() {
         if (!enabled || pubConnection == null) return;
         try {
             var sync = pubConnection.sync();
@@ -523,9 +534,9 @@ public class CrossProxyService {
 
             registerProxy();
             updatePlayerList();
-            refreshRemoteSnapshot();
-            snapshotTask = server.getScheduler().buildTask(plugin, this::refreshRemoteSnapshot)
-                    .repeat(5, TimeUnit.SECONDS)
+            requestRemoteSnapshotRefresh();
+            snapshotTask = server.getScheduler().buildTask(plugin, this::requestRemoteSnapshotRefresh)
+                    .repeat(1, TimeUnit.SECONDS)
                     .schedule();
             heartbeatTask = server.getScheduler().buildTask(plugin, () -> {
                 refreshProxyHostname();
@@ -575,6 +586,10 @@ public class CrossProxyService {
             logger.debug("Ignoring cross-proxy message with invalid secret.");
             return;
         }
+        if (msg.getType() == CrossProxyMessage.Type.PLAYER_LIST_UPDATED) {
+            requestRemoteSnapshotRefresh();
+            return;
+        }
 
         // Run on Velocity main thread
         server.getScheduler().buildTask(plugin, () -> {
@@ -594,6 +609,9 @@ public class CrossProxyService {
                         break;
                     case PLAYER_CONNECT:
                         handlePlayerConnect(msg);
+                        break;
+                    case PLAYER_LIST_UPDATED:
+                        requestRemoteSnapshotRefresh();
                         break;
                     case SEND_PLAYER:
                         handleSendPlayer(msg);
@@ -752,10 +770,10 @@ public class CrossProxyService {
     private void handlePrivateMsg(CrossProxyMessage msg) {
         String targetUsername = msg.getUsername();
         if (targetUsername == null || targetUsername.isEmpty()) return;
-        String legacy = msg.getReason();
-        if (legacy == null) return;
+        String serializedMessage = msg.getReason();
+        if (serializedMessage == null) return;
         server.getPlayer(targetUsername).ifPresent(player -> {
-            player.sendMessage(ColorParser.parse(legacy));
+            player.sendMessage(MiniMessage.miniMessage().deserialize(serializedMessage));
             if (plugin.getMessageService() != null && msg.getUuidAsUUID() != null && msg.getServerName() != null && !msg.getServerName().isEmpty()) {
                 plugin.getMessageService().setLastMessageSenderForReply(player.getUniqueId(), msg.getUuidAsUUID(), msg.getServerName());
             }

@@ -5,6 +5,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.slf4j.Logger;
 import net.luckperms.api.LuckPerms;
@@ -30,9 +31,7 @@ public class MessageService {
     private final Map<UUID, UUID> lastMessageRecipients = new ConcurrentHashMap<>();
     // When last message was from another proxy: recipient -> that sender's username (for /r)
     private final Map<UUID, String> lastSenderUsernameByRecipient = new ConcurrentHashMap<>();
-      // Format for messages with brackets around player sections
-    private final String outgoingFormat = "<dark_gray>[<gray>You <dark_gray>-> %s<reset><gray>%s<dark_gray>]: <gray>%s";  // Args: prefix, name, message
-    private final String incomingFormat = "<dark_gray>[%s<reset><gray>%s <dark_gray>-> <gray>You<dark_gray>]: <gray>%s"; // Args: prefix, name, message
+    private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.legacyAmpersand();
 
     public MessageService(BeaconLabsVelocity plugin, ProxyServer server, Logger logger) {
         this.plugin = plugin;
@@ -58,11 +57,51 @@ public class MessageService {
             this.luckPerms = null;
         }
     }    /**
-     * Format the incoming PM message as legacy string (for cross-proxy delivery).
+     * Format the incoming PM message for cross-proxy delivery.
+     *
+     * The serialized component keeps the prefix and player name in one identity
+     * section, while the actual message is a plain gray text component.
      */
     public String formatIncomingMessage(Player sender, String message) {
-        String senderPrefix = getPlayerPrefix(sender);
-        return String.format(incomingFormat, senderPrefix, sender.getUsername(), message);
+        return MINI_MESSAGE.serialize(formatIncomingMessageComponent(
+                getPlayerPrefix(sender), sender.getUsername(), message));
+    }
+
+    /** Build the message shown to the sender when messaging another player. */
+    public Component formatOutgoingMessage(String recipientPrefix, String recipientName, String message) {
+        return Component.text()
+                .append(Component.text("[", NamedTextColor.DARK_GRAY))
+                .append(Component.text("You ", NamedTextColor.GRAY))
+                .append(Component.text("-> ", NamedTextColor.DARK_GRAY))
+                .append(coloredPlayerSection(recipientPrefix, recipientName))
+                .append(Component.text("]: ", NamedTextColor.DARK_GRAY))
+                .append(Component.text(message, NamedTextColor.GRAY))
+                .build();
+    }
+
+    private Component formatIncomingMessageComponent(String senderPrefix, String senderName, String message) {
+        return Component.text()
+                .append(Component.text("[", NamedTextColor.DARK_GRAY))
+                .append(coloredPlayerSection(senderPrefix, senderName))
+                .append(Component.text(" -> ", NamedTextColor.DARK_GRAY))
+                .append(Component.text("You", NamedTextColor.GRAY))
+                .append(Component.text("]: ", NamedTextColor.DARK_GRAY))
+                .append(Component.text(message, NamedTextColor.GRAY))
+                .build();
+    }
+
+    /**
+     * Append the name without resetting the prefix style. This makes the prefix
+     * and name render as one colored identity, while later sections explicitly
+     * set their own colors.
+     */
+    private Component coloredPlayerSection(String prefix, String name) {
+        if (prefix == null || prefix.isEmpty()) {
+            return Component.text(name, NamedTextColor.GRAY);
+        }
+        // Parse both values in the same legacy stream so the name inherits the
+        // prefix's final color/decoration without an intermediate reset.
+        return LEGACY_SERIALIZER.deserialize(prefix + name);
     }
 
     /**
@@ -131,12 +170,9 @@ public class MessageService {
         String recipientPrefix = getPlayerPrefix(recipient);
         String senderPrefix = getPlayerPrefix(sender);
 
-        // Format messages for sender and recipient
-        Component senderMessage = MINI_MESSAGE
-                .deserialize(String.format(outgoingFormat, convertLegacyToMiniMessage(recipientPrefix), recipient.getUsername(), message));
-        
-        Component recipientMessage = MINI_MESSAGE
-                .deserialize(String.format(incomingFormat, convertLegacyToMiniMessage(senderPrefix), sender.getUsername(), message));
+        // Keep the prefix and player name together; the message itself remains plain text.
+        Component senderMessage = formatOutgoingMessage(recipientPrefix, recipient.getUsername(), message);
+        Component recipientMessage = formatIncomingMessageComponent(senderPrefix, sender.getUsername(), message);
 
         // Send the messages
         sender.sendMessage(senderMessage);
@@ -193,7 +229,7 @@ public class MessageService {
 
     public static String convertLegacyToMiniMessage(String legacy) {
         if (legacy == null || legacy.isEmpty()) return "";
-        Component comp = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
+        Component comp = LEGACY_SERIALIZER.deserialize(legacy);
         return MINI_MESSAGE.serialize(comp);
     }
 }

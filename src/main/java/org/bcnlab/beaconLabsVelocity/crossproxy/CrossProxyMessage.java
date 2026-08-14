@@ -14,6 +14,7 @@ public final class CrossProxyMessage {
         KICK_BY_NAME,
         SENDALL,
         PLAYER_CONNECT,
+        PLAYER_LIST_UPDATED,
         SEND_PLAYER,
         MUTE_APPLIED,
         PRIVATE_MSG,
@@ -93,6 +94,11 @@ public final class CrossProxyMessage {
     /** Build outbound PLAYER_CONNECT message. */
     public static String playerConnect(String proxyId, UUID uuid, String secret) {
         return "PLAYER_CONNECT" + SEP + proxyId + SEP + uuid.toString() + SEP + secret;
+    }
+
+    /** Build outbound player-list invalidation message. */
+    public static String playerListUpdated(String proxyId, String secret) {
+        return "PLAYER_LIST_UPDATED" + SEP + proxyId + SEP + secret;
     }
 
     /** Build outbound SEND_PLAYER message. */
@@ -226,6 +232,9 @@ public final class CrossProxyMessage {
             }
             if ("PLAYER_CONNECT".equals(typeStr) && parts.length >= 4) {
                 return new CrossProxyMessage(Type.PLAYER_CONNECT, parts[3], parts[1], parts[2], null, null, null, null);
+            }
+            if ("PLAYER_LIST_UPDATED".equals(typeStr) && parts.length >= 3) {
+                return new CrossProxyMessage(Type.PLAYER_LIST_UPDATED, parts[2], parts[1], null, null, null, null, null);
             }
             if ("SEND_PLAYER".equals(typeStr) && parts.length >= 5) {
                 return new CrossProxyMessage(Type.SEND_PLAYER, parts[3], parts.length > 4 ? parts[4] : null, parts[1], null, parts[2], null, null);

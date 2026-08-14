@@ -4,8 +4,6 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.service.MessageService;
@@ -93,8 +91,8 @@ public class ReplyCommand implements SimpleCommand {
             
             String recipientMessage = messageService.formatIncomingMessage(sender, message);
             plugin.getCrossProxyService().publishPrivateMsg(lastSenderUsername, sender.getUniqueId().toString(), sender.getUsername(), recipientMessage);
-            String recipientPrefix = MessageService.convertLegacyToMiniMessage(plugin.getCrossProxyService().getPlayerPrefix(lastSenderUsername));
-            Component senderMsg = MiniMessage.miniMessage().deserialize(String.format("<dark_gray>[<gray>You <dark_gray>-> %s<reset><gray>%s<dark_gray>]: <gray>%s", recipientPrefix, lastSenderUsername, message));
+            Component senderMsg = messageService.formatOutgoingMessage(
+                    plugin.getCrossProxyService().getPlayerPrefix(lastSenderUsername), lastSenderUsername, message);
             sender.sendMessage(senderMsg);
             return;
         }
