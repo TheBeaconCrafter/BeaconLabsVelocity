@@ -34,7 +34,9 @@ public final class CrossProxyMessage {
         FRIEND_REQUEST,
         FRIEND_ACCEPT,
         FRIEND_JOIN,
-        FRIEND_LEAVE
+        FRIEND_LEAVE,
+        PING_REQUEST,
+        PING_RESPONSE
     }
 
     private final Type type;
@@ -189,6 +191,16 @@ public final class CrossProxyMessage {
         return "FRIEND_LEAVE" + SEP + (uuid != null ? uuid : "") + SEP + (name != null ? name : "") + SEP + secret + SEP + proxyId;
     }
 
+    /** Build a cross-proxy ping request: target UUID, request ID, origin proxy ID. */
+    public static String pingRequest(UUID targetUuid, String requestId, String secret, String originProxyId) {
+        return "PING_REQUEST" + SEP + targetUuid + SEP + requestId + SEP + secret + SEP + originProxyId;
+    }
+
+    /** Build a cross-proxy ping response: request ID, target name, ping, origin proxy ID. */
+    public static String pingResponse(String requestId, String targetName, long ping, String originProxyId, String secret, String responderProxyId) {
+        return "PING_RESPONSE" + SEP + requestId + SEP + targetName + SEP + ping + SEP + originProxyId + SEP + secret + SEP + responderProxyId;
+    }
+
     /**
      * Parse an incoming message. Returns null if invalid or unknown type.
      * Reason field may contain SEP; we reassemble it from middle parts for KICK.
@@ -282,6 +294,12 @@ public final class CrossProxyMessage {
             }
             if ("FRIEND_LEAVE".equals(typeStr) && parts.length >= 5) {
                 return new CrossProxyMessage(Type.FRIEND_LEAVE, parts[3], parts[4], parts[1], null, null, parts[2], null); // uuid=uuid, username=name
+            }
+            if ("PING_REQUEST".equals(typeStr) && parts.length >= 5) {
+                return new CrossProxyMessage(Type.PING_REQUEST, parts[3], parts[4], parts[1], null, parts[2], null, null); // uuid=target, serverName=request ID
+            }
+            if ("PING_RESPONSE".equals(typeStr) && parts.length >= 7) {
+                return new CrossProxyMessage(Type.PING_RESPONSE, parts[5], parts[6], null, parts[3], parts[1], parts[2], parts[4]); // reason=ping, serverName=request ID, duration=origin proxy
             }
         } catch (Exception ignored) { }
         return null;

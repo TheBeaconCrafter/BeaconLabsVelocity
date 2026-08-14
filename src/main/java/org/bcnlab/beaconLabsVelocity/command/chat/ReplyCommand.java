@@ -94,7 +94,7 @@ public class ReplyCommand implements SimpleCommand {
             String recipientMessage = messageService.formatIncomingMessage(sender, message);
             plugin.getCrossProxyService().publishPrivateMsg(lastSenderUsername, sender.getUniqueId().toString(), sender.getUsername(), recipientMessage);
             String recipientPrefix = MessageService.convertLegacyToMiniMessage(plugin.getCrossProxyService().getPlayerPrefix(lastSenderUsername));
-            Component senderMsg = MiniMessage.miniMessage().deserialize(String.format("<dark_gray>[<gray>You <dark_gray>-> %s<gray>%s<dark_gray>]: <gray>%s", recipientPrefix, lastSenderUsername, message));
+            Component senderMsg = MiniMessage.miniMessage().deserialize(String.format("<dark_gray>[<gray>You <dark_gray>-> %s<reset><gray>%s<dark_gray>]: <gray>%s", recipientPrefix, lastSenderUsername, message));
             sender.sendMessage(senderMsg);
             return;
         }

@@ -99,7 +99,7 @@ public class MessageCommand implements SimpleCommand {
             plugin.getCrossProxyService().publishPrivateMsg(recipientName, sender.getUniqueId().toString(), sender.getUsername(), recipientMessage);
             // Get the recipient's prefix from Redis for the outgoing display
             String recipientPrefix = MessageService.convertLegacyToMiniMessage(plugin.getCrossProxyService().getPlayerPrefix(recipientName));
-            Component senderMsg = MiniMessage.miniMessage().deserialize(String.format("<dark_gray>[<gray>You <dark_gray>-> %s<gray>%s<dark_gray>]: <gray>%s", recipientPrefix, recipientName, message));
+            Component senderMsg = MiniMessage.miniMessage().deserialize(String.format("<dark_gray>[<gray>You <dark_gray>-> %s<reset><gray>%s<dark_gray>]: <gray>%s", recipientPrefix, recipientName, message));
             sender.sendMessage(senderMsg);
         } else {
             sender.sendMessage(plugin.getPrefix(sender).append(Component.text("Player '" + recipientName + "' not found or offline.", NamedTextColor.RED)));

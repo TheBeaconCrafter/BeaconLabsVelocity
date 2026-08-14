@@ -105,9 +105,20 @@ public class IgCommand implements SimpleCommand {
             }
         }
 
+        if (targetUuid == null && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            // Resolve remote online players before consulting the local database. The database
+            // is not necessarily available on every proxy, while the Redis player snapshot is.
+            targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(targetName);
+            if (targetUuid != null) {
+                realName = targetName;
+            }
+        }
+
         if (targetUuid == null) {
-            // Attempt to resolve from database for offline player
-            org.bcnlab.beaconLabsVelocity.service.PlayerStatsService.PlayerData stats = plugin.getPlayerStatsService().getPlayerDataByName(targetName);
+            // Attempt to resolve from database for an offline player.
+            PlayerStatsService statsService = plugin.getPlayerStatsService();
+            PlayerStatsService.PlayerData stats = statsService != null
+                    ? statsService.getPlayerDataByName(targetName) : null;
             if (stats != null) {
                 targetUuid = stats.getPlayerId();
                 realName = stats.getPlayerName();
@@ -130,28 +141,39 @@ public class IgCommand implements SimpleCommand {
             data.writeUTF(isNickname ? targetName : ""); // nickname
             
             // Profile
-            long playtimeMs = plugin.getPlayerStatsService().getPlayerPlaytime(targetUuid);
+            PlayerStatsService statsService = plugin.getPlayerStatsService();
+            long playtimeMs = statsService != null ? statsService.getPlayerPlaytime(targetUuid) : 0L;
             data.writeLong(playtimeMs);
             
-            long lastSeenMs = plugin.getPlayerStatsService().getLastSeenTime(targetUuid);
+            long lastSeenMs = statsService != null ? statsService.getLastSeenTime(targetUuid) : 0L;
             data.writeLong(lastSeenMs);
             
-            // Connection
-            boolean online = optionalTarget.isPresent();
+            // Connection. A remote player is online even though they are not present in this
+            // proxy's local Player collection.
+            String remoteProxyId = null;
+            String remoteServerName = null;
+            if (optionalTarget.isEmpty() && plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+                remoteProxyId = plugin.getCrossProxyService().getPlayerProxy(targetUuid);
+                remoteServerName = plugin.getCrossProxyService().getPlayerCurrentServer(realName);
+            }
+            boolean online = optionalTarget.isPresent() || remoteProxyId != null;
             data.writeBoolean(online);
             if (online) {
-                if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
-                    data.writeUTF(plugin.getCrossProxyService().getProxyId());
+                if (optionalTarget.isPresent()) {
+                    Player target = optionalTarget.get();
+                    data.writeUTF(plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()
+                            ? plugin.getCrossProxyService().getProxyId() : "Unknown");
+                    data.writeUTF(target.getCurrentServer().map(sc -> sc.getServerInfo().getName()).orElse("Unknown"));
+                    data.writeLong(target.getPing());
+                    data.writeUTF(target.getClientBrand() != null ? target.getClientBrand() : "Unknown");
                 } else {
+                    data.writeUTF(remoteProxyId);
+                    data.writeUTF(remoteServerName != null && !remoteServerName.isEmpty() ? remoteServerName : "Unknown");
+                    data.writeLong(0L);
                     data.writeUTF("Unknown");
                 }
-                data.writeUTF(optionalTarget.get().getCurrentServer().map(sc -> sc.getServerInfo().getName()).orElse("Unknown"));
-                data.writeLong(optionalTarget.get().getPing());
-                data.writeUTF(optionalTarget.get().getClientBrand() != null ? optionalTarget.get().getClientBrand() : "Unknown");
             } else {
-                String proxyId = (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled())
-                        ? plugin.getCrossProxyService().getPlayerProxy(targetUuid) : null;
-                data.writeUTF(proxyId != null ? proxyId : "");
+                data.writeUTF("");
             }
             
             long activeBans = 0;

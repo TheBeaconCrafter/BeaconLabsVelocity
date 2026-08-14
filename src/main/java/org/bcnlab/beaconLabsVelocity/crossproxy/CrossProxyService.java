@@ -25,6 +25,8 @@ import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
@@ -68,6 +70,16 @@ public class CrossProxyService {
     private Thread subscriberThread;
     private ScheduledTask heartbeatTask;
     private ScheduledTask snapshotTask;
+    private final java.util.Map<String, PendingPing> pendingPings = new ConcurrentHashMap<>();
+
+    private static final class PendingPing {
+        private final CompletableFuture<Long> future;
+        private volatile ScheduledTask timeoutTask;
+
+        private PendingPing(CompletableFuture<Long> future) {
+            this.future = future;
+        }
+    }
 
     private volatile CrossProxySnapshot snapshot = CrossProxySnapshot.empty();
 
@@ -643,6 +655,12 @@ public class CrossProxyService {
                     case FRIEND_LEAVE:
                         handleFriendLeave(msg);
                         break;
+                    case PING_REQUEST:
+                        handlePingRequest(msg);
+                        break;
+                    case PING_RESPONSE:
+                        handlePingResponse(msg);
+                        break;
                     default:
                         break;
                 }
@@ -860,6 +878,46 @@ public class CrossProxyService {
         plugin.performChatReportForPlayer(targetUuid, targetUsername, reporterUsername);
     }
     
+    /** Request a player's live ping from whichever proxy currently has them. */
+    public CompletableFuture<Long> requestPlayerPing(UUID targetUuid) {
+        if (!enabled || pubConnection == null || targetUuid == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Cross-proxy is unavailable"));
+        }
+        String requestId = UUID.randomUUID().toString();
+        CompletableFuture<Long> future = new CompletableFuture<>();
+        PendingPing pending = new PendingPing(future);
+        pendingPings.put(requestId, pending);
+        pending.timeoutTask = server.getScheduler().buildTask(plugin, () -> {
+            PendingPing expired = pendingPings.remove(requestId);
+            if (expired != null) expired.future.completeExceptionally(new java.util.concurrent.TimeoutException("Ping request timed out"));
+        }).delay(3, TimeUnit.SECONDS).schedule();
+        publish(CrossProxyMessage.pingRequest(targetUuid, requestId, sharedSecret, proxyId));
+        return future;
+    }
+
+    private void handlePingRequest(CrossProxyMessage msg) {
+        UUID targetUuid = msg.getUuidAsUUID();
+        String requestId = msg.getServerName();
+        String originProxyId = msg.getProxyId();
+        if (targetUuid == null || requestId == null || requestId.isEmpty() || originProxyId == null || originProxyId.isEmpty()) return;
+        server.getPlayer(targetUuid).ifPresent(target -> publish(CrossProxyMessage.pingResponse(
+                requestId, target.getUsername(), target.getPing(), originProxyId, sharedSecret, proxyId)));
+    }
+
+    private void handlePingResponse(CrossProxyMessage msg) {
+        if (msg.getDurationFormatted() == null || !proxyId.equals(msg.getDurationFormatted())) return;
+        String requestId = msg.getServerName();
+        if (requestId == null || requestId.isEmpty()) return;
+        PendingPing pending = pendingPings.remove(requestId);
+        if (pending == null) return;
+        if (pending.timeoutTask != null) pending.timeoutTask.cancel();
+        try {
+            pending.future.complete(Long.parseLong(msg.getReason()));
+        } catch (NumberFormatException e) {
+            pending.future.completeExceptionally(e);
+        }
+    }
+
     // Friend System Handlers
 
     private void handleFriendRequest(CrossProxyMessage msg) {

@@ -9,6 +9,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -51,14 +52,32 @@ public class PingCommand implements SimpleCommand {
         }
 
         Optional<Player> optionalTarget = server.getPlayer(targetName);
-        if (optionalTarget.isEmpty()) {
-            source.sendMessage(plugin.getPrefix(source).append(Component.text("Player not found: " + targetName, NamedTextColor.RED)));
+        if (optionalTarget.isPresent()) {
+            Player target = optionalTarget.get();
+            long pingValue = target.getPing();
+            Component message = formatPingMessage(target.getUsername(), pingValue);
+            source.sendMessage(plugin.getPrefix(source).append(message));
             return;
         }
-        Player target = optionalTarget.get();
-        long pingValue = target.getPing();
-        Component message = formatPingMessage(target.getUsername(), pingValue);
-        source.sendMessage(plugin.getPrefix(source).append(message));
+
+        if (plugin.getCrossProxyService() != null && plugin.getCrossProxyService().isEnabled()) {
+            UUID targetUuid = plugin.getCrossProxyService().getPlayerUuidByName(targetName);
+            if (targetUuid != null) {
+                source.sendMessage(plugin.getPrefix(source).append(
+                        Component.text("Checking " + targetName + "'s ping...", NamedTextColor.GRAY)));
+                plugin.getCrossProxyService().requestPlayerPing(targetUuid).whenComplete((ping, error) -> {
+                    if (error != null) {
+                        source.sendMessage(plugin.getPrefix(source).append(
+                                Component.text("Could not retrieve " + targetName + "'s ping.", NamedTextColor.RED)));
+                        return;
+                    }
+                    source.sendMessage(plugin.getPrefix(source).append(formatPingMessage(targetName, ping)));
+                });
+                return;
+            }
+        }
+
+        source.sendMessage(plugin.getPrefix(source).append(Component.text("Player not found: " + targetName, NamedTextColor.RED)));
     }
     /*
      * Format a ping message with color based on ping value
