@@ -4,6 +4,8 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
 public class ColorParser {
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+
     
     public static Component parse(String text) {
         if (text == null) return Component.empty();
@@ -33,6 +35,6 @@ public class ColorParser {
             .replace("&o", "<italic>")
             .replace("&r", "<reset>");
             
-        return MiniMessage.miniMessage().deserialize(parsed);
+        return MINI_MESSAGE.deserialize(parsed);
     }
 }

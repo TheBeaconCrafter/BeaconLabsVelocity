@@ -27,6 +27,10 @@ public class PlayerSettingsService {
 
     public void loadPlayerSettings(UUID uuid) {
         Map<String, String> settings = new ConcurrentHashMap<>();
+        if (databaseManager == null || !databaseManager.isConnected()) {
+            cache.put(uuid, settings);
+            return;
+        }
         try (Connection conn = databaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement("SELECT setting_key, setting_value FROM player_settings WHERE uuid=?")) {
             stmt.setString(1, uuid.toString());
@@ -44,6 +48,7 @@ public class PlayerSettingsService {
     public void savePlayerSetting(UUID uuid, String key, String value) {
         Map<String, String> settings = cache.computeIfAbsent(uuid, k -> new ConcurrentHashMap<>());
         settings.put(key, value);
+        if (databaseManager == null || !databaseManager.isConnected()) return;
 
         try (Connection conn = databaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement("INSERT INTO player_settings (uuid, setting_key, setting_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE setting_value=?")) {
@@ -63,6 +68,7 @@ public class PlayerSettingsService {
             return settings.get(key);
         }
         // Fallback to DB if not cached
+        if (databaseManager == null || !databaseManager.isConnected()) return defaultValue;
         try (Connection conn = databaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement("SELECT setting_value FROM player_settings WHERE uuid=? AND setting_key=?")) {
             stmt.setString(1, uuid.toString());

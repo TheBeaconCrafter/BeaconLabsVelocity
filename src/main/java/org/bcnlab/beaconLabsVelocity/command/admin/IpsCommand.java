@@ -35,7 +35,7 @@ public class IpsCommand implements SimpleCommand {
     private final PlayerStatsService playerStatsService;
     private final PunishmentService punishmentService; // For UUID lookups
     private final BeaconLabsVelocity plugin;
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private static final ThreadLocal<SimpleDateFormat> DATE_FORMAT = ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
 
     public IpsCommand(ProxyServer server, PlayerStatsService playerStatsService, 
                       PunishmentService punishmentService, BeaconLabsVelocity plugin) {
@@ -158,7 +158,7 @@ public class IpsCommand implements SimpleCommand {
                 .hoverEvent(HoverEvent.showText(Component.text("Click to copy IP address", NamedTextColor.GRAY)));
               // Format main entry with IP and latest date
             Date latestTimestamp = new Date(timestamps.get(0));
-            String latestDateStr = DATE_FORMAT.format(latestTimestamp);
+            String latestDateStr = DATE_FORMAT.get().format(latestTimestamp);
             
             // Check if there are other IPs on the same subnet
             String subnetInfo = "";
@@ -197,7 +197,7 @@ public class IpsCommand implements SimpleCommand {
                 
                 for (int i = 0; i < displayLimit; i++) {
                     Date timestamp = new Date(timestamps.get(i));
-                    String dateStr = DATE_FORMAT.format(timestamp);
+                    String dateStr = DATE_FORMAT.get().format(timestamp);
                     dateComponents.add(Component.text(dateStr, NamedTextColor.GRAY));
                 }
                   // Join with commas

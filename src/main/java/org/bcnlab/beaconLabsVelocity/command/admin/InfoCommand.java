@@ -38,7 +38,7 @@ public class InfoCommand implements SimpleCommand {
     private final PunishmentConfig config;
     private final BeaconLabsVelocity plugin;
     private final PlayerStatsService playerStatsService;
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private static final ThreadLocal<SimpleDateFormat> DATE_FORMAT = ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
 
     public InfoCommand(ProxyServer server, PunishmentService service, BeaconLabsVelocity plugin, PunishmentConfig config) {
         this.server = server;
@@ -215,7 +215,7 @@ public class InfoCommand implements SimpleCommand {
                 long lastSeenTime = playerStatsService.getLastSeenTime(offlineUuid);
                 if (lastSeenTime > 0) {
                     Date lastSeenDate = new Date(lastSeenTime);
-                    String lastSeenStr = DATE_FORMAT.format(lastSeenDate);
+                    String lastSeenStr = DATE_FORMAT.get().format(lastSeenDate);
                     src.sendMessage(Component.text("Last seen: ", NamedTextColor.GOLD)
                         .append(Component.text(lastSeenStr, NamedTextColor.GRAY)));
                 } else {
@@ -245,7 +245,7 @@ public class InfoCommand implements SimpleCommand {
                             
                             String historyIp = entry.getIpAddress();
                             Date timestamp = new Date(entry.getTimestamp());
-                            String dateStr = DATE_FORMAT.format(timestamp);
+                            String dateStr = DATE_FORMAT.get().format(timestamp);
                             
                             Component historyComponent = Component.text("  " + historyIp, NamedTextColor.GRAY)
                                 .clickEvent(ClickEvent.copyToClipboard(historyIp))
@@ -292,7 +292,7 @@ public class InfoCommand implements SimpleCommand {
                                     entry = entry.append(Component.text(" (Online)", NamedTextColor.GREEN));
                                 } else {
                                     Date lastSeen = new Date(player.getLastSeen());
-                                    String lastSeenStr = DATE_FORMAT.format(lastSeen);
+                                    String lastSeenStr = DATE_FORMAT.get().format(lastSeen);
                                     entry = entry.append(Component.text(" (Last seen: " + lastSeenStr + ")", NamedTextColor.GRAY));
                                 }
                                 
@@ -445,7 +445,7 @@ public class InfoCommand implements SimpleCommand {
                     
                     String historyIp = entry.getIpAddress();
                     Date timestamp = new Date(entry.getTimestamp());
-                    String dateStr = DATE_FORMAT.format(timestamp);
+                    String dateStr = DATE_FORMAT.get().format(timestamp);
                     
                     Component historyComponent = Component.text("  " + historyIp, NamedTextColor.GRAY)
                         .clickEvent(ClickEvent.copyToClipboard(historyIp))
@@ -518,7 +518,7 @@ public class InfoCommand implements SimpleCommand {
                             entry = entry.append(Component.text(" (Online)", NamedTextColor.GREEN));
                         } else {
                             Date lastSeen = new Date(player.getLastSeen());
-                            String lastSeenStr = DATE_FORMAT.format(lastSeen);
+                            String lastSeenStr = DATE_FORMAT.get().format(lastSeen);
                             entry = entry.append(Component.text(" (Last seen: " + lastSeenStr + ")", NamedTextColor.GRAY));
                         }
                         
@@ -581,14 +581,14 @@ public class InfoCommand implements SimpleCommand {
                   try {
                     // Use the utility method to handle various timestamp formats
                     Date startDate = PunishmentService.parseTimestamp(record.startTime);
-                    formattedDate = DATE_FORMAT.format(startDate);
+                    formattedDate = DATE_FORMAT.get().format(startDate);
                     
                     if (record.duration <= 0) {
                         expiry = "Never";
                     } else {
                         // Calculate expiry time by adding duration to start time
                         Date expiryDate = new Date(startDate.getTime() + record.duration);
-                        expiry = DATE_FORMAT.format(expiryDate);
+                        expiry = DATE_FORMAT.get().format(expiryDate);
                     }
                 } catch (Exception e) {
                     formattedDate = "Invalid date";

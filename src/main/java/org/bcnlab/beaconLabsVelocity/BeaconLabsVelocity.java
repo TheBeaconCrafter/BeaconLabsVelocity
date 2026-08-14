@@ -57,18 +57,19 @@ import java.time.Duration;
 import java.util.Objects;
 import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
-@Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.8.3", url = "bcnlab.org", authors = {"Vincent Wackler"})
+@Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.8.4", url = "bcnlab.org", authors = {"Vincent Wackler"})
 public class BeaconLabsVelocity {
 
     @Inject
     @DataDirectory
     private Path dataDirectory;
 
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
     private ConfigurationNode config;
 
     private String prefix;
     private String legacyPrefix;
-    private final String version = "1.8.3";
+    private final String version = "1.8.4";
 
     @Inject
     private Logger logger;
@@ -203,7 +204,7 @@ public class BeaconLabsVelocity {
 
         // Initialize MessageService for private messaging
         messageService = new MessageService(this, server, logger);
-        server.getEventManager().register(this, new MessageListener(messageService));
+        server.getEventManager().register(this, new MessageListener(this, messageService));
         logger.info("Message service has been enabled.");        // Initialize WhitelistService and register WhitelistListener if database is connected
         if (databaseManager != null && databaseManager.isConnected()) {
             whitelistService = new WhitelistService(this, server, databaseManager, logger);
@@ -226,19 +227,6 @@ public class BeaconLabsVelocity {
             logger.warn("Database is not connected. Report service will be disabled.");
         }
         
-        // Initialize ReportService for player reporting system if database is connected
-        if (databaseManager != null && databaseManager.isConnected()) {
-            reportService = new ReportService(this, databaseManager, logger);
-            
-            // Register report commands
-            commandManager.register("report", new ReportCommand(this, reportService));
-            commandManager.register("reports", new ReportsCommand(this, reportService));
-            
-            logger.info("Report service has been enabled.");
-        } else {
-            logger.warn("Database is not connected. Report service will be disabled.");
-        }
-
         // Legal (TOS/Privacy) - only when DB connected and legal enabled in config
         if (databaseManager != null && databaseManager.isConnected()) {
             legalService = new LegalService(this, databaseManager, logger);
@@ -314,7 +302,6 @@ public class BeaconLabsVelocity {
         server.getChannelRegistrar().register(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:report_dialog"));
         
         server.getEventManager().register(this, new org.bcnlab.beaconLabsVelocity.listener.ReportDialogListener(this));
-        server.getChannelRegistrar().register(com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier.from("beaconlabs:report_dialog"));
 
         fileChatLogger = new FileChatLogger(getDataDirectory().toString());
         server.getEventManager().register(this, fileChatLogger);
@@ -393,6 +380,9 @@ public class BeaconLabsVelocity {
         if (crossProxyService != null) {
             crossProxyService.shutdown();
         }
+        if (fileChatLogger != null) {
+            fileChatLogger.shutdown();
+        }
         if (databaseManager != null) {
             databaseManager.disconnect();
         }
@@ -400,7 +390,7 @@ public class BeaconLabsVelocity {
     }
 
     public Component getPrefix() {
-        return MiniMessage.miniMessage().deserialize(prefix);
+        return MINI_MESSAGE.deserialize(prefix);
     }
     
     public Component getPrefix(com.velocitypowered.api.command.CommandSource source) {
@@ -415,7 +405,7 @@ public class BeaconLabsVelocity {
                 }
             } catch (Exception e) {}
         }
-        return MiniMessage.miniMessage().deserialize(prefix);
+        return MINI_MESSAGE.deserialize(prefix);
     }
 
     public String getVersion() {

@@ -12,8 +12,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class FriendService {
 
@@ -31,6 +32,10 @@ public class FriendService {
     private final DatabaseManager databaseManager;
     private final Logger logger;
     private final ProxyServer proxy;
+    private static final long FRIEND_CACHE_TTL_MS = 10_000L;
+    private final Map<UUID, FriendCacheEntry> friendsCache = new ConcurrentHashMap<>();
+
+    private record FriendCacheEntry(List<UUID> friends, long expiresAt) {}
 
     public FriendService(BeaconLabsVelocity plugin, DatabaseManager databaseManager, ProxyServer proxy, Logger logger) {
         this.plugin = plugin;
@@ -40,6 +45,7 @@ public class FriendService {
     }
 
     public void sendFriendRequest(UUID sender, UUID target) {
+        if (databaseManager == null || !databaseManager.isConnected()) return;
         try (Connection conn = databaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement("INSERT INTO friends (player_uuid, friend_uuid, status, created_at) VALUES (?, ?, 'pending', ?) ON DUPLICATE KEY UPDATE status=status")) {
             stmt.setString(1, sender.toString());
@@ -52,6 +58,7 @@ public class FriendService {
     }
 
     public void acceptFriendRequest(UUID player, UUID friend) {
+        if (databaseManager == null || !databaseManager.isConnected()) return;
         try (Connection conn = databaseManager.getConnection()) {
             conn.setAutoCommit(false);
             try (PreparedStatement stmt1 = conn.prepareStatement("UPDATE friends SET status='accepted' WHERE player_uuid=? AND friend_uuid=?");
@@ -65,6 +72,7 @@ public class FriendService {
                 stmt2.setString(2, friend.toString());
                 stmt2.setLong(3, System.currentTimeMillis());
                 stmt2.executeUpdate();
+                invalidateFriendCache(player, friend);
                 
                 conn.commit();
             } catch (SQLException e) {
@@ -79,6 +87,7 @@ public class FriendService {
     }
 
     public void denyFriendRequest(UUID player, UUID friend) {
+        if (databaseManager == null || !databaseManager.isConnected()) return;
         try (Connection conn = databaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement("DELETE FROM friends WHERE player_uuid=? AND friend_uuid=? AND status='pending'")) {
             stmt.setString(1, friend.toString());
@@ -90,6 +99,7 @@ public class FriendService {
     }
 
     public void removeFriend(UUID player, UUID friend) {
+        if (databaseManager == null || !databaseManager.isConnected()) return;
         try (Connection conn = databaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement("DELETE FROM friends WHERE (player_uuid=? AND friend_uuid=?) OR (player_uuid=? AND friend_uuid=?)")) {
             stmt.setString(1, player.toString());
@@ -97,12 +107,20 @@ public class FriendService {
             stmt.setString(3, friend.toString());
             stmt.setString(4, player.toString());
             stmt.executeUpdate();
+            invalidateFriendCache(player, friend);
         } catch (SQLException e) {
             logger.error("Failed to remove friend {} for {}", friend, player, e);
         }
     }
 
     public List<UUID> getFriends(UUID player) {
+        long now = System.currentTimeMillis();
+        FriendCacheEntry cached = friendsCache.get(player);
+        if (cached != null && cached.expiresAt() > now) {
+            return cached.friends();
+        }
+        if (databaseManager == null || !databaseManager.isConnected()) return List.of();
+
         List<UUID> friends = new ArrayList<>();
         try (Connection conn = databaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement("SELECT friend_uuid FROM friends WHERE player_uuid=? AND status='accepted'")) {
@@ -115,10 +133,13 @@ public class FriendService {
         } catch (SQLException e) {
             logger.error("Failed to get friends for {}", player, e);
         }
-        return friends;
+        List<UUID> immutableFriends = List.copyOf(friends);
+        friendsCache.put(player, new FriendCacheEntry(immutableFriends, now + FRIEND_CACHE_TTL_MS));
+        return immutableFriends;
     }
 
     public List<FriendInfo> getDetailedFriends(UUID player) {
+        if (databaseManager == null || !databaseManager.isConnected()) return List.of();
         List<FriendInfo> friends = new ArrayList<>();
         try (Connection conn = databaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement("SELECT friend_uuid, created_at FROM friends WHERE player_uuid=? AND status='accepted'")) {
@@ -135,6 +156,7 @@ public class FriendService {
     }
 
     public List<UUID> getPendingRequests(UUID player) {
+        if (databaseManager == null || !databaseManager.isConnected()) return List.of();
         List<UUID> requests = new ArrayList<>();
         try (Connection conn = databaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement("SELECT player_uuid FROM friends WHERE friend_uuid=? AND status='pending'")) {
@@ -151,20 +173,20 @@ public class FriendService {
     }
 
     public boolean areFriends(UUID uuid1, UUID uuid2) {
-        try (Connection conn = databaseManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement("SELECT 1 FROM friends WHERE player_uuid=? AND friend_uuid=? AND status='accepted' LIMIT 1")) {
-            stmt.setString(1, uuid1.toString());
-            stmt.setString(2, uuid2.toString());
-            try (ResultSet rs = stmt.executeQuery()) {
-                return rs.next();
-            }
-        } catch (SQLException e) {
-            logger.error("Failed to check if {} and {} are friends", uuid1, uuid2, e);
-            return false;
-        }
+        return getFriends(uuid1).contains(uuid2);
+    }
+
+    public void clearPlayerCache(UUID player) {
+        friendsCache.remove(player);
+    }
+
+    private void invalidateFriendCache(UUID player, UUID friend) {
+        friendsCache.remove(player);
+        friendsCache.remove(friend);
     }
 
     public int getFriendCount(UUID player) {
+        if (databaseManager == null || !databaseManager.isConnected()) return 0;
         try (Connection conn = databaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement("SELECT COUNT(*) FROM friends WHERE player_uuid=? AND status='accepted'")) {
             stmt.setString(1, player.toString());

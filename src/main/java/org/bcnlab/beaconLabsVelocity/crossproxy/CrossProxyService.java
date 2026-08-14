@@ -14,7 +14,8 @@ import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.luckperms.api.LuckPermsProvider;
+import net.luckperms.api.model.user.User;
 import com.velocitypowered.api.proxy.Player;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.slf4j.Logger;
@@ -249,17 +250,12 @@ public class CrossProxyService {
         }
     }
 
-    /** Get a player's LuckPerms prefix via reflection (returns empty string if unavailable). */
+    /** Get a player's LuckPerms prefix without reflection. */
     private String getPlayerLuckPermsPrefix(UUID playerUuid) {
         try {
-            Class<?> providerClass = Class.forName("net.luckperms.api.LuckPermsProvider");
-            Object lp = providerClass.getMethod("get").invoke(null);
-            Object userManager = lp.getClass().getMethod("getUserManager").invoke(lp);
-            Object user = userManager.getClass().getMethod("getUser", UUID.class).invoke(userManager, playerUuid);
+            User user = LuckPermsProvider.get().getUserManager().getUser(playerUuid);
             if (user == null) return "";
-            Object cachedData = user.getClass().getMethod("getCachedData").invoke(user);
-            Object metaData = cachedData.getClass().getMethod("getMetaData").invoke(cachedData);
-            String prefix = (String) metaData.getClass().getMethod("getPrefix").invoke(metaData);
+            String prefix = user.getCachedData().getMetaData().getPrefix();
             return prefix != null ? prefix : "";
         } catch (Exception e) {
             return "";

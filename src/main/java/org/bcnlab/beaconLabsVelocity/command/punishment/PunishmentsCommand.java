@@ -25,7 +25,7 @@ public class PunishmentsCommand implements SimpleCommand {
     private final ProxyServer server;
     private final PunishmentService service;
     private final PunishmentConfig config;
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private static final ThreadLocal<SimpleDateFormat> DATE_FORMAT = ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
     private final BeaconLabsVelocity plugin;
 
     public PunishmentsCommand(BeaconLabsVelocity plugin, ProxyServer server, PunishmentService service, PunishmentConfig config) {
@@ -111,14 +111,14 @@ public class PunishmentsCommand implements SimpleCommand {
         }        for (PunishmentRecord record : history) {            String status = record.active ? "&aActive" : "&cInactive";
             String durationStr = DurationUtils.formatDuration(record.duration);
               // Format start date using the utility method
-            String dateStr = dateFormat.format(PunishmentService.parseTimestamp(record.startTime));
+            String dateStr = DATE_FORMAT.get().format(PunishmentService.parseTimestamp(record.startTime));
             
             // Format expiry date using the utility method
             String expiryStr;
             if (record.endTime <= 0) {
                 expiryStr = "Never";
             } else {
-                expiryStr = dateFormat.format(PunishmentService.parseTimestamp(record.endTime));
+                expiryStr = DATE_FORMAT.get().format(PunishmentService.parseTimestamp(record.endTime));
             }
             String line = config.getMessage("history-line")
                     .replace("{status}", status)

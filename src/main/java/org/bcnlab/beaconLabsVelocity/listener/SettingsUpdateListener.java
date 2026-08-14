@@ -35,14 +35,16 @@ public class SettingsUpdateListener {
             
             UUID uuid = UUID.fromString(uuidStr);
             PlayerSettingsService settingsService = plugin.getPlayerSettingsService();
-            settingsService.savePlayerSetting(uuid, key, value);
+            plugin.getServer().getScheduler().buildTask(plugin, () ->
+                    settingsService.savePlayerSetting(uuid, key, value)
+            ).schedule();
             
             Optional<Player> playerOpt = plugin.getServer().getPlayer(uuid);
             if (playerOpt.isPresent()) {
                 // playerOpt.get().sendMessage(plugin.getPrefix().append(Component.text("Setting " + key + " updated to " + value, NamedTextColor.GREEN)));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            plugin.getLogger().warn("Failed to process settings update: {}", e.getMessage());
         }
     }
 }

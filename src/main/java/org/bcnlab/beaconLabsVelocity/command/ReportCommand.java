@@ -12,6 +12,8 @@ import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.service.ReportService;
 
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -30,7 +32,7 @@ public class ReportCommand implements SimpleCommand {
     private static final String PERMISSION = "beaconlabs.command.report";
     
     // Cooldowns map to prevent spam
-    private final List<ReportCooldown> cooldowns = new ArrayList<>();
+    private final Map<String, Long> cooldowns = new ConcurrentHashMap<>();
     
     // Default cooldown in seconds
     private static final int DEFAULT_COOLDOWN = 60;
@@ -206,11 +208,13 @@ public class ReportCommand implements SimpleCommand {
      * @return True if on cooldown, false otherwise
      */
     private boolean isOnCooldown(String playerUuid) {
-        // Clean up expired cooldowns first
-        cooldowns.removeIf(cooldown -> cooldown.isExpired());
-        
-        // Check if the player has a cooldown
-        return cooldowns.stream().anyMatch(cooldown -> cooldown.getPlayerUuid().equals(playerUuid));
+        Long expiresAt = cooldowns.get(playerUuid);
+        if (expiresAt == null) return false;
+        if (expiresAt <= System.currentTimeMillis()) {
+            cooldowns.remove(playerUuid, expiresAt);
+            return false;
+        }
+        return true;
     }
     
     /**
@@ -224,7 +228,7 @@ public class ReportCommand implements SimpleCommand {
             .node("reports", "cooldown-seconds")
             .getInt(DEFAULT_COOLDOWN);
         
-        cooldowns.add(new ReportCooldown(playerUuid, cooldownSeconds));
+        cooldowns.put(playerUuid, System.currentTimeMillis() + cooldownSeconds * 1000L);
     }
     
     private static Component buildReportNotification(String reportedName, String reporterName, String reason, String serverName, int reportId) {
@@ -294,24 +298,5 @@ public class ReportCommand implements SimpleCommand {
         return invocation.source().hasPermission(PERMISSION);
     }
     
-    /**
-     * Class to track report cooldowns
-     */
-    private static class ReportCooldown {
-        private final String playerUuid;
-        private final long expiresAt;
-        
-        public ReportCooldown(String playerUuid, int cooldownSeconds) {
-            this.playerUuid = playerUuid;
-            this.expiresAt = System.currentTimeMillis() + (cooldownSeconds * 1000L);
-        }
-        
-        public String getPlayerUuid() {
-            return playerUuid;
-        }
-        
-        public boolean isExpired() {
-            return System.currentTimeMillis() > expiresAt;
-        }
-    }
+
 }

@@ -11,7 +11,8 @@ import org.bcnlab.beaconLabsVelocity.service.PunishmentService;
 import org.bcnlab.beaconLabsVelocity.util.DurationUtils;
 import org.slf4j.Logger;
 
-import java.text.SimpleDateFormat;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
@@ -20,7 +21,9 @@ public class BanLoginListener {
     private final PunishmentService punishmentService;
     private final PunishmentConfig punishmentConfig;
     private final Logger logger;
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter
+            .ofPattern("yyyy-MM-dd HH:mm:ss z")
+            .withZone(ZoneId.systemDefault());
 
     public BanLoginListener(BeaconLabsVelocity plugin, PunishmentService punishmentService, PunishmentConfig punishmentConfig, Logger logger) {
         this.punishmentService = punishmentService;
@@ -38,7 +41,8 @@ public class BanLoginListener {
             return;
         }
 
-        if (punishmentService.isBanned(playerUuid)) {            PunishmentService.PunishmentRecord banRecord = punishmentService.getActiveBan(playerUuid);
+        PunishmentService.PunishmentRecord banRecord = punishmentService.getActiveBan(playerUuid);
+        if (banRecord != null) {
             // Use the correct config key as specified in the user's config
             String banMessageTemplate = punishmentConfig.getMessage("ban-login-deny");
             String defaultKickMessage = "&cYou are banned from this server.";            if (banRecord != null && banMessageTemplate != null) {
@@ -50,7 +54,7 @@ public class BanLoginListener {
                     formattedEndTime = "Never";
                 } else {
                     // Use the utility method to handle various timestamp formats
-                    formattedEndTime = DATE_FORMAT.format(PunishmentService.parseTimestamp(endTime));
+                    formattedEndTime = DATE_FORMAT.format(PunishmentService.parseTimestamp(endTime).toInstant());
                 }
 
                 // Log the values being used to help debug template issues

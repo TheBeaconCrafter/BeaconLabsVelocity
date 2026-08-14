@@ -7,6 +7,9 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.slf4j.Logger;
+import net.luckperms.api.LuckPerms;
+import net.luckperms.api.LuckPermsProvider;
+import net.luckperms.api.model.user.User;
 
 import java.util.Map;
 import java.util.Optional;
@@ -20,7 +23,8 @@ public class MessageService {
     private final BeaconLabsVelocity plugin;
     private final ProxyServer server;
     private final Logger logger;
-    private Object luckPerms; // Using Object type to avoid compilation issues
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+    private volatile LuckPerms luckPerms;
     
     // Store the last conversation partner for each player (local only)
     private final Map<UUID, UUID> lastMessageRecipients = new ConcurrentHashMap<>();
@@ -47,9 +51,7 @@ public class MessageService {
      */
     private void initializeLuckPerms() {
         try {
-            // Use reflection to avoid direct compilation dependency
-            Class<?> providerClass = Class.forName("net.luckperms.api.LuckPermsProvider");
-            this.luckPerms = providerClass.getMethod("get").invoke(null);
+            this.luckPerms = LuckPermsProvider.get();
             logger.info("Successfully hooked into LuckPerms for player prefixes.");
         } catch (Exception e) {
             logger.warn("Failed to hook into LuckPerms. Player prefixes will not be shown.", e);
@@ -75,18 +77,11 @@ public class MessageService {
         }
         
         try {
-            // Use reflection to safely access LuckPerms API
-            Class<?> luckPermsClass = luckPerms.getClass();
-            Object userManager = luckPermsClass.getMethod("getUserManager").invoke(luckPerms);
-            Object user = userManager.getClass().getMethod("getUser", UUID.class).invoke(userManager, player.getUniqueId());
-            
+            User user = luckPerms.getUserManager().getUser(player.getUniqueId());
             if (user == null) {
                 return "";
             }
-            
-            Object cachedData = user.getClass().getMethod("getCachedData").invoke(user);
-            Object metaData = cachedData.getClass().getMethod("getMetaData").invoke(cachedData);
-            String prefix = (String) metaData.getClass().getMethod("getPrefix").invoke(metaData);
+            String prefix = user.getCachedData().getMetaData().getPrefix();
             
             if (prefix == null || prefix.isEmpty()) {
                 return "";
@@ -137,10 +132,10 @@ public class MessageService {
         String senderPrefix = getPlayerPrefix(sender);
 
         // Format messages for sender and recipient
-        Component senderMessage = MiniMessage.miniMessage()
+        Component senderMessage = MINI_MESSAGE
                 .deserialize(String.format(outgoingFormat, convertLegacyToMiniMessage(recipientPrefix), recipient.getUsername(), message));
         
-        Component recipientMessage = MiniMessage.miniMessage()
+        Component recipientMessage = MINI_MESSAGE
                 .deserialize(String.format(incomingFormat, convertLegacyToMiniMessage(senderPrefix), sender.getUsername(), message));
 
         // Send the messages
@@ -199,6 +194,6 @@ public class MessageService {
     public static String convertLegacyToMiniMessage(String legacy) {
         if (legacy == null || legacy.isEmpty()) return "";
         Component comp = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand().deserialize(legacy);
-        return MiniMessage.miniMessage().serialize(comp);
+        return MINI_MESSAGE.serialize(comp);
     }
 }

@@ -3,7 +3,6 @@ package org.bcnlab.beaconLabsVelocity.service;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.config.PunishmentConfig;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
@@ -20,14 +19,20 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 public class PunishmentService {
-    private static final java.text.SimpleDateFormat DATE_FORMAT = new java.text.SimpleDateFormat(
-            "yyyy-MM-dd HH:mm:ss z");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter
+            .ofPattern("yyyy-MM-dd HH:mm:ss z")
+            .withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter LEGACY_TIMESTAMP_FORMAT = DateTimeFormatter
+            .ofPattern("yyyyMMddHHmmss");
     private final BeaconLabsVelocity plugin;
     private final DatabaseManager db;
     private final PunishmentConfig config;
@@ -48,8 +53,8 @@ public class PunishmentService {
         // If the timestamp is 14 digits (yyyyMMddHHmmss format)
         if (timestampStr.length() == 14) {
             try {
-                java.text.SimpleDateFormat format = new java.text.SimpleDateFormat("yyyyMMddHHmmss");
-                return format.parse(timestampStr);
+                return Date.from(java.time.LocalDateTime.parse(timestampStr, LEGACY_TIMESTAMP_FORMAT)
+                        .atZone(ZoneId.systemDefault()).toInstant());
             } catch (Exception e) {
                 // Log error but continue with fallback approach
                 System.err.println("Failed to parse timestamp as yyyyMMddHHmmss format: " + timestamp);
@@ -131,10 +136,11 @@ public class PunishmentService {
         }
     }
 
+    /** Mark expired timed punishments inactive for history and administrative views. */
     private void expireOld() {
         String sql = "UPDATE punishments SET active=false WHERE active=true AND end_time>0 AND end_time<=?";
         try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, System.currentTimeMillis()); // Use current time in ms format
+            ps.setLong(1, System.currentTimeMillis());
             ps.executeUpdate();
         } catch (Exception e) {
             logger.error("Failed to expire old punishments", e);
@@ -168,7 +174,7 @@ public class PunishmentService {
         String broadcastTemplate = config.getMessage(type + "-broadcast");
         if (broadcastTemplate != null) {
             String formattedDuration = DurationUtils.formatDuration(durationMs);
-            String expiry = (end <= 0) ? "Never" : DATE_FORMAT.format(new java.util.Date(end));
+            String expiry = (end <= 0) ? "Never" : DATE_FORMAT.format(Instant.ofEpochMilli(end));
             String broadcastMsg = broadcastTemplate
                     .replace("{player}", targetName)
                     .replace("{issuer}", issuerName)
@@ -226,16 +232,7 @@ public class PunishmentService {
     }
 
     public boolean isBanned(UUID targetId) {
-        expireOld();
-        String sql = "SELECT COUNT(1) FROM punishments WHERE player_uuid=? AND type='ban' AND active=true";
-        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, targetId.toString());
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) return rs.getInt(1)>0;
-        } catch (Exception e) {
-            logger.error("Failed to check ban status", e);
-        }
-        return false;
+        return getActiveBan(targetId) != null;
     }
 
     /**
@@ -243,10 +240,10 @@ public class PunishmentService {
      * Returns null if not banned.
      */
     public PunishmentRecord getActiveBan(UUID targetId) {
-        expireOld();
-        String sql = "SELECT reason, duration, end_time FROM punishments WHERE player_uuid=? AND type='ban' AND active=true ORDER BY start_time DESC LIMIT 1";
+        String sql = "SELECT reason, duration, end_time FROM punishments WHERE player_uuid=? AND type='ban' AND active=true AND (end_time IS NULL OR end_time=0 OR end_time>?) ORDER BY start_time DESC LIMIT 1";
         try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, targetId.toString());
+            ps.setLong(2, System.currentTimeMillis());
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
                 // Create a dummy record just for ban details
@@ -263,18 +260,7 @@ public class PunishmentService {
      * Check if a player has an active mute.
      */
     public boolean isMuted(UUID targetId) {
-        expireOld(); // Ensure expired mutes are not considered
-        String sql = "SELECT COUNT(1) FROM punishments WHERE player_uuid=? AND type='mute' AND active=true";
-        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, targetId.toString());
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return rs.getInt(1) > 0;
-            }
-        } catch (Exception e) {
-            logger.error("Failed to check mute status for " + targetId, e);
-        }
-        return false;
+        return getActiveMute(targetId) != null;
     }
 
     /**
@@ -282,10 +268,10 @@ public class PunishmentService {
      * Returns null if not muted.
      */
     public PunishmentRecord getActiveMute(UUID targetId) {
-        expireOld();
-        String sql = "SELECT reason, duration, end_time FROM punishments WHERE player_uuid=? AND type='mute' AND active=true ORDER BY start_time DESC LIMIT 1";
+        String sql = "SELECT reason, duration, end_time FROM punishments WHERE player_uuid=? AND type='mute' AND active=true AND (end_time IS NULL OR end_time=0 OR end_time>?) ORDER BY start_time DESC LIMIT 1";
         try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, targetId.toString());
+            ps.setLong(2, System.currentTimeMillis());
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
                 // Create a record just for mute details

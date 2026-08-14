@@ -36,6 +36,10 @@ public class ChatReportCommand implements SimpleCommand {
 
     @Override
     public void execute(Invocation invocation) {
+        plugin.getServer().getScheduler().buildTask(plugin, () -> executeAsync(invocation)).schedule();
+    }
+
+    private void executeAsync(Invocation invocation) {
         CommandSource sender = invocation.source();
         String[] args = invocation.arguments();
 

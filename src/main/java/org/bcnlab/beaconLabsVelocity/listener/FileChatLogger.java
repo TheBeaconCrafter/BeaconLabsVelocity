@@ -13,14 +13,26 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
 import java.time.Duration;
-import java.util.Date;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.UUID;
 
 public class FileChatLogger {
 
+    private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter
+            .ofPattern("dd.MM.yyyy - HH:mm:ss")
+            .withZone(ZoneId.systemDefault());
     private final String logDirectory;
+    private final ExecutorService writer = Executors.newSingleThreadExecutor(r -> {
+        Thread thread = new Thread(r, "BeaconLabsVelocity-ChatLogger");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     public FileChatLogger(String dataDirectory) {
         this.logDirectory = Paths.get(dataDirectory).resolve("logs").toString();
@@ -38,33 +50,42 @@ public class FileChatLogger {
     }
 
     public void logChat(UUID playerId, String playerName, String message, long logStartTime) {
-        String filePath = logDirectory + "/" + playerId.toString() + ".log";
+        writer.execute(() -> appendLog(playerId, playerName, message, logStartTime));
+    }
+
+    private void appendLog(UUID playerId, String playerName, String message, long logStartTime) {
+        String filePath = logDirectory + "/" + playerId + ".log";
         File logFile = new File(filePath);
         boolean isNewFile = !logFile.exists();
 
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))) {
+        try (BufferedWriter fileWriter = new BufferedWriter(new FileWriter(filePath, true))) {
             if (isNewFile) {
-                String fileCreationTime = new SimpleDateFormat("dd.MM.yyyy - HH:mm:ss").format(new Date());
-                writer.write("Username: " + playerName);
-                writer.newLine();
-                writer.write("UUID: " + playerId);
-                writer.newLine();
-                writer.write("File created: " + fileCreationTime);
-                writer.newLine();
-                writer.newLine();
+                fileWriter.write("Username: " + playerName);
+                fileWriter.newLine();
+                fileWriter.write("UUID: " + playerId);
+                fileWriter.newLine();
+                fileWriter.write("File created: " + TIMESTAMP_FORMAT.format(Instant.now()));
+                fileWriter.newLine();
+                fileWriter.newLine();
             }
 
-            long currentTime = System.currentTimeMillis();
-            String formattedMessage = formatLogMessage(message, logStartTime, currentTime);
-            writer.write(formattedMessage);
-            writer.newLine();
+            fileWriter.write(formatLogMessage(message, logStartTime, System.currentTimeMillis()));
+            fileWriter.newLine();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Failed to write chat log: " + e.getMessage());
         }
     }
 
     public String readChatLog(UUID playerId) throws IOException {
-        String filePath = logDirectory + "/" + playerId.toString() + ".log";
+        try {
+            writer.submit(() -> {}).get(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted while flushing chat logs", e);
+        } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException e) {
+            throw new IOException("Timed out while flushing chat logs", e);
+        }
+        String filePath = logDirectory + "/" + playerId + ".log";
         java.nio.file.Path path = java.nio.file.Paths.get(filePath);
         if (!java.nio.file.Files.exists(path)) {
             return null;
@@ -126,8 +147,20 @@ public class FileChatLogger {
         long minutes = totalMinutes % 60;
 
         String formattedTime = String.format("[%dd %dh %dm ago]", days, hours, minutes);
-        String timestamp = new SimpleDateFormat("dd.MM.yyyy - HH:mm:ss").format(new Date(currentTime));
+        String timestamp = TIMESTAMP_FORMAT.format(Instant.ofEpochMilli(currentTime));
 
         return String.format("%s %s | %s", formattedTime, timestamp, message);
+    }
+
+    public void shutdown() {
+        writer.shutdown();
+        try {
+            if (!writer.awaitTermination(5, TimeUnit.SECONDS)) {
+                writer.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            writer.shutdownNow();
+        }
     }
 }

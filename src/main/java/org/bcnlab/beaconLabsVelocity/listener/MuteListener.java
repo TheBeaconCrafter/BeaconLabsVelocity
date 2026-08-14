@@ -42,9 +42,9 @@ public class MuteListener {
         UUID playerUuid = player.getUniqueId();
         String username = player.getUsername();
 
-        boolean isMuted = punishmentService.isMuted(playerUuid);
+        PunishmentService.PunishmentRecord muteRecord = punishmentService.getActiveMute(playerUuid);
 
-        if (isMuted) {
+        if (muteRecord != null) {
             event.setResult(PlayerChatEvent.ChatResult.denied());
             
             // Prevent further processing of this event by other listeners if it's denied
@@ -53,8 +53,7 @@ public class MuteListener {
                 
                 if (!recentlyNotified) {
                     logger.info("[MuteListener] Sending mute notification to {}.", username); // Log notification sending
-                    PunishmentService.PunishmentRecord muteRecord = punishmentService.getActiveMute(playerUuid);
-                    String reason = muteRecord != null ? muteRecord.reason : "No reason specified";
+                    String reason = muteRecord.reason != null ? muteRecord.reason : "No reason specified";
                     
                     String muteMessageTemplate = punishmentConfig.getMessage("mute-message");
                     if (muteMessageTemplate == null) {

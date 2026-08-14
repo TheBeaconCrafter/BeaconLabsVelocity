@@ -10,14 +10,18 @@ import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.crossproxy.CrossProxyService;
 import org.bcnlab.beaconLabsVelocity.service.PlayerStatsService;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class FriendNotificationListener {
 
+    private static final DateTimeFormatter LAST_LOGIN_FORMAT = DateTimeFormatter
+            .ofPattern("yyyy-MM-dd HH:mm")
+            .withZone(ZoneId.systemDefault());
     private final BeaconLabsVelocity plugin;
 
     public FriendNotificationListener(BeaconLabsVelocity plugin) {
@@ -27,7 +31,10 @@ public class FriendNotificationListener {
     @Subscribe
     public void onPostLogin(PostLoginEvent event) {
         Player player = event.getPlayer();
-        
+        plugin.getServer().getScheduler().buildTask(plugin, () -> notifyPostLogin(player)).schedule();
+    }
+
+    private void notifyPostLogin(Player player) {
         // Notify local friends
         plugin.getServer().getAllPlayers().forEach(onlinePlayer -> {
             if (plugin.getFriendService().areFriends(onlinePlayer.getUniqueId(), player.getUniqueId())) {
@@ -66,8 +73,7 @@ public class FriendNotificationListener {
             if (statsService != null) {
                 PlayerStatsService.PlayerData pd = statsService.getPlayerDataByName(player.getUsername());
                 if (pd != null && pd.getLastSeen() > 0) {
-                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-                    lastLogin = dateFormat.format(new Date(pd.getLastSeen()));
+                    lastLogin = LAST_LOGIN_FORMAT.format(Instant.ofEpochMilli(pd.getLastSeen()));
                 }
             }
             
@@ -93,7 +99,10 @@ public class FriendNotificationListener {
     @Subscribe
     public void onDisconnect(DisconnectEvent event) {
         Player player = event.getPlayer();
-        
+        plugin.getServer().getScheduler().buildTask(plugin, () -> notifyDisconnect(player)).schedule();
+    }
+
+    private void notifyDisconnect(Player player) {
         // Notify local friends
         plugin.getServer().getAllPlayers().forEach(onlinePlayer -> {
             if (plugin.getFriendService().areFriends(onlinePlayer.getUniqueId(), player.getUniqueId())) {

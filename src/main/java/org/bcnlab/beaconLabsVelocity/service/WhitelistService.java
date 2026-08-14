@@ -22,6 +22,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 /**
  * Service to manage the whitelist functionality
@@ -32,6 +35,10 @@ public class WhitelistService {
     private final Logger logger;
     private final DatabaseManager databaseManager;
     private final AtomicBoolean whitelistEnabled = new AtomicBoolean(false);
+    private static final long WHITELIST_CACHE_TTL_MS = 30_000L;
+    private final Map<String, WhitelistCacheEntry> whitelistCache = new ConcurrentHashMap<>();
+
+    private record WhitelistCacheEntry(boolean whitelisted, long expiresAt) {}
     
     // Configuration values
     private String kickMessage;
@@ -86,6 +93,12 @@ public class WhitelistService {
             try (Connection conn = databaseManager.getConnection();
                  PreparedStatement stmt = conn.prepareStatement(SQL_CREATE_TABLE)) {
                 stmt.execute();
+                try (ResultSet rs = conn.createStatement().executeQuery(SQL_LIST_PLAYERS)) {
+                    long expiresAt = System.currentTimeMillis() + WHITELIST_CACHE_TTL_MS;
+                    while (rs.next()) {
+                        whitelistCache.put(rs.getString("player_name").toLowerCase(), new WhitelistCacheEntry(true, expiresAt));
+                    }
+                }
                 logger.info("Proxy whitelist table initialized.");
             } catch (SQLException e) {
                 logger.error("Failed to create proxy whitelist table", e);
@@ -282,6 +295,7 @@ public class WhitelistService {
                 int affectedRows = stmt.executeUpdate();
                 
                 if (affectedRows > 0) {
+                    whitelistCache.put(playerName.toLowerCase(), new WhitelistCacheEntry(true, System.currentTimeMillis() + WHITELIST_CACHE_TTL_MS));
                     logger.info("Player {} added to whitelist by {}", playerName, addedBy);
                     return true;
                 } else {
@@ -315,6 +329,7 @@ public class WhitelistService {
                 int affectedRows = stmt.executeUpdate();
                 
                 if (affectedRows > 0) {
+                    whitelistCache.put(playerName.toLowerCase(), new WhitelistCacheEntry(false, System.currentTimeMillis() + WHITELIST_CACHE_TTL_MS));
                     logger.info("Player {} removed from whitelist", playerName);
                     return true;
                 } else {
@@ -344,6 +359,12 @@ public class WhitelistService {
             logger.warn("Database is not connected. Cannot check whitelist status for {}.", playerName);
             return CompletableFuture.completedFuture(false);
         }
+
+        String cacheKey = playerName.toLowerCase();
+        WhitelistCacheEntry cached = whitelistCache.get(cacheKey);
+        if (cached != null && cached.expiresAt() >= System.currentTimeMillis()) {
+            return CompletableFuture.completedFuture(cached.whitelisted());
+        }
         
         return CompletableFuture.supplyAsync(() -> {
             try (Connection conn = databaseManager.getConnection();
@@ -351,7 +372,9 @@ public class WhitelistService {
                 
                 stmt.setString(1, playerName);
                 try (ResultSet rs = stmt.executeQuery()) {
-                    return rs.next(); // If there's a result, player is whitelisted
+                    boolean whitelisted = rs.next();
+                    whitelistCache.put(cacheKey, new WhitelistCacheEntry(whitelisted, System.currentTimeMillis() + WHITELIST_CACHE_TTL_MS));
+                    return whitelisted;
                 }
             } catch (SQLException e) {
                 logger.error("Database error checking whitelist status: {}", e.getMessage(), e);
@@ -462,7 +485,7 @@ public class WhitelistService {
             .deserialize(kickMessage);
         
         List<CompletableFuture<Boolean>> futures = new ArrayList<>();
-        List<Player> playersToKick = new ArrayList<>();
+        ConcurrentLinkedQueue<Player> playersToKick = new ConcurrentLinkedQueue<>();
         
         for (Player player : server.getAllPlayers()) {
             // Skip players with bypass permission
