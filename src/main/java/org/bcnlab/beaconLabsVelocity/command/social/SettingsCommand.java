@@ -7,6 +7,7 @@ import com.velocitypowered.api.proxy.ServerConnection;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 import java.util.Optional;
 
@@ -57,7 +58,7 @@ public class SettingsCommand implements SimpleCommand {
                 
                 boolean sent = server.sendPluginMessage(identifier, b.toByteArray());
                 if (!sent) {
-                    player.sendMessage(Component.text("--- Settings ---", NamedTextColor.GOLD));
+                    player.sendMessage(ColorParser.heading("Settings"));
                     player.sendMessage(Component.text("MSG Privacy: ", NamedTextColor.GRAY).append(Component.text(msgPrivacy, getColorForValue(msgPrivacy))));
                     player.sendMessage(Component.text("Friend Requests: ", NamedTextColor.GRAY).append(Component.text(friendReq, getColorForValue(friendReq))));
                     player.sendMessage(Component.text("Friend Server: ", NamedTextColor.GRAY).append(Component.text(friendServer, getColorForValue(friendServer))));

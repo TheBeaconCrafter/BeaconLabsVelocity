@@ -67,6 +67,47 @@ public class CrossProxyService {
     private StatefulRedisPubSubConnection<String, String> subConnection;
     private Thread subscriberThread;
     private ScheduledTask heartbeatTask;
+    private ScheduledTask snapshotTask;
+
+    private volatile CrossProxySnapshot snapshot = CrossProxySnapshot.empty();
+
+    private static final class CrossProxySnapshot {
+        private final java.util.Set<String> proxyIds;
+        private final java.util.Map<String, java.util.List<java.util.Map.Entry<String, String>>> playerLists;
+        private final java.util.Map<String, java.util.List<java.util.Map.Entry<String, String>>> staffLists;
+        private final java.util.Map<String, UUID> playerUuidsByName;
+        private final java.util.Map<UUID, String> proxyByPlayerUuid;
+        private final java.util.Map<String, String> playerServersByName;
+        private final java.util.Map<String, String> proxyHostnames;
+        private final java.util.Map<String, String> prefixes;
+
+        private CrossProxySnapshot(
+                java.util.Set<String> proxyIds,
+                java.util.Map<String, java.util.List<java.util.Map.Entry<String, String>>> playerLists,
+                java.util.Map<String, java.util.List<java.util.Map.Entry<String, String>>> staffLists,
+                java.util.Map<String, UUID> playerUuidsByName,
+                java.util.Map<UUID, String> proxyByPlayerUuid,
+                java.util.Map<String, String> playerServersByName,
+                java.util.Map<String, String> proxyHostnames,
+                java.util.Map<String, String> prefixes) {
+            this.proxyIds = proxyIds;
+            this.playerLists = playerLists;
+            this.staffLists = staffLists;
+            this.playerUuidsByName = playerUuidsByName;
+            this.proxyByPlayerUuid = proxyByPlayerUuid;
+            this.playerServersByName = playerServersByName;
+            this.proxyHostnames = proxyHostnames;
+            this.prefixes = prefixes;
+        }
+
+        private static CrossProxySnapshot empty() {
+            return new CrossProxySnapshot(
+                    java.util.Collections.emptySet(), java.util.Collections.emptyMap(),
+                    java.util.Collections.emptyMap(), java.util.Collections.emptyMap(),
+                    java.util.Collections.emptyMap(), java.util.Collections.emptyMap(),
+                    java.util.Collections.emptyMap(), java.util.Collections.emptyMap());
+        }
+    }
 
     public CrossProxyService(BeaconLabsVelocity plugin, String proxyId, String sharedSecret, String publicHostname, boolean enabled, boolean allowDoubleJoin) {
         this.plugin = plugin;
@@ -112,23 +153,12 @@ public class CrossProxyService {
         }
     }
 
-    /** Get which proxy this player is on (null if not on any proxy we know of, or if that proxy is dead). */
+    /** Get which proxy this player is on without a command-time Redis round-trip. */
     public String getPlayerProxy(UUID playerUuid) {
-        if (!enabled || pubConnection == null) return null;
-        try {
-            var sync = pubConnection.sync();
-            String pid = sync.get(ONLINE_KEY_PREFIX + playerUuid.toString());
-            if (pid == null || pid.isEmpty()) return null;
-            Long hb = sync.exists(HEARTBEAT_KEY_PREFIX + pid);
-            if (hb == null || hb == 0) {
-                sync.del(ONLINE_KEY_PREFIX + playerUuid.toString());
-                return null;
-            }
-            return pid;
-        } catch (Exception e) {
-            logger.debug("Failed to get online proxy for {}: {}", playerUuid, e.getMessage());
-            return null;
-        }
+        if (!enabled || pubConnection == null || playerUuid == null) return null;
+        if (server.getPlayer(playerUuid).isPresent()) return proxyId;
+        String pid = snapshot.proxyByPlayerUuid.get(playerUuid);
+        return pid != null && snapshot.proxyIds.contains(pid) ? pid : null;
     }
 
     /** Register this proxy in the set of connected proxies (for /plist, /proxies) and set heartbeat. */
@@ -167,13 +197,7 @@ public class CrossProxyService {
     /** Get public hostname for a proxy (for transfer). Returns null if not set or proxy unknown. */
     public String getProxyHostname(String targetProxyId) {
         if (!enabled || pubConnection == null || targetProxyId == null || targetProxyId.isEmpty()) return null;
-        try {
-            String host = pubConnection.sync().get(PROXY_HOST_KEY_PREFIX + targetProxyId);
-            return (host != null && !host.isEmpty()) ? host : null;
-        } catch (Exception e) {
-            logger.debug("Failed to get proxy hostname for {}: {}", targetProxyId, e.getMessage());
-            return null;
-        }
+        return snapshot.proxyHostnames.get(targetProxyId);
     }
 
     /** Set pending transfer: when this player connects to targetProxyId, send them to serverName. TTL 60s. */
@@ -262,19 +286,13 @@ public class CrossProxyService {
         }
     }
 
-    /** Get a player's prefix from Redis (works for players on any proxy). Returns empty string if none stored. */
+    /** Get a player's prefix from the periodically refreshed Redis snapshot. */
     public String getPlayerPrefix(String playerName) {
         if (playerName == null || playerName.isEmpty() || !enabled || pubConnection == null) return "";
-        try {
-            String prefix = pubConnection.sync().hget(PREFIX_HASH_KEY, playerName.toLowerCase());
-            return prefix != null ? prefix : "";
-        } catch (Exception e) {
-            logger.debug("Failed to get prefix for {}: {}", playerName, e.getMessage());
-            return "";
-        }
+        return snapshot.prefixes.getOrDefault(playerName.toLowerCase(), "");
     }
 
-    /** Remove a player's prefix from the shared Redis hash (call on disconnect). */
+    /** Remove a player's prefix from the shared Redis hash. */
     public void removePlayerPrefix(String playerName) {
         if (playerName == null || playerName.isEmpty() || !enabled || pubConnection == null) return;
         try {
@@ -321,101 +339,128 @@ public class CrossProxyService {
         return out;
     }
 
-    /** Get all proxy IDs that are currently alive. Uses heartbeat first; if missing (e.g. Redis replication lag in prod),
-     *  treats proxy as live if its plist key exists (recent update). Current proxy is always included. */
+    /** Get all proxy IDs that are currently alive from the local snapshot. */
     public java.util.Set<String> getProxyIds() {
         if (!enabled || pubConnection == null) return java.util.Collections.emptySet();
-        try {
-            var sync = pubConnection.sync();
-            java.util.Set<String> all = sync.smembers(PROXIES_SET);
-            java.util.Set<String> live = new java.util.HashSet<>();
-            for (String id : all) {
-                if (id == null || id.isEmpty()) continue;
-                if (id.equals(proxyId)) {
-                    live.add(id);
-                    continue;
-                }
-                Long hb = sync.exists(HEARTBEAT_KEY_PREFIX + id);
-                if (hb != null && hb > 0) {
-                    live.add(id);
-                    continue;
-                }
-                Long plistExists = sync.exists(PLIST_KEY_PREFIX + id);
-                if (plistExists != null && plistExists > 0) {
-                    live.add(id);
-                }
-            }
-            return live;
-        } catch (Exception e) {
-            logger.debug("Failed to get proxy IDs: {}", e.getMessage());
-            return java.util.Collections.emptySet();
-        }
+        return snapshot.proxyIds;
     }
 
-    /** Get player list for a proxy: list of (playerName, serverName). Supports format "uuid:username:server" or legacy "username:server". */
+    /** Get player list for a proxy from the local snapshot. */
     public java.util.List<java.util.Map.Entry<String, String>> getPlayerListForProxy(String proxyIdKey) {
-        if (!enabled || pubConnection == null) return java.util.Collections.emptyList();
-        try {
-            String raw = pubConnection.sync().get(PLIST_KEY_PREFIX + proxyIdKey);
-            if (raw == null || raw.isEmpty()) return java.util.Collections.emptyList();
-            java.util.List<java.util.Map.Entry<String, String>> out = new java.util.ArrayList<>();
-            for (String entry : raw.split(PLAYER_SERVER_SEP, -1)) {
-                String[] parts = entry.split(PLAYER_SERVER_PAIR_SEP, 3);
-                if (parts.length >= 3) {
-                    out.add(new java.util.AbstractMap.SimpleEntry<>(parts[1], parts[2]));
-                } else if (parts.length == 2) {
-                    out.add(new java.util.AbstractMap.SimpleEntry<>(parts[0], parts[1]));
-                }
-            }
-            return out;
-        } catch (Exception e) {
-            logger.debug("Failed to get player list for {}: {}", proxyIdKey, e.getMessage());
-            return java.util.Collections.emptyList();
-        }
+        if (!enabled || pubConnection == null || proxyIdKey == null) return java.util.Collections.emptyList();
+        return snapshot.playerLists.getOrDefault(proxyIdKey, java.util.Collections.emptyList());
     }
 
-    /** Get staff list for a proxy: list of (username, serverName) for players with beaconlabs.visual.staff. For /staff cross-proxy. */
+    /** Get staff list for a proxy from the local snapshot. */
     public java.util.List<java.util.Map.Entry<String, String>> getStaffListForProxy(String proxyIdKey) {
-        if (!enabled || pubConnection == null) return java.util.Collections.emptyList();
-        try {
-            String staffRaw = pubConnection.sync().get(STAFF_KEY_PREFIX + proxyIdKey);
-            if (staffRaw == null || staffRaw.isEmpty()) return java.util.Collections.emptyList();
-            java.util.Set<String> staffLower = new java.util.HashSet<>(java.util.Arrays.asList(staffRaw.split(PLAYER_SERVER_SEP, -1)));
-            java.util.List<java.util.Map.Entry<String, String>> plist = getPlayerListForProxy(proxyIdKey);
-            java.util.List<java.util.Map.Entry<String, String>> out = new java.util.ArrayList<>();
-            for (java.util.Map.Entry<String, String> e : plist) {
-                if (e.getKey() != null && staffLower.contains(e.getKey().toLowerCase())) {
-                    out.add(e);
-                }
-            }
-            return out;
-        } catch (Exception e) {
-            logger.debug("Failed to get staff list for {}: {}", proxyIdKey, e.getMessage());
-            return java.util.Collections.emptyList();
-        }
+        if (!enabled || pubConnection == null || proxyIdKey == null) return java.util.Collections.emptyList();
+        return snapshot.staffLists.getOrDefault(proxyIdKey, java.util.Collections.emptyList());
     }
 
-    /** Get UUID of an online player by name (case-insensitive) from any proxy's plist. Returns null if not found. */
+    /** Get UUID of an online player by name from the local snapshot. */
     public UUID getPlayerUuidByName(String playerName) {
         if (playerName == null || playerName.isEmpty() || !enabled || pubConnection == null) return null;
-        String lower = playerName.toLowerCase();
+        return snapshot.playerUuidsByName.get(playerName.toLowerCase());
+    }
+
+    private void refreshRemoteSnapshot() {
+        if (!enabled || pubConnection == null) return;
         try {
-            for (String pid : getProxyIds()) {
-                String raw = pubConnection.sync().get(PLIST_KEY_PREFIX + pid);
-                if (raw == null || raw.isEmpty()) continue;
+            var sync = pubConnection.sync();
+            java.util.Set<String> ids = new java.util.HashSet<>(sync.smembers(PROXIES_SET));
+            ids.add(proxyId);
+            java.util.List<String> proxyList = new java.util.ArrayList<>(ids);
+            String[] plistKeys = proxyList.stream().map(id -> PLIST_KEY_PREFIX + id).toArray(String[]::new);
+            String[] heartbeatKeys = proxyList.stream().map(id -> HEARTBEAT_KEY_PREFIX + id).toArray(String[]::new);
+            String[] hostnameKeys = proxyList.stream().map(id -> PROXY_HOST_KEY_PREFIX + id).toArray(String[]::new);
+            java.util.Map<String, String> rawHostnames = new java.util.HashMap<>();
+            java.util.Map<String, String> rawPlayerLists = new java.util.HashMap<>();
+            java.util.Set<String> heartbeatPresent = new java.util.HashSet<>();
+            for (var value : sync.mget(hostnameKeys)) {
+                if (value.hasValue() && !value.getValue().isEmpty()) rawHostnames.put(value.getKey().substring(PROXY_HOST_KEY_PREFIX.length()), value.getValue());
+            }
+            for (var value : sync.mget(plistKeys)) {
+                if (value.hasValue()) rawPlayerLists.put(value.getKey(), value.getValue());
+            }
+            for (var value : sync.mget(heartbeatKeys)) {
+                if (value.hasValue()) heartbeatPresent.add(value.getKey());
+            }
+
+            java.util.Set<String> live = new java.util.HashSet<>();
+            java.util.Map<String, java.util.List<java.util.Map.Entry<String, String>>> players = new java.util.HashMap<>();
+            java.util.Map<String, java.util.List<java.util.Map.Entry<String, String>>> staff = new java.util.HashMap<>();
+            java.util.Map<String, UUID> uuids = new java.util.HashMap<>();
+            java.util.Map<UUID, String> proxyByUuid = new java.util.HashMap<>();
+            java.util.Map<String, String> servers = new java.util.HashMap<>();
+            for (String id : proxyList) {
+                String raw = rawPlayerLists.get(PLIST_KEY_PREFIX + id);
+                if (id.equals(proxyId) || heartbeatPresent.contains(HEARTBEAT_KEY_PREFIX + id) || raw != null) live.add(id);
+                if (raw == null) continue;
+                java.util.List<java.util.Map.Entry<String, String>> parsed = parsePlayerList(raw);
+                players.put(id, parsed);
                 for (String entry : raw.split(PLAYER_SERVER_SEP, -1)) {
                     String[] parts = entry.split(PLAYER_SERVER_PAIR_SEP, 3);
-                    if (parts.length >= 3 && parts[1].equalsIgnoreCase(lower)) {
-                        try {
-                            return UUID.fromString(parts[0]);
-                        } catch (IllegalArgumentException ignored) { }
+                    if (parts.length < 3) continue;
+                    try {
+                        UUID uuid = UUID.fromString(parts[0]);
+                        String name = parts[1].toLowerCase();
+                        uuids.put(name, uuid);
+                        proxyByUuid.put(uuid, id);
+                        servers.put(name, parts[2]);
+                    } catch (IllegalArgumentException ignored) {
+                        // Ignore legacy or malformed entries.
                     }
                 }
             }
+
+            String[] staffKeys = live.stream().map(id -> STAFF_KEY_PREFIX + id).toArray(String[]::new);
+            java.util.Map<String, String> rawStaff = new java.util.HashMap<>();
+            for (var value : sync.mget(staffKeys)) {
+                if (value.hasValue()) rawStaff.put(value.getKey(), value.getValue());
+            }
+            for (String id : live) {
+                java.util.List<java.util.Map.Entry<String, String>> list = players.get(id);
+                if (list != null) staff.put(id, parseStaffList(rawStaff.get(STAFF_KEY_PREFIX + id), list));
+            }
+
+            snapshot = new CrossProxySnapshot(
+                    java.util.Set.copyOf(live), immutableListMap(players), immutableListMap(staff),
+                    java.util.Map.copyOf(uuids), java.util.Map.copyOf(proxyByUuid),
+                    java.util.Map.copyOf(servers), java.util.Map.copyOf(rawHostnames),
+                    java.util.Map.copyOf(sync.hgetall(PREFIX_HASH_KEY)));
         } catch (Exception e) {
-            logger.debug("getPlayerUuidByName failed: {}", e.getMessage());
+            logger.debug("Failed to refresh cross-proxy snapshot: {}", e.getMessage());
         }
-        return null;
+    }
+
+    private static java.util.Map<String, java.util.List<java.util.Map.Entry<String, String>>> immutableListMap(
+            java.util.Map<String, java.util.List<java.util.Map.Entry<String, String>>> source) {
+        java.util.Map<String, java.util.List<java.util.Map.Entry<String, String>>> result = new java.util.HashMap<>();
+        source.forEach((key, value) -> result.put(key, java.util.List.copyOf(value)));
+        return java.util.Map.copyOf(result);
+    }
+
+    private static java.util.List<java.util.Map.Entry<String, String>> parsePlayerList(String raw) {
+        if (raw == null || raw.isEmpty()) return java.util.Collections.emptyList();
+        java.util.List<java.util.Map.Entry<String, String>> result = new java.util.ArrayList<>();
+        for (String entry : raw.split(PLAYER_SERVER_SEP, -1)) {
+            String[] parts = entry.split(PLAYER_SERVER_PAIR_SEP, 3);
+            if (parts.length >= 3) result.add(new java.util.AbstractMap.SimpleImmutableEntry<>(parts[1], parts[2]));
+            else if (parts.length == 2) result.add(new java.util.AbstractMap.SimpleImmutableEntry<>(parts[0], parts[1]));
+        }
+        return result;
+    }
+
+    private static java.util.List<java.util.Map.Entry<String, String>> parseStaffList(
+            String rawStaff, java.util.List<java.util.Map.Entry<String, String>> players) {
+        if (rawStaff == null || rawStaff.isEmpty()) return java.util.Collections.emptyList();
+        java.util.Set<String> names = new java.util.HashSet<>();
+        for (String name : rawStaff.split(PLAYER_SERVER_SEP, -1)) names.add(name.toLowerCase());
+        java.util.List<java.util.Map.Entry<String, String>> result = new java.util.ArrayList<>();
+        for (java.util.Map.Entry<String, String> player : players) {
+            if (names.contains(player.getKey().toLowerCase())) result.add(player);
+        }
+        return result;
     }
 
     /** Call after config is loaded. Connects and subscribes if enabled and config valid. */
@@ -466,8 +511,11 @@ public class CrossProxyService {
 
             registerProxy();
             updatePlayerList();
+            refreshRemoteSnapshot();
+            snapshotTask = server.getScheduler().buildTask(plugin, this::refreshRemoteSnapshot)
+                    .repeat(5, TimeUnit.SECONDS)
+                    .schedule();
             heartbeatTask = server.getScheduler().buildTask(plugin, () -> {
-                refreshHeartbeat();
                 refreshProxyHostname();
                 updatePlayerList(); // Keep plist key alive (TTL 120s); otherwise plist shows 0 after ~2 mins of no join/leave/switch
             })
@@ -481,6 +529,10 @@ public class CrossProxyService {
     }
 
     public void shutdown() {
+        if (snapshotTask != null) {
+            snapshotTask.cancel();
+            snapshotTask = null;
+        }
         if (heartbeatTask != null) {
             heartbeatTask.cancel();
             heartbeatTask = null;
@@ -942,25 +994,17 @@ public class CrossProxyService {
     /** Server name the player is on, or null if not found on any proxy. */
     public String getPlayerCurrentServer(String playerName) {
         if (playerName == null || playerName.isEmpty() || !enabled || pubConnection == null) return null;
-        String lower = playerName.toLowerCase();
-        for (String pid : getProxyIds()) {
-            for (java.util.Map.Entry<String, String> e : getPlayerListForProxy(pid)) {
-                if (e.getKey() != null && e.getKey().toLowerCase().equals(lower)) return e.getValue();
-            }
-        }
-        return null;
+        return snapshot.playerServersByName.get(playerName.toLowerCase());
     }
 
     /** All online player names across proxies (for suggestions etc.). */
     public java.util.Set<String> getOnlinePlayerNames() {
         java.util.Set<String> names = new java.util.LinkedHashSet<>();
-        for (com.velocitypowered.api.proxy.Player p : server.getAllPlayers()) {
-            names.add(p.getUsername());
-        }
+        for (com.velocitypowered.api.proxy.Player p : server.getAllPlayers()) names.add(p.getUsername());
         if (!enabled || pubConnection == null) return names;
-        for (String pid : getProxyIds()) {
-            for (java.util.Map.Entry<String, String> e : getPlayerListForProxy(pid)) {
-                if (e.getKey() != null && !e.getKey().isEmpty()) names.add(e.getKey());
+        for (java.util.List<java.util.Map.Entry<String, String>> players : snapshot.playerLists.values()) {
+            for (java.util.Map.Entry<String, String> entry : players) {
+                if (entry.getKey() != null && !entry.getKey().isEmpty()) names.add(entry.getKey());
             }
         }
         return names;
@@ -970,9 +1014,7 @@ public class CrossProxyService {
     public int getTotalPlayerCount() {
         if (!enabled || pubConnection == null) return server.getPlayerCount();
         int total = 0;
-        for (String pid : getProxyIds()) {
-            total += getPlayerListForProxy(pid).size();
-        }
+        for (java.util.List<java.util.Map.Entry<String, String>> players : snapshot.playerLists.values()) total += players.size();
         return total;
     }
 

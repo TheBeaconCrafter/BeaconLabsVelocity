@@ -7,6 +7,10 @@ public class ColorParser {
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
 
     
+    public static Component heading(String title) {
+        return parse("&6&m-------&r&6 " + title + " &6&m--------");
+    }
+
     public static Component parse(String text) {
         if (text == null) return Component.empty();
         

@@ -5,6 +5,7 @@ import com.velocitypowered.api.command.SimpleCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 import com.velocitypowered.api.proxy.Player;
 
 public class NicklistCommand implements SimpleCommand {
@@ -23,7 +24,7 @@ public class NicklistCommand implements SimpleCommand {
             return;
         }
 
-        source.sendMessage(Component.text("--- Nicked Players ---", NamedTextColor.GOLD));
+        source.sendMessage(ColorParser.heading("Nicked Players"));
         
         boolean found = false;
         for (Player p : plugin.getServer().getAllPlayers()) {

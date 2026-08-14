@@ -6,6 +6,7 @@ import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
+import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -238,9 +239,11 @@ public class FriendCommand implements SimpleCommand {
                         java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
                         java.io.DataOutputStream out = new java.io.DataOutputStream(b);
                         out.writeInt(friends.size());
+                        java.util.Set<String> onlineNames = plugin.getCrossProxyService() != null
+                                ? plugin.getCrossProxyService().getOnlinePlayerNames() : java.util.Set.of();
                         for (var friend : friends) {
                             String name = getPlayerName(friend.uuid);
-                            boolean isOnline = plugin.getCrossProxyService() != null && plugin.getCrossProxyService().getOnlinePlayerNames().contains(name);
+                            boolean isOnline = onlineNames.contains(name);
                             out.writeUTF(friend.uuid.toString());
                             out.writeUTF(name);
                             out.writeBoolean(isOnline);
@@ -266,14 +269,8 @@ public class FriendCommand implements SimpleCommand {
                                     if (localPlayer.isPresent() && localPlayer.get().getCurrentServer().isPresent()) {
                                         friendServer = localPlayer.get().getCurrentServer().get().getServerInfo().getName();
                                     } else if (plugin.getCrossProxyService() != null) {
-                                        for (String pid : plugin.getCrossProxyService().getProxyIds()) {
-                                            for (java.util.Map.Entry<String, String> entry : plugin.getCrossProxyService().getPlayerListForProxy(pid)) {
-                                                if (name.equalsIgnoreCase(entry.getKey())) {
-                                                    friendServer = entry.getValue();
-                                                    break;
-                                                }
-                                            }
-                                        }
+                                        String currentServer = plugin.getCrossProxyService().getPlayerCurrentServer(name);
+                                        if (currentServer != null) friendServer = currentServer;
                                     }
                                 }
                             }
@@ -285,14 +282,16 @@ public class FriendCommand implements SimpleCommand {
                 }
             }
             
-            player.sendMessage(Component.text("--- Friends List ---", NamedTextColor.GOLD));
+            player.sendMessage(ColorParser.heading("Friends List"));
             if (friends.isEmpty()) {
                 player.sendMessage(Component.text("You have no friends added.", NamedTextColor.GRAY));
                 return;
             }
+            java.util.Set<String> onlineNames = plugin.getCrossProxyService() != null
+                    ? plugin.getCrossProxyService().getOnlinePlayerNames() : java.util.Set.of();
             for (var friend : friends) {
                 String name = getPlayerName(friend.uuid);
-                boolean isOnline = plugin.getCrossProxyService() != null && plugin.getCrossProxyService().getOnlinePlayerNames().contains(name);
+                boolean isOnline = onlineNames.contains(name);
                 Component status;
                 if (isOnline) {
                     String friendServer = "Unknown";
@@ -304,14 +303,8 @@ public class FriendCommand implements SimpleCommand {
                         if (localPlayer.isPresent() && localPlayer.get().getCurrentServer().isPresent()) {
                             friendServer = localPlayer.get().getCurrentServer().get().getServerInfo().getName();
                         } else if (plugin.getCrossProxyService() != null) {
-                            for (String pid : plugin.getCrossProxyService().getProxyIds()) {
-                                for (java.util.Map.Entry<String, String> entry : plugin.getCrossProxyService().getPlayerListForProxy(pid)) {
-                                    if (name.equalsIgnoreCase(entry.getKey())) {
-                                        friendServer = entry.getValue();
-                                        break;
-                                    }
-                                }
-                            }
+                            String currentServer = plugin.getCrossProxyService().getPlayerCurrentServer(name);
+                            if (currentServer != null) friendServer = currentServer;
                         }
                     }
                     status = Component.text(" [Online - " + friendServer + "]", NamedTextColor.GREEN);
@@ -330,7 +323,7 @@ public class FriendCommand implements SimpleCommand {
             return;
         }
         
-        player.sendMessage(Component.text("--- Pending Friend Requests ---", NamedTextColor.GOLD));
+        player.sendMessage(ColorParser.heading("Pending Friend Requests"));
         for (UUID requesterUuid : requests) {
             String name = getPlayerName(requesterUuid);
             player.sendMessage(Component.text("- " + name, NamedTextColor.GRAY)
@@ -344,7 +337,7 @@ public class FriendCommand implements SimpleCommand {
     }
 
     private void sendHelp(Player player) {
-        player.sendMessage(Component.text("--- Friend Commands ---", NamedTextColor.GOLD));
+        player.sendMessage(ColorParser.heading("Friend Commands"));
         player.sendMessage(Component.text("/friend add <player>", NamedTextColor.GRAY));
         player.sendMessage(Component.text("/friend accept <player>", NamedTextColor.GRAY));
         player.sendMessage(Component.text("/friend deny <player>", NamedTextColor.GRAY));
