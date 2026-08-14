@@ -1,6 +1,7 @@
 package org.bcnlab.beaconLabsVelocity.service;
 
 import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.scheduler.ScheduledTask;
 import org.bcnlab.beaconLabsVelocity.BeaconLabsVelocity;
 import org.bcnlab.beaconLabsVelocity.database.DatabaseManager;
 import org.slf4j.Logger;
@@ -29,6 +30,10 @@ public class PlayerStatsService {
     private final Map<UUID, Long> playerSessionStart = new ConcurrentHashMap<>();
     // Cache for player's playtime (to reduce DB queries)
     private final Map<UUID, Long> playerTotalPlaytime = new ConcurrentHashMap<>();
+    private final Object pendingWritesMonitor = new Object();
+    private volatile boolean shuttingDown;
+    private int pendingWrites;
+    private ScheduledTask periodicSaveTask;
     
     public PlayerStatsService(BeaconLabsVelocity plugin, DatabaseManager db, Logger logger) {
         this.plugin = plugin;
@@ -37,7 +42,7 @@ public class PlayerStatsService {
         initializeTables();
         
         // Schedule periodic saving of online players' playtime
-        plugin.getServer().getScheduler().buildTask(plugin, this::saveAllOnlinePlaytime)
+        periodicSaveTask = plugin.getServer().getScheduler().buildTask(plugin, this::saveAllOnlinePlaytime)
             .repeat(5, TimeUnit.MINUTES)
             .schedule();
     }
@@ -97,6 +102,7 @@ public class PlayerStatsService {
      * Record a player's login, updating their stats and IP history
      */
     public void recordLogin(Player player) {
+        if (shuttingDown) return;
         UUID playerId = player.getUniqueId();
         String playerName = player.getUsername();
         long currentTime = System.currentTimeMillis();
@@ -187,6 +193,7 @@ public class PlayerStatsService {
      * Record a player's logout and update their total playtime
      */
     public void recordLogout(Player player) {
+        if (shuttingDown) return;
         UUID playerId = player.getUniqueId();
         String playerName = player.getUsername();
         long currentTime = System.currentTimeMillis();
@@ -217,6 +224,7 @@ public class PlayerStatsService {
      * Save playtime for all online players
      */
     private void saveAllOnlinePlaytime() {
+        if (shuttingDown) return;
         long currentTime = System.currentTimeMillis();
         
         plugin.getServer().getAllPlayers().forEach(player -> {
@@ -241,21 +249,60 @@ public class PlayerStatsService {
         });
     }
 
-    private void insertSessionSlice(UUID playerId, long startTime, long endTime, long duration) {
-        plugin.getServer().getScheduler().buildTask(plugin, () -> {
-            try (Connection conn = db.getConnection()) {
-                String sql = "INSERT INTO player_sessions (player_uuid, start_time, end_time, duration) VALUES (?, ?, ?, ?)";
-                try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                    ps.setString(1, playerId.toString());
-                    ps.setLong(2, startTime);
-                    ps.setLong(3, endTime);
-                    ps.setLong(4, duration);
-                    ps.executeUpdate();
+    @FunctionalInterface
+    private interface DatabaseWrite {
+        void execute() throws SQLException;
+    }
+
+    /** Submit a database write and track it so shutdown can drain queued stats work. */
+    private void submitDatabaseWrite(String operation, DatabaseWrite write) {
+        synchronized (pendingWritesMonitor) {
+            if (shuttingDown || db == null || !db.isConnected()) return;
+            pendingWrites++;
+        }
+        try {
+            plugin.getServer().getScheduler().buildTask(plugin, () -> {
+                try {
+                    write.execute();
+                } catch (SQLException e) {
+                    // Connection failures while shutting down are expected if MariaDB or the
+                    // proxy is already stopping; do not emit a misleading full stack trace.
+                    if (!shuttingDown && !isConnectionShutdownFailure(e)) {
+                        logger.error("Failed to " + operation, e);
+                    }
+                } finally {
+                    synchronized (pendingWritesMonitor) {
+                        pendingWrites--;
+                        pendingWritesMonitor.notifyAll();
+                    }
                 }
-            } catch (SQLException e) {
-                logger.error("Failed to insert session slice", e);
+            }).schedule();
+        } catch (RuntimeException e) {
+            synchronized (pendingWritesMonitor) {
+                pendingWrites--;
+                pendingWritesMonitor.notifyAll();
             }
-        }).schedule();
+            if (!shuttingDown) logger.error("Failed to schedule " + operation, e);
+        }
+    }
+
+    private boolean isConnectionShutdownFailure(SQLException exception) {
+        String state = exception.getSQLState();
+        return state != null && state.startsWith("08");
+    }
+
+    private void insertSessionSlice(UUID playerId, long startTime, long endTime, long duration) {
+        submitDatabaseWrite("insert session slice", () -> {
+            try (Connection conn = db.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(
+                         "INSERT INTO player_sessions (player_uuid, start_time, end_time, duration) VALUES (?, ?, ?, ?)")) {
+                ps.setString(1, playerId.toString());
+                ps.setLong(2, startTime);
+                ps.setLong(3, endTime);
+                ps.setLong(4, duration);
+                ps.executeUpdate();
+            }
+        });
     }
     
     /**
@@ -264,37 +311,57 @@ public class PlayerStatsService {
      * so even if the in-memory cache is stale or empty, accumulated playtime is preserved.
      */
     private void incrementPlaytime(UUID playerId, String playerName, long additionalPlaytime, long lastSeen) {
-        plugin.getServer().getScheduler().buildTask(plugin, () -> {
-            try (Connection conn = db.getConnection()) {
-                String updateSql = "UPDATE player_stats SET total_playtime = total_playtime + ?, last_seen = ? WHERE player_uuid = ?";
-                try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
-                    ps.setLong(1, additionalPlaytime);
-                    ps.setLong(2, lastSeen);
-                    ps.setString(3, playerId.toString());
-                    ps.executeUpdate();
-                }
-            } catch (SQLException e) {
-                logger.error("Failed to increment playtime for: " + playerName, e);
+        submitDatabaseWrite("increment playtime for: " + playerName, () -> {
+            try (Connection conn = db.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(
+                         "UPDATE player_stats SET total_playtime = total_playtime + ?, last_seen = ? WHERE player_uuid = ?")) {
+                ps.setLong(1, additionalPlaytime);
+                ps.setLong(2, lastSeen);
+                ps.setString(3, playerId.toString());
+                ps.executeUpdate();
             }
-        }).schedule();
+        });
     }
     
     /**
      * Update only the last seen time for a player in the database
      */
     private void updateLastSeen(UUID playerId, String playerName, long lastSeen) {
-        plugin.getServer().getScheduler().buildTask(plugin, () -> {
-            try (Connection conn = db.getConnection()) {
-                String updateSql = "UPDATE player_stats SET last_seen = ? WHERE player_uuid = ?";
-                try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
-                    ps.setLong(1, lastSeen);
-                    ps.setString(2, playerId.toString());
-                    ps.executeUpdate();
-                }
-            } catch (SQLException e) {
-                logger.error("Failed to update last seen for: " + playerName, e);
+        submitDatabaseWrite("update last seen for: " + playerName, () -> {
+            try (Connection conn = db.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(
+                         "UPDATE player_stats SET last_seen = ? WHERE player_uuid = ?")) {
+                ps.setLong(1, lastSeen);
+                ps.setString(2, playerId.toString());
+                ps.executeUpdate();
             }
-        }).schedule();
+        });
+    }
+
+    /** Stop periodic saves and drain already queued stats writes before the pool closes. */
+    public void shutdown() {
+        shuttingDown = true;
+        if (periodicSaveTask != null) {
+            periodicSaveTask.cancel();
+            periodicSaveTask = null;
+        }
+
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        synchronized (pendingWritesMonitor) {
+            while (pendingWrites > 0) {
+                long remaining = deadline - System.nanoTime();
+                if (remaining <= 0) break;
+                try {
+                    TimeUnit.NANOSECONDS.timedWait(pendingWritesMonitor, remaining);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+            if (pendingWrites > 0) {
+                logger.warn("Timed out waiting for {} player stats database write(s) during shutdown.", pendingWrites);
+            }
+        }
     }
     
     /**

@@ -377,6 +377,10 @@ public class BeaconLabsVelocity {
                 com.github.retrooper.packetevents.PacketEvents.getAPI().terminate();
             }
         } catch (Throwable ignored) {}
+        // Drain queued playtime/session writes before closing the database pool.
+        if (playerStatsService != null) {
+            playerStatsService.shutdown();
+        }
         if (crossProxyService != null) {
             crossProxyService.shutdown();
         }

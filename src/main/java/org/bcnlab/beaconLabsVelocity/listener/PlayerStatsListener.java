@@ -46,14 +46,13 @@ public class PlayerStatsListener {
     public void onPlayerDisconnect(DisconnectEvent event) {
         Player player = event.getPlayer();
         
-        // Record player logout in a separate thread
-        plugin.getServer().getScheduler().buildTask(plugin, () -> {
-            try {
-                playerStatsService.recordLogout(player);
-                logger.debug("Recorded logout for player: " + player.getUsername());
-            } catch (Exception e) {
-                logger.error("Error recording logout for player: " + player.getUsername(), e);
-            }
-        }).schedule();
+        // recordLogout only updates in-memory state and queues its writes, so call it
+        // immediately. This ensures shutdown can drain the writes before Hikari closes.
+        try {
+            playerStatsService.recordLogout(player);
+            logger.debug("Recorded logout for player: " + player.getUsername());
+        } catch (Exception e) {
+            logger.error("Error recording logout for player: " + player.getUsername(), e);
+        }
     }
 }
