@@ -57,7 +57,7 @@ import java.time.Duration;
 import java.util.Objects;
 import org.bcnlab.beaconLabsVelocity.util.ColorParser;
 
-@Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.8.4", url = "bcnlab.org", authors = {"Vincent Wackler"})
+@Plugin(id = "beaconlabsvelocity", name = "BeaconLabsVelocity", version = "1.8.5", url = "bcnlab.org", authors = {"Vincent Wackler"})
 public class BeaconLabsVelocity {
 
     @Inject
@@ -69,7 +69,7 @@ public class BeaconLabsVelocity {
 
     private String prefix;
     private String legacyPrefix;
-    private final String version = "1.8.4";
+    private final String version = "1.8.5";
 
     @Inject
     private Logger logger;
@@ -279,6 +279,8 @@ public class BeaconLabsVelocity {
         
         visualStateListener = new VisualStateListener(this);
         server.getEventManager().register(this, visualStateListener);
+        server.getChannelRegistrar().register(ProtocolSyncListener.CHANNEL);
+        server.getChannelRegistrar().register(ProtocolSyncListener.REQUEST_CHANNEL);
         server.getEventManager().register(this, new ProtocolSyncListener(this));
         
         // Plugin Message Channels

@@ -30,6 +30,14 @@ Install the [Feather Server API](https://github.com/p-dobosz/feather-server-api)
 **Optional – Cross-Proxy:**  
 Enable and configure the `redis` section in `config.yml` on every Velocity proxy that should participate.
 
+**GrimAC + ViaVersion:**
+The plugin registers `beaconlabs:protocol_version` and sends each player's original
+client protocol to the backend after every server connection. This supports the
+updated Dim/GrimAC fork when ViaVersion is installed on the proxy. Keep ViaVersion
+off the backend where Grim runs, and install BeaconLabsVelocity on every proxy that
+routes players to that backend. Client attempts to spoof the bridge channel are
+blocked at the proxy.
+
 ---
 
 ## Features
@@ -290,6 +298,7 @@ Main file: `plugins/BeaconLabsVelocity/config.yml`
 - **joinme** – cooldown, use and bypass-cooldown permissions.
 - **feather** – enabled, server-list-background, discord (enabled, image, image-text, state, details).
 - **redis** – enabled, host, port, password, shared-secret, proxy-id, allow-double-join, timeouts.
+- **GrimAC protocol bridge** – automatic; uses `beaconlabs:protocol_version` and has no additional configuration.
 
 Other files in the same folder:
 
